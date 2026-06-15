@@ -3,19 +3,18 @@ name: FastAPI services CI
 on:
   push:
     paths:
-      - 'infra-repo/hosts/host-c/docker/psr-svc/**'
-      - 'infra-repo/hosts/host-c/docker/support-svc/**'
-      - 'infra-repo/hosts/host-c/docker/wms-svc/**'
-      - 'infra-repo/hosts/host-c/docker/timelog-svc/**'
-      - 'infra-repo/hosts/host-c/docker/timesheet-validator/**'
-      - 'infra-repo/hosts/host-c/docker/triage-svc/**'
+      - 'infra-repo/hosts/host-a/docker/psr-svc/**'
+      - 'infra-repo/hosts/host-a/docker/support-svc/**'
+      - 'infra-repo/hosts/host-a/docker/timelog-svc/**'
+      - 'infra-repo/hosts/host-a/docker/timesheet-validator/**'
+      - 'infra-repo/hosts/host-a/docker/triage-svc/**'
       - 'infra-repo/templates/fastapi-svc/**'
       - '.github/workflows/fastapi-svcs.yml'
   pull_request:
     paths:
-      - 'infra-repo/hosts/host-c/docker/*/pyproject.toml'
-      - 'infra-repo/hosts/host-c/docker/*/src/**'
-      - 'infra-repo/hosts/host-c/docker/*/tests/**'
+      - 'infra-repo/hosts/host-a/docker/*/pyproject.toml'
+      - 'infra-repo/hosts/host-a/docker/*/src/**'
+      - 'infra-repo/hosts/host-a/docker/*/tests/**'
 
 jobs:
   detect-services:
@@ -26,13 +25,13 @@ jobs:
       - uses: actions/checkout@v4
       - id: find
         run: |
-          # Discover services with a pyproject.toml under infra-repo/hosts/host-c/docker/
+          # Discover services with a pyproject.toml under infra-repo/hosts/host-a/docker/
           # All input is from repo filesystem; service names validated against a strict regex
           # before being emitted to GITHUB_OUTPUT to prevent any pathological directory names
           # from poisoning downstream matrix interpolation.
           services=$(
-            find infra-repo/hosts/host-c/docker -maxdepth 2 -name pyproject.toml -printf '%h\n' \
-            | sed 's|infra-repo/hosts/host-c/docker/||' \
+            find infra-repo/hosts/host-a/docker -maxdepth 2 -name pyproject.toml -printf '%h\n' \
+            | sed 's|infra-repo/hosts/host-a/docker/||' \
             | grep -E '^[a-z][a-z0-9-]{1,63}$' \
             | jq -R . | jq -sc .
           )
@@ -58,23 +57,23 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
       - name: Install svc + dev deps
-        working-directory: infra-repo/hosts/host-c/docker/${{ matrix.svc }}
+        working-directory: infra-repo/hosts/host-a/docker/${{ matrix.svc }}
         run: |
           pip install -e ".[dev]"
       - name: Lint (ruff)
-        working-directory: infra-repo/hosts/host-c/docker/${{ matrix.svc }}
+        working-directory: infra-repo/hosts/host-a/docker/${{ matrix.svc }}
         run: ruff check src tests
       - name: Type check (mypy)
-        working-directory: infra-repo/hosts/host-c/docker/${{ matrix.svc }}
+        working-directory: infra-repo/hosts/host-a/docker/${{ matrix.svc }}
         run: mypy src
       - name: Tests (pytest with coverage)
-        working-directory: infra-repo/hosts/host-c/docker/${{ matrix.svc }}
+        working-directory: infra-repo/hosts/host-a/docker/${{ matrix.svc }}
         env:
           SVC_NAME: ${{ matrix.svc }}
           BEARER_TOKEN: "test-token-padded-to-thirty-two-chars"
         run: pytest -v
       - name: Verify Dockerfile builds
-        working-directory: infra-repo/hosts/host-c/docker/${{ matrix.svc }}
+        working-directory: infra-repo/hosts/host-a/docker/${{ matrix.svc }}
         env:
           SVC: ${{ matrix.svc }}
         run: docker build -t "${SVC}:ci" .
