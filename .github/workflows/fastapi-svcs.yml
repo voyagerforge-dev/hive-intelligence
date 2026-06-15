@@ -3,11 +3,7 @@ name: FastAPI services CI
 on:
   push:
     paths:
-      - 'infra-repo/hosts/host-a/docker/psr-svc/**'
-      - 'infra-repo/hosts/host-a/docker/support-svc/**'
-      - 'infra-repo/hosts/host-a/docker/timelog-svc/**'
-      - 'infra-repo/hosts/host-a/docker/timesheet-validator/**'
-      - 'infra-repo/hosts/host-a/docker/triage-svc/**'
+      - 'automation/**'
       - 'infra-repo/templates/fastapi-svc/**'
       - 'connectors/**'
       - 'knowledge/**'
@@ -19,6 +15,7 @@ on:
       - 'infra-repo/hosts/host-a/docker/*/tests/**'
       - 'connectors/**'
       - 'knowledge/**'
+      - 'automation/**'
 
 jobs:
   detect-services:
@@ -36,7 +33,7 @@ jobs:
           # before being emitted to GITHUB_OUTPUT to prevent any pathological directory names
           # from poisoning downstream matrix interpolation.
           services=$(
-            find infra-repo/hosts/host-a/docker connectors knowledge \
+            find infra-repo/hosts/host-a/docker connectors knowledge automation \
               -path '*/.venv' -prune -o -name pyproject.toml -printf '%h\n' \
             | sort -u \
             | grep -E '^[a-z][a-z0-9/-]{1,127}$' \
