@@ -39,12 +39,12 @@ def propose_taxonomy(docs: list[Doc], llm: ChatLLM, *, snippet_chars: int = 400)
     return out
 
 
-def write_taxonomy(path, concepts: list[Concept]) -> None:
+def write_taxonomy(path: str | Path, concepts: list[Concept]) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(yaml.safe_dump({"concepts": [c.model_dump() for c in concepts]}, sort_keys=False))
 
 
-def load_taxonomy(path) -> list[Concept]:
+def load_taxonomy(path: str | Path) -> list[Concept]:
     data = yaml.safe_load(Path(path).read_text()) or {}
     return [Concept(**c) for c in data.get("concepts", [])]
