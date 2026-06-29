@@ -50,24 +50,28 @@ def generate_drafts(docs: list[Doc], concepts: list[Concept], assign_llm: ChatLL
 
 
 def main() -> None:  # pragma: no cover — live wiring (detached)
-    import boto3
-
     from okfgen.config import get_settings
-    from okfgen.load import load_docs
+    from okfgen.load import load_docs, load_docs_local
     from okfgen.taxonomy import load_taxonomy, propose_taxonomy, write_taxonomy
 
     s = get_settings()
     root = Path(__file__).resolve().parents[3]  # voyagerforge-knowledge repo root
-    s3 = boto3.client("s3", endpoint_url=s.r2_endpoint,
-                      aws_access_key_id=s.r2_access_key_id,
-                      aws_secret_access_key=s.r2_secret_access_key)
-    docs = load_docs(s3, s.r2_bucket, s.r2_prefix)
-    print(f"loaded {len(docs)} Wave/Replenishment docs", flush=True)
+    if s.atomic_dir:
+        docs = load_docs_local(s.atomic_dir)
+        print(f"loaded {len(docs)} Wave/Replenishment docs from {s.atomic_dir}", flush=True)
+    else:
+        import boto3
+        s3 = boto3.client("s3", endpoint_url=s.r2_endpoint,
+                          aws_access_key_id=s.r2_access_key_id,
+                          aws_secret_access_key=s.r2_secret_access_key)
+        docs = load_docs(s3, s.r2_bucket, s.r2_prefix)
+        print(f"loaded {len(docs)} Wave/Replenishment docs from R2 {s.r2_prefix}", flush=True)
 
     taxonomy_path = root / "taxonomy.yaml"
     if not taxonomy_path.exists():
         from okfgen.llm import BifrostChat
-        tx_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.taxonomy_model)
+        tx_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.taxonomy_model,
+                             timeout_s=s.bifrost_timeout_s)
         concepts = propose_taxonomy(docs, tx_llm)
         write_taxonomy(root / "taxonomy.draft.yaml", concepts)
         print(f"GATE 1: proposed {len(concepts)} concepts → taxonomy.draft.yaml. "
@@ -76,8 +80,10 @@ def main() -> None:  # pragma: no cover — live wiring (detached)
 
     from okfgen.llm import BifrostChat
     concepts = load_taxonomy(taxonomy_path)
-    assign_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.assign_model)
-    distill_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.distill_model)
+    assign_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.assign_model,
+                             timeout_s=s.bifrost_timeout_s)
+    distill_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.distill_model,
+                              timeout_s=s.bifrost_timeout_s)
     written = generate_drafts(docs, concepts, assign_llm, distill_llm,
                               drafts_dir=root / "drafts", max_chars=s.max_chars,
                               today=date.today().isoformat(), pipeline_dir=root / ".pipeline")

@@ -1,6 +1,6 @@
 import io
 
-from okfgen.load import Doc, is_wave_replen, load_docs
+from okfgen.load import Doc, is_wave_replen, load_docs, load_docs_local
 
 
 def test_is_wave_replen_matches_and_rejects():
@@ -32,3 +32,27 @@ def test_load_docs_filters_to_wave_replen():
     assert [d.name for d in docs] == ["example_prefix/docs/wave-template.md"]
     assert docs[0].text == "wave body"
     assert isinstance(docs[0], Doc)
+
+
+def test_load_docs_local_filters_and_reads(tmp_path):
+    d = tmp_path / "atomic"
+    d.mkdir()
+    (d / "shipping-wave-major-minor-order-fs.md").write_text("wave body")
+    (d / "lean-time-replenishment-fs.md").write_text("replen body")
+    (d / "fedex-express-carrier.md").write_text("carrier body")
+    (d / "notes.txt").write_text("ignore me")
+    docs = load_docs_local(d)
+    names = sorted(x.name for x in docs)
+    assert names == ["lean-time-replenishment-fs.md", "shipping-wave-major-minor-order-fs.md"]
+    by_name = {x.name: x for x in docs}
+    assert by_name["shipping-wave-major-minor-order-fs.md"].text == "wave body"
+    assert isinstance(docs[0], Doc)
+
+
+def test_load_docs_local_no_filter_includes_all_md(tmp_path):
+    d = tmp_path / "atomic"
+    d.mkdir()
+    (d / "wave.md").write_text("a")
+    (d / "fedex.md").write_text("b")
+    docs = load_docs_local(d, only_wave_replen=False)
+    assert sorted(x.name for x in docs) == ["fedex.md", "wave.md"]
