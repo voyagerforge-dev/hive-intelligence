@@ -2,11 +2,16 @@
 render `related` frontmatter into spec-native inline markdown cross-links."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from okfserve.resolver import load_index, parse_frontmatter
 
 _MARK = "## Related"
+# Match ONLY our own exact "## Related" section (a heading line equal to
+# "## Related"), never a differently-named heading like "## Related References"
+# that may legitimately exist in a distilled card body.
+_OUR_SECTION = re.compile(r"\n## Related\n.*\Z", re.DOTALL)
 
 
 def build_index_md(concepts_dir) -> str:
@@ -17,7 +22,7 @@ def build_index_md(concepts_dir) -> str:
 
 
 def render_crosslinks(card_text: str, titles: dict[str, str]) -> str:
-    body = card_text.split(_MARK, 1)[0].rstrip()  # drop any existing Related section
+    body = _OUR_SECTION.sub("", card_text).rstrip()  # drop only our prior section
     fm = parse_frontmatter(card_text)
     related = fm.get("related") or []
     if not related:
