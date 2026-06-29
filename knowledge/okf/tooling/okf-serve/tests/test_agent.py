@@ -48,6 +48,7 @@ def test_answer_question_progressive(tmp_path):
     assert out["selected_ids"] == ["pre-wave-process"]
     assert out["bundle_ids"] == ["pre-wave-process"]
     assert "pre-wave" in out["answer"].lower()
+    assert out["mode"] == "progressive"
 
 
 def test_answer_question_ceiling_loads_all(tmp_path):

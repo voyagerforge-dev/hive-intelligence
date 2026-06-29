@@ -14,6 +14,8 @@ from okfserve.resolver import get_card
 
 def main() -> None:
     mode = sys.argv[1] if len(sys.argv) > 1 else "progressive"
+    if mode not in ("progressive", "ceiling"):
+        raise SystemExit(f"unknown mode {mode!r}; use 'progressive' or 'ceiling'")
     s = get_settings()
     pkg = Path(__file__).resolve().parents[1]
     concepts = pkg.parents[1] / "concepts"
@@ -26,7 +28,8 @@ def main() -> None:
                             timeout_s=s.bifrost_timeout_s)
     res = run_eval(concepts, qa, select_llm=select_llm, answer_llm=answer_llm,
                    judge_llm=judge_llm, get_card_fn=lambda cid: get_card(concepts, cid),
-                   mode=mode)
+                   mode=mode, depth=s.resolve_depth, max_cards=s.max_cards,
+                   max_chars=s.max_chars)
     out_dir = pkg / ".eval"
     out_dir.mkdir(exist_ok=True)
     (out_dir / f"report-{mode}.json").write_text(json.dumps(res, indent=2))

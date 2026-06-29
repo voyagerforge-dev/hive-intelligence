@@ -34,14 +34,16 @@ def select_ids(index, question: str, llm, *, known_ids: set[str]) -> list[str]:
 
 
 def answer_question(concepts_dir, question, *, select_llm, answer_llm,
-                    mode: str = "progressive", depth: int = 1, max_cards: int = 8) -> dict:
+                    mode: str = "progressive", depth: int = 1, max_cards: int = 8,
+                    max_chars: int | None = None) -> dict:
     index = load_index(concepts_dir)
     if mode == "ceiling":
         selected = [c["id"] for c in index]
         resolved = resolve(concepts_dir, selected, depth=0, max_cards=len(selected) or 1)
     else:
         selected = select_ids(index, question, select_llm, known_ids={c["id"] for c in index})
-        resolved = resolve(concepts_dir, selected, depth=depth, max_cards=max_cards)
+        resolved = resolve(concepts_dir, selected, depth=depth, max_cards=max_cards,
+                           max_chars=max_chars)
     user = f"KNOWLEDGE CARDS:\n{resolved['bundle']}\n\nQUESTION: {question}"
     answer = answer_llm.complete(_ANSWER_SYS, user) or ""
     return {"answer": answer, "selected_ids": selected,

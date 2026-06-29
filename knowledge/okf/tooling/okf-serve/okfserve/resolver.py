@@ -10,7 +10,8 @@ def parse_frontmatter(text: str) -> dict:
     parts = text.split("---", 2)
     if len(parts) < 3:
         return {}
-    return yaml.safe_load(parts[1]) or {}
+    fm = yaml.safe_load(parts[1])
+    return fm if isinstance(fm, dict) else {}
 
 
 def load_index(concepts_dir) -> list[dict]:
@@ -29,11 +30,11 @@ def get_card(concepts_dir, card_id: str) -> str | None:
     return p.read_text() if p.exists() else None
 
 
-def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8) -> dict:
+def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
+            max_chars: int | None = None) -> dict:
     concepts_dir = Path(concepts_dir)
     selected: list[str] = []
     dropped: list[str] = []
-    # BFS levels: start at the requested ids, expand via `related` up to `depth`.
     frontier = [i for i in ids if (concepts_dir / f"{i}.md").exists()]
     seen = set(frontier)
     level = 0
@@ -54,5 +55,16 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8)
                         next_frontier.append(rid)
         frontier = next_frontier
         level += 1
+    if max_chars is not None:  # char budget; always keep at least the first card
+        kept: list[str] = []
+        used = 0
+        for cid in selected:
+            text = (concepts_dir / f"{cid}.md").read_text()
+            if kept and used + len(text) > max_chars:
+                dropped.append(cid)
+            else:
+                kept.append(cid)
+                used += len(text)
+        selected = kept
     bundle = "\n\n---\n\n".join((concepts_dir / f"{c}.md").read_text() for c in selected)
     return {"card_ids": selected, "bundle": bundle, "dropped": dropped}

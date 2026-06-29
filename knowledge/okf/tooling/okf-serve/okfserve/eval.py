@@ -36,11 +36,13 @@ def judge_answer(question, answer, reference_text, llm) -> dict:
 
 
 def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn,
-             mode: str = "progressive") -> dict:
+             mode: str = "progressive", depth: int = 1, max_cards: int = 8,
+             max_chars: int | None = None) -> dict:
     rows = []
     for item in qa:
         res = answer_question(concepts_dir, item["question"], select_llm=select_llm,
-                              answer_llm=answer_llm, mode=mode)
+                              answer_llm=answer_llm, mode=mode, depth=depth,
+                              max_cards=max_cards, max_chars=max_chars)
         sel = score_selection(item["expected_card_ids"], res["selected_ids"], res["bundle_ids"])
         ref = "\n\n".join(filter(None, (get_card_fn(cid) for cid in item["expected_card_ids"])))
         verdict = judge_answer(item["question"], res["answer"], ref, judge_llm)

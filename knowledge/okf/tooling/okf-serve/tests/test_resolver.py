@@ -85,3 +85,15 @@ def test_resolve_caps_and_records_dropped(tmp_path):
     out = resolve(tmp_path, ["alpha"], depth=2, max_cards=2)
     assert out["card_ids"] == ["alpha", "beta"]
     assert out["dropped"] == ["gamma"]
+
+
+def test_resolve_max_chars_caps_and_records_dropped(tmp_path):
+    _write(tmp_path)  # alpha->beta(->gamma at depth2); cards ~ small
+    # tiny budget keeps only the first card, rest dropped
+    out = resolve(tmp_path, ["alpha"], depth=1, max_cards=8, max_chars=1)
+    assert out["card_ids"] == ["alpha"]
+    assert "beta" in out["dropped"]
+
+
+def test_parse_frontmatter_non_dict_returns_empty():
+    assert parse_frontmatter("---\njust a string\n---\nbody") == {}
