@@ -1,0 +1,58 @@
+"""Score the OKF Q&A agent over a labelled wave/replen eval set."""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from okfgen.llm import extract_json
+
+from okfserve.agent import answer_question
+
+_JUDGE_SYS = (
+    "You are a strict grader. Given a QUESTION, a candidate ANSWER, and the REFERENCE knowledge "
+    "the answer should be based on, judge whether the answer is correct and grounded in the "
+    "reference. Reply with ONLY "
+    '{"grounded": true|false, "correct": true|false, "note": "<short reason>"}.'
+)
+
+
+def load_qa(path) -> list[dict]:
+    return [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+
+
+def score_selection(expected_ids, selected_ids, bundle_ids) -> dict:
+    exp = set(expected_ids)
+    return {"select_hit": bool(exp & set(selected_ids)),
+            "bundle_hit": bool(exp & set(bundle_ids))}
+
+
+def judge_answer(question, answer, reference_text, llm) -> dict:
+    user = f"QUESTION: {question}\n\nANSWER: {answer}\n\nREFERENCE:\n{reference_text}"
+    data = extract_json(llm.complete(_JUDGE_SYS, user) or "")
+    if not data or "correct" not in data:
+        return {"grounded": None, "correct": None, "note": "unscored"}
+    return {"grounded": data.get("grounded"), "correct": data.get("correct"),
+            "note": data.get("note", "")}
+
+
+def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn,
+             mode: str = "progressive") -> dict:
+    rows = []
+    for item in qa:
+        res = answer_question(concepts_dir, item["question"], select_llm=select_llm,
+                              answer_llm=answer_llm, mode=mode)
+        sel = score_selection(item["expected_card_ids"], res["selected_ids"], res["bundle_ids"])
+        ref = "\n\n".join(filter(None, (get_card_fn(cid) for cid in item["expected_card_ids"])))
+        verdict = judge_answer(item["question"], res["answer"], ref, judge_llm)
+        rows.append({"id": item["id"], "question": item["question"],
+                     "selected_ids": res["selected_ids"], "bundle_ids": res["bundle_ids"],
+                     **sel, **verdict, "answer": res["answer"]})
+    agg = {
+        "n": len(rows),
+        "select_hit": sum(1 for r in rows if r["select_hit"]),
+        "bundle_hit": sum(1 for r in rows if r["bundle_hit"]),
+        "correct": sum(1 for r in rows if r["correct"] is True),
+        "grounded": sum(1 for r in rows if r["grounded"] is True),
+        "unscored": sum(1 for r in rows if r["note"] == "unscored"),
+    }
+    return {"rows": rows, "aggregate": agg}
