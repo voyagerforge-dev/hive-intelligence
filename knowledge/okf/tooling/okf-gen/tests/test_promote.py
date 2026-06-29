@@ -16,6 +16,14 @@ def test_validate_card_ok_and_badlink():
     assert any("does-not-exist" in e for e in errs)
 
 
+def test_validate_card_missing_key():
+    """Removing a required frontmatter key must produce an error mentioning that key."""
+    card_missing_type = CARD_OK.replace("type: concept\n", "")
+    errs = validate_card(card_missing_type, {"wave", "replenishment"})
+    assert errs  # non-empty list
+    assert any("type" in e for e in errs)
+
+
 def test_promote_moves_only_approved(tmp_path):
     drafts = tmp_path / "drafts"
     concepts = tmp_path / "concepts"

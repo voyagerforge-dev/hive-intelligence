@@ -12,7 +12,8 @@ _SYSTEM = (
     "reusable knowledge card. Reply with ONLY a JSON object: "
     "{\"title\", \"description\", \"tags\", \"related\", \"body\"}. "
     "title: concise concept title. description: one sentence. tags: list of short tags. "
-    "related: list of other concept ids/terms this links to. "
+    "related: list of concept ids this links to — MUST be a subset of the ids provided in "
+    "the user message (use only those exact ids, or an empty list). "
     "body: self-contained, reusable prose explaining the concept (the bulk of the value). "
     "Preserve specifics (parameters, rules); do not over-summarize."
 )
@@ -24,11 +25,21 @@ def build_okf_card(meta: dict, body: str) -> str:
 
 
 def distill_concept(concept: Concept, docs: list[Doc], llm: ChatLLM, *,
-                    max_chars: int, today: str) -> str | None:
+                    max_chars: int, today: str,
+                    related_ids: list[str] | None = None) -> str | None:
     combined = "\n\n".join(d.text for d in docs)[:max_chars]
+    if related_ids is not None:
+        combined += (
+            f"\n\nValid concept ids for the `related` field (choose only from these, or empty): "
+            f"{', '.join(related_ids)}"
+        )
     data = extract_json(llm.complete(_SYSTEM, combined) or "")
-    if not data or not data.get("body", "").strip():
+    if not data:
         return None
+    body = data.get("body", "")
+    if not isinstance(body, str) or not body.strip():
+        return None
+    related = [r for r in data.get("related", []) if r in set(related_ids or [])]
     meta = {
         "type": "concept",
         "title": data.get("title") or concept.title,
@@ -36,8 +47,8 @@ def distill_concept(concept: Concept, docs: list[Doc], llm: ChatLLM, *,
         "tags": data.get("tags", []),
         "resource": "wmos",
         "sources": [{"kind": "wms-doc", "ref": d.name} for d in docs],
-        "related": data.get("related", []),
+        "related": related,
         "distilled_at": today,
         "status": "draft",
     }
-    return build_okf_card(meta, data["body"])
+    return build_okf_card(meta, body)

@@ -30,12 +30,22 @@ def generate_drafts(docs: list[Doc], concepts: list[Concept], assign_llm: ChatLL
         concept = by_id.get(cid)
         if not concept:
             continue
-        card = distill_concept(concept, [docs_by_id[i] for i in doc_ids], distill_llm,
-                               max_chars=max_chars, today=today)
-        if card is None:
+        draft_path = drafts_dir / f"{cid}.md"
+        if draft_path.exists():
+            continue  # idempotency: never overwrite an existing draft
+        try:
+            card = distill_concept(
+                concept, [docs_by_id[i] for i in doc_ids], distill_llm,
+                max_chars=max_chars, today=today,
+                related_ids=[c.id for c in concepts if c.id != cid],
+            )
+            if card is None:
+                continue
+            draft_path.write_text(card)
+            written.append(f"{cid}.md")
+        except Exception as exc:
+            print(f"[okfgen] skipping concept {cid!r}: {exc}", flush=True)
             continue
-        (drafts_dir / f"{cid}.md").write_text(card)
-        written.append(f"{cid}.md")
     return sorted(written)
 
 
