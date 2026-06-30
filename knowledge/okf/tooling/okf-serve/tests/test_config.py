@@ -1,4 +1,4 @@
-from okfserve.config import get_settings
+from okfserve.config import get_settings, Settings
 
 
 def test_settings_reads_env(monkeypatch, tmp_path):
@@ -14,3 +14,14 @@ def test_settings_reads_env(monkeypatch, tmp_path):
     assert s.max_cards == 8
     assert s.resolve_depth == 1
     get_settings.cache_clear()
+
+
+def test_settings_have_serving_defaults():
+    s = Settings()
+    assert s.concepts_dir
+    assert s.okf_data_dir
+    assert s.host == "127.0.0.1"
+    assert s.port == 8000
+    assert s.transport == "stdio"
+    assert s.okf_default_owner
+    assert s.identity_header

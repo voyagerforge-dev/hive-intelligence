@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     max_cards: int = 8
     max_chars: int = 80000
     resolve_depth: int = 1
+    concepts_dir: str = "../../concepts"
+    okf_data_dir: str = "./.data"
+    host: str = "127.0.0.1"
+    port: int = 8000
+    transport: str = "stdio"
+    okf_default_owner: str = "local-operator"
+    identity_header: str = "x-forwarded-email"
 
 
 @lru_cache
