@@ -29,7 +29,7 @@ def build_http_app(settings):
 
     app = FastAPI(title="OKF Serving Layer", lifespan=lifespan)
     app.include_router(build_rest_router(settings))
-    app.mount("/mcp", mcp.streamable_http_app())
+    app.mount("/", mcp.streamable_http_app())
     return app
 
 
