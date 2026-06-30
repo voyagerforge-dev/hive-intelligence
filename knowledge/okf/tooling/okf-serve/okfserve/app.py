@@ -34,6 +34,7 @@ def build_rest_router(settings) -> APIRouter:
 
     @router.post("/resolve")
     def resolve(req: ResolveRequest) -> dict:
-        return tools.resolve_cards(cdir, req.ids, depth=req.depth)
+        return tools.resolve_cards(cdir, req.ids, depth=req.depth,
+                                   max_cards=settings.max_cards, max_chars=settings.max_chars)
 
     return router

@@ -11,6 +11,14 @@ from okfserve.config import get_settings
 from okfserve.mcp_app import build_mcp
 
 
+def _choose_transport(http_flag: bool, stdio_flag: bool, settings) -> str:
+    if http_flag:
+        return "http"
+    if stdio_flag:
+        return "stdio"
+    return settings.transport
+
+
 def _conn_factory(settings):
     db = Path(settings.okf_data_dir) / "objectives.db"
     db.parent.mkdir(parents=True, exist_ok=True)
@@ -42,7 +50,8 @@ def main(argv=None) -> None:
     grp.add_argument("--http", action="store_true")
     args = parser.parse_args(argv)
     settings = get_settings()
-    if args.http:
+    transport = _choose_transport(args.http, args.stdio, settings)
+    if transport == "http":
         import uvicorn
 
         uvicorn.run(build_http_app(settings), host=settings.host, port=settings.port)

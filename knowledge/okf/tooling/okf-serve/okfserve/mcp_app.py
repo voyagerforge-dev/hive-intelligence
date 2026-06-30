@@ -30,7 +30,8 @@ def build_mcp(settings, conn_factory) -> FastMCP:
     @mcp.tool()
     def resolve(ids: list[str], depth: int = 1) -> dict:
         """Load cards by id plus their cross-linked neighbours (depth hops)."""
-        return tools.resolve_cards(cdir, ids, depth=depth)
+        return tools.resolve_cards(cdir, ids, depth=depth,
+                                   max_cards=settings.max_cards, max_chars=settings.max_chars)
 
     @mcp.tool()
     def start_objective(mode: str, goal: str, ctx: Context,

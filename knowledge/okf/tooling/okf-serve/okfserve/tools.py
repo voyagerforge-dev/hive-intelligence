@@ -13,5 +13,5 @@ def get_card_text(concepts_dir, card_id: str) -> str:
     return text if text is not None else f"No card found with id '{card_id}'."
 
 
-def resolve_cards(concepts_dir, ids, depth: int = 1) -> dict:
-    return resolve(concepts_dir, list(ids), depth=depth)
+def resolve_cards(concepts_dir, ids, depth: int = 1, max_cards: int = 8, max_chars: int | None = None) -> dict:
+    return resolve(concepts_dir, list(ids), depth=depth, max_cards=max_cards, max_chars=max_chars)
