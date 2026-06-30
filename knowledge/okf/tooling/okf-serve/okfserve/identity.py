@@ -9,7 +9,7 @@ def resolve_owner(headers, settings) -> str:
         try:
             val = headers.get(name)
             if not val:
-                # plain dicts are case-sensitive; try common casings
+                # plain dicts are case-sensitive; retry with a lowercased-key view
                 low = {str(k).lower(): v for k, v in dict(headers).items()}
                 val = low.get(name.lower())
         except (AttributeError, TypeError, ValueError):
