@@ -5,6 +5,9 @@ description = "Serve + test OKF concept cards as agent context (no RAG)"
 requires-python = ">=3.12"
 dependencies = ["okfgen", "pydantic>=2.9", "pydantic-settings>=2.5", "PyYAML>=6.0", "mcp==1.28.1", "fastapi>=0.135", "uvicorn>=0.30"]
 
+[project.scripts]
+okfserve = "okfserve.server:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8.3", "ruff>=0.7"]
 
