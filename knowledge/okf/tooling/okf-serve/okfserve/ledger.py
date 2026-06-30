@@ -132,8 +132,8 @@ def set_status(conn, *, owner, objective_id, status) -> dict | None:
         raise ValueError(f"bad status: {status}")
     if _owned(conn, owner, objective_id) is None:
         return None
-    conn.execute("UPDATE objective SET status=?, updated_at=? WHERE id=?",
-                 (status, _now(), objective_id))
+    conn.execute("UPDATE objective SET status=?, updated_at=? WHERE id=? AND owner=?",
+                 (status, _now(), objective_id, owner))
     conn.commit()
     return get_objective(conn, owner=owner, objective_id=objective_id)
 

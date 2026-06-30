@@ -27,6 +27,8 @@ def test_owner_scoping(tmp_path):
     o = ledger.start_objective(c, owner="alice", mode="learn", goal="x")
     assert ledger.get_objective(c, owner="bob", objective_id=o["id"]) is None
     assert ledger.append_entry(c, owner="bob", objective_id=o["id"], kind="note", content="x") is None
+    assert ledger.set_status(c, owner="bob", objective_id=o["id"], status="done") is None
+    assert ledger.record_quiz_result(c, owner="bob", objective_id=o["id"], concept_id="x", score=1.0) is None
     assert ledger.list_objectives(c, owner="bob") == []
     assert len(ledger.list_objectives(c, owner="alice")) == 1
 
@@ -38,6 +40,8 @@ def test_validation(tmp_path):
     o = ledger.start_objective(c, owner="a", mode="implement", goal="x")
     with pytest.raises(ValueError):
         ledger.append_entry(c, owner="a", objective_id=o["id"], kind="bogus", content="x")
+    with pytest.raises(ValueError):
+        ledger.set_status(c, owner="a", objective_id=o["id"], status="bogus")
 
 
 def test_external_ref_roundtrip(tmp_path):
