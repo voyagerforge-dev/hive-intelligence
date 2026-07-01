@@ -125,7 +125,7 @@ flowchart TD
     dedup --> norm["normalize → PDF<br/><i>LibreOffice; strike-trim .docx</i>"]
     norm --> route["route<br/><i>GPU-free tier precheck</i>"]
     route --> gate2{{"🚦 GATE 2<br/>review text/vision/passthrough tally"}}
-    gate2 --> transform["transform → atomic/*.md"]
+    gate2 --> transform["transform → strip boilerplate → atomic/*.md"]
     transform --> stamp["stamp<br/><i>platform/product/version/doc_type</i>"]
     stamp --> vatomic["validate-atomic<br/><i>slugs/enums/relations</i>"]
     vatomic --> out[("atomic markdown<br/>→ sources/wms-atomic/docs/")]
@@ -162,6 +162,15 @@ flowchart TD
 - **already-text formats** (`.vm/.xsd/.xml/.json/.sql/.properties`) → **passthrough**: fenced into
   markdown as-is.
 
+Immediately before an atomic file is written, the converted markdown from the **text and vision
+tiers** (never passthrough — you don't regex-scrub fenced code) is passed through the
+**boilerplate stripper** (`stripper.py`): product-tunable YAML rules that remove copyright,
+trademark notices, "all rights reserved", confidentiality lines, "Page X of Y" footers, and
+table-of-contents dot-leaders. Rules are scoped to footer/header *form* so they can't delete real
+prose, and the whole step is toggleable (`strip_boilerplate` / `strip_product`). This is separate
+from `striptrim.py`, which removes strikethrough/tracked-change text earlier, at the `.docx` level
+inside `normalize`.
+
 Every atomic file gets frontmatter recording how it was made:
 
 ```yaml
@@ -195,7 +204,8 @@ status: active
 | `normalize.py` | Source doc → PDF intermediate (strike-trim `.docx`, LibreOffice the rest, copy PDFs). |
 | `docling_client.py` | HTTP client for the **Docling** converter on Host-A (bytes → markdown). |
 | `vision.py` | HTTP client for **Qwen3.6-27B** on Host-D (page image → markdown; describes figures). |
-| `transform.py` | The 3-way router (text/vision/passthrough) + PDF profiling; writes atomic markdown with `extracted_via` frontmatter. |
+| `transform.py` | The 3-way router (text/vision/passthrough) + PDF profiling; runs the boilerplate stripper on text/vision output; writes atomic markdown with `extracted_via` frontmatter. |
+| `stripper.py` (+ `stripper_rules/*.yaml`) | Scrubs copyright/trademark/confidentiality/page-number boilerplate from converted markdown via product-tunable, footer-scoped regex rules. |
 | `stamp.py` | Fills invariant frontmatter (`platform/product/version/doc_type/topic`) from the curation plan. |
 | `validate.py` | Validates the atomic corpus (unique slugs, `doc_type` enum, resolvable links) → derives `relations.yaml`. |
 
@@ -500,8 +510,8 @@ Every code file in the pipeline and its one-line job.
 ### `tooling/okf-prep/okfprep/` — Stage 1, doc prep
 `cli.py` · `config.py` · `scanner.py` · `folder_parser.py` · `dups.py` · `curation_plan.py` ·
 `slugs.py` · `libreoffice.py` · `striptrim.py` · `normalize.py` · `docling_client.py` ·
-`vision.py` · `transform.py` · `stamp.py` · `validate.py` — see the
-[okf-prep file map](#okf-prep-file-map).
+`vision.py` · `transform.py` · `stripper.py` (+ `stripper_rules/`) · `stamp.py` · `validate.py`
+— see the [okf-prep file map](#okf-prep-file-map).
 
 ### `tooling/okf-gen/okfgen/` — Stage 2, card creation
 `load.py` · `taxonomy.py` · `assign.py` · `card.py` · `promote.py` · `run.py` · `llm.py` ·
