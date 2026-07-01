@@ -56,3 +56,42 @@ def test_load_docs_local_no_filter_includes_all_md(tmp_path):
     (d / "fedex.md").write_text("b")
     docs = load_docs_local(d, only_wave_replen=False)
     assert sorted(x.name for x in docs) == ["fedex.md", "wave.md"]
+
+
+def _atomic_doc(topic: str, body: str = "body") -> str:
+    return f"---\ntitle: T\nslug: s\ntopic: {topic}\nproduct: WMS\n---\n\n{body}\n"
+
+
+def test_load_docs_local_by_topic(tmp_path):
+    from okfgen.load import load_docs_local
+    d = tmp_path / "atomic"; d.mkdir()
+    (d / "a.md").write_text(_atomic_doc("RF Inbound"))
+    (d / "b.md").write_text(_atomic_doc("Receiving"))
+    (d / "c.md").write_text(_atomic_doc("Outbound Distribution"))
+    (d / "e.md").write_text(_atomic_doc("Inventory Management"))
+    docs = load_docs_local(d, topics=["RF Inbound", "Receiving"])
+    assert sorted(x.name for x in docs) == ["a.md", "b.md"]  # topic filter, case-insensitive set
+
+
+def test_load_area_local_inbound(tmp_path):
+    from okfgen.load import AREAS, load_area_local
+    d = tmp_path / "atomic"; d.mkdir()
+    (d / "a.md").write_text(_atomic_doc("Putaway"))
+    (d / "b.md").write_text(_atomic_doc("Outbound Distribution"))
+    docs = load_area_local(d, "inbound")
+    assert [x.name for x in docs] == ["a.md"]     # Putaway ∈ inbound, Outbound ∉
+    assert "Putaway" in AREAS["inbound"]
+
+
+def test_load_area_local_unknown_raises(tmp_path):
+    import pytest
+    from okfgen.load import load_area_local
+    d = tmp_path / "atomic"; d.mkdir()
+    with pytest.raises(KeyError):
+        load_area_local(d, "not-an-area")
+
+
+def test_frontmatter_topic_parses():
+    from okfgen.load import frontmatter_topic
+    assert frontmatter_topic(_atomic_doc("Yard Management")) == "Yard Management"
+    assert frontmatter_topic("no frontmatter here") == ""

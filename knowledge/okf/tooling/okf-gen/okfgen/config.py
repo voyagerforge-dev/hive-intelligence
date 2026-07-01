@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     # and R2 is not read. Leave empty to fall back to the R2 reader.
     atomic_dir: str = ""
 
+    # Which functional-area slice to generate (see okfgen.load.AREAS). Empty → the legacy
+    # Wave/Replenishment filename slice + shared taxonomy.yaml. Set e.g. SLICE_AREA=inbound to
+    # generate one area at a time into its own taxonomy.<area>.yaml.
+    slice_area: str = ""
+
     r2_endpoint: str = ""
     r2_access_key_id: str = ""
     r2_secret_access_key: str = ""

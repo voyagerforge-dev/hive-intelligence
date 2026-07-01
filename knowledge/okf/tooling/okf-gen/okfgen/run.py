@@ -51,31 +51,37 @@ def generate_drafts(docs: list[Doc], concepts: list[Concept], assign_llm: ChatLL
 
 def main() -> None:  # pragma: no cover — live wiring (detached)
     from okfgen.config import get_settings
-    from okfgen.load import load_docs, load_docs_local
+    from okfgen.load import AREAS, load_area_local, load_docs, load_docs_local
     from okfgen.taxonomy import load_taxonomy, propose_taxonomy, write_taxonomy
 
     s = get_settings()
     root = Path(__file__).resolve().parents[3]  # voyagerforge-knowledge repo root
+    area = s.slice_area.strip()
+    if area and area not in AREAS:
+        raise SystemExit(f"unknown SLICE_AREA '{area}'; known: {sorted(AREAS)}")
+    label = area or "Wave/Replenishment"
+    stem = f"taxonomy.{area}" if area else "taxonomy"  # per-area taxonomy — areas never clobber
+
     if s.atomic_dir:
-        docs = load_docs_local(s.atomic_dir)
-        print(f"loaded {len(docs)} Wave/Replenishment docs from {s.atomic_dir}", flush=True)
+        docs = load_area_local(s.atomic_dir, area) if area else load_docs_local(s.atomic_dir)
+        print(f"loaded {len(docs)} {label} docs from {s.atomic_dir}", flush=True)
     else:
         import boto3
         s3 = boto3.client("s3", endpoint_url=s.r2_endpoint,
                           aws_access_key_id=s.r2_access_key_id,
                           aws_secret_access_key=s.r2_secret_access_key)
         docs = load_docs(s3, s.r2_bucket, s.r2_prefix)
-        print(f"loaded {len(docs)} Wave/Replenishment docs from R2 {s.r2_prefix}", flush=True)
+        print(f"loaded {len(docs)} {label} docs from R2 {s.r2_prefix}", flush=True)
 
-    taxonomy_path = root / "taxonomy.yaml"
+    taxonomy_path = root / f"{stem}.yaml"
     if not taxonomy_path.exists():
         from okfgen.llm import BifrostChat
         tx_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.taxonomy_model,
                              timeout_s=s.bifrost_timeout_s)
         concepts = propose_taxonomy(docs, tx_llm)
-        write_taxonomy(root / "taxonomy.draft.yaml", concepts)
-        print(f"GATE 1: proposed {len(concepts)} concepts → taxonomy.draft.yaml. "
-              "Review, then save as taxonomy.yaml and re-run.", flush=True)
+        write_taxonomy(root / f"{stem}.draft.yaml", concepts)
+        print(f"GATE 1 [{label}]: proposed {len(concepts)} concepts → {stem}.draft.yaml. "
+              f"Review, then save as {stem}.yaml and re-run.", flush=True)
         return
 
     from okfgen.llm import BifrostChat
@@ -86,9 +92,10 @@ def main() -> None:  # pragma: no cover — live wiring (detached)
                               timeout_s=s.bifrost_timeout_s)
     written = generate_drafts(docs, concepts, assign_llm, distill_llm,
                               drafts_dir=root / "drafts", max_chars=s.max_chars,
-                              today=date.today().isoformat(), pipeline_dir=root / ".pipeline")
-    print(f"GATE 2: wrote {len(written)} draft cards → drafts/. Review, flip status: approved, "
-          "then run promote.", flush=True)
+                              today=date.today().isoformat(),
+                              pipeline_dir=root / ".pipeline" / (area or "wave-replen"))
+    print(f"GATE 2 [{label}]: wrote {len(written)} draft cards → drafts/. Review, flip "
+          "status: approved, then run promote.", flush=True)
 
 
 if __name__ == "__main__":
