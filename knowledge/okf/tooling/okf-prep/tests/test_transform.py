@@ -1,0 +1,68 @@
+from pathlib import Path
+
+import okfprep.transform as tf
+
+
+class FakeDocling:
+    def __init__(self, md="# Doc\n\n| a | b |\n"): self.md = md; self.calls = 0
+    def to_markdown(self, filename, content): self.calls += 1; return self.md
+
+
+class FakeVision:
+    def __init__(self): self.calls = 0
+    def describe_image(self, png, prompt=""): self.calls += 1; return "*Figure: a screen*"
+
+
+def test_route_tier_text_vs_vision():
+    assert tf.route_tier(500, 0.9) == "text"          # text-rich wins regardless of images
+    assert tf.route_tier(10, 0.9) == "vision"          # sparse + image-dominant → vision
+    assert tf.route_tier(10, 0.1) == "text"            # sparse but not image-dominant → text
+
+
+def test_passthrough_markdown(tmp_path):
+    src = tmp_path / "labels.vm"
+    src.write_text("#set($x = 1)")
+    out = tf.passthrough_markdown(src)
+    assert "```velocity" in out and "#set($x = 1)" in out
+
+
+def test_extract_text_prefers_docling(tmp_path, monkeypatch):
+    pdf = tmp_path / "d.pdf"; pdf.write_bytes(b"%PDF-1.4")
+    dc = FakeDocling()
+    out = tf.extract_text_markdown(pdf, docling=dc)
+    assert dc.calls == 1 and "| a | b |" in out
+
+
+def test_extract_text_falls_back_to_pymupdf_on_docling_error(tmp_path, monkeypatch):
+    pdf = tmp_path / "d.pdf"; pdf.write_bytes(b"%PDF-1.4")
+
+    class Boom:
+        def to_markdown(self, *a, **k):
+            from okfprep.docling_client import DoclingError
+            raise DoclingError("down")
+
+    monkeypatch.setattr(tf, "_pymupdf4llm_markdown", lambda p: "fallback md")
+    out = tf.extract_text_markdown(pdf, docling=Boom())
+    assert out == "fallback md"
+
+
+def test_transform_pdf_text_tier_writes_atomic(tmp_path, monkeypatch):
+    pdf = tmp_path / "s.pdf"; pdf.write_bytes(b"%PDF-1.4")
+    monkeypatch.setattr(tf, "pdf_text_profile", lambda p: {"pages": 3, "avg_chars": 800.0, "img_page_frac": 0.0})
+    dc, vc = FakeDocling(), FakeVision()
+    res = tf.transform_pdf(pdf, "s.pdf", "WMS", tmp_path / "atomic", docling=dc,
+                           vision=vc, render_dir=tmp_path / "_pages")
+    assert res.ok and res.tier == "text" and vc.calls == 0
+    body = (tmp_path / "atomic" / f"{res.md_path.stem}.md").read_text()
+    assert "extracted_via: text" in body
+
+
+def test_transform_pdf_vision_tier_uses_qwen(tmp_path, monkeypatch):
+    pdf = tmp_path / "scan.pdf"; pdf.write_bytes(b"%PDF-1.4")
+    monkeypatch.setattr(tf, "pdf_text_profile", lambda p: {"pages": 2, "avg_chars": 5.0, "img_page_frac": 0.9})
+    monkeypatch.setattr(tf, "render_pdf_pages", lambda pdf, out: [out / "p1.png", out / "p2.png"])
+    dc, vc = FakeDocling(), FakeVision()
+    res = tf.transform_pdf(pdf, "scan.pdf", "WMS", tmp_path / "atomic", docling=dc,
+                           vision=vc, render_dir=tmp_path / "_pages")
+    assert res.ok and res.tier == "vision" and vc.calls == 2
+    assert "extracted_via: vision" in (res.md_path).read_text()
