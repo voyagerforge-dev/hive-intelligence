@@ -1,0 +1,36 @@
+product: wmos
+# Manhattan WMS / WMOS boilerplate. Ported from the retired gwen-platform stripper and
+# extended for the copyright/trademark/confidentiality targets this pipeline cares about.
+patterns:
+  # Manhattan vendor header/footer lines
+  - type: regex
+    pattern: "^\\s*Manhattan Associates.*$"
+    flags: MULTILINE
+  # Confidentiality notice lines
+  - type: regex
+    pattern: "^\\s*Confidential.*$"
+    flags: "MULTILINE IGNORECASE"
+  # "Page 3 of 10" footers
+  - type: regex
+    pattern: "^\\s*Page \\d+ of \\d+\\s*$"
+    flags: MULTILINE
+  # Copyright lines — Manhattan-specific and generic (© / (c) / Copyright + a year)
+  - type: regex
+    pattern: "^\\s*Copyright.*Manhattan.*$"
+    flags: "MULTILINE IGNORECASE"
+  - type: regex
+    pattern: "^\\s*(©|\\(c\\)|Copyright).*\\d{4}.*$"
+    flags: "MULTILINE IGNORECASE"
+  # "All Rights Reserved" notices
+  - type: regex
+    pattern: "^.*All Rights Reserved.*$"
+    flags: "MULTILINE IGNORECASE"
+  # Trademark NOTICE lines (e.g. "X is a trademark of Y", "All trademarks are the property of…")
+  # — targets standalone legal lines, not inline product names like "SCALE(TM)".
+  - type: regex
+    pattern: "^.*(is a (registered )?trademark|trademarks? (of|are the property of)).*$"
+    flags: "MULTILINE IGNORECASE"
+  # Table-of-contents dot leaders that resolve to a page number
+  - type: regex
+    pattern: "^\\.{3,}\\d+$"
+    flags: MULTILINE

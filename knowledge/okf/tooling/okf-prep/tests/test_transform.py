@@ -93,3 +93,30 @@ def test_transform_plan_skips_path_less_include_without_crashing(tmp_path):
     bad, good = results
     assert bad.ok is False and "missing" in bad.error
     assert good.ok is True and good.tier == "passthrough"
+
+
+def test_transform_pdf_strips_boilerplate_when_enabled(tmp_path, monkeypatch):
+    pdf = tmp_path / "s.pdf"; pdf.write_bytes(b"%PDF-1.4")
+    monkeypatch.setattr(tf, "pdf_text_profile",
+                        lambda p: {"pages": 1, "avg_chars": 800.0, "img_page_frac": 0.0})
+    md = ("# Replen\n\nCopyright 2013 Manhattan Associates. All Rights Reserved.\n"
+          "Page 2 of 9\n\nWM triggers replenishment below minimum.\n")
+    res = tf.transform_pdf(pdf, "s.pdf", "WMS", tmp_path / "atomic", docling=FakeDocling(md),
+                           vision=FakeVision(), render_dir=tmp_path / "_pages",
+                           strip_product="wmos")
+    body = res.md_path.read_text()
+    assert "Copyright" not in body and "Manhattan Associates" not in body
+    assert "All Rights Reserved" not in body and "Page 2 of 9" not in body
+    assert "WM triggers replenishment below minimum." in body   # content kept
+
+
+def test_transform_pdf_keeps_boilerplate_when_disabled(tmp_path, monkeypatch):
+    pdf = tmp_path / "s.pdf"; pdf.write_bytes(b"%PDF-1.4")
+    monkeypatch.setattr(tf, "pdf_text_profile",
+                        lambda p: {"pages": 1, "avg_chars": 800.0, "img_page_frac": 0.0})
+    md = "# Replen\n\nCopyright 2013 Manhattan Associates.\n\nReal content.\n"
+    res = tf.transform_pdf(pdf, "s.pdf", "WMS", tmp_path / "atomic", docling=FakeDocling(md),
+                           vision=FakeVision(), render_dir=tmp_path / "_pages",
+                           strip_product=None)
+    body = res.md_path.read_text()
+    assert "Copyright 2013 Manhattan Associates." in body   # untouched when disabled

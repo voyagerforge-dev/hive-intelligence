@@ -1,0 +1,21 @@
+product: default
+# Generic boilerplate stripped from any converted markdown. Each rule is a line-oriented
+# regex; matches are deleted, then blank-line runs are collapsed. Tune per product in a
+# <product>.yaml file (see wmos.yaml).
+patterns:
+  # "Page 3 of 10" footers
+  - type: regex
+    pattern: "^\\s*Page \\d+ of \\d+\\s*$"
+    flags: MULTILINE
+  # Copyright lines carrying a year (© / (c) / the word Copyright)
+  - type: regex
+    pattern: "^\\s*(©|\\(c\\)|Copyright).*\\d{4}.*$"
+    flags: "MULTILINE IGNORECASE"
+  # "All Rights Reserved" notices
+  - type: regex
+    pattern: "^.*All Rights Reserved.*$"
+    flags: "MULTILINE IGNORECASE"
+  # Table-of-contents dot leaders that resolve to a page number
+  - type: regex
+    pattern: "^\\.{3,}\\d+$"
+    flags: MULTILINE

@@ -220,7 +220,8 @@ def transform(plan_path, work):
                               timeout_s=s.qwen_timeout_s)
     res = transform_plan(load_plan(Path(plan_path)), Path(work or s.work_dir),
                          docling=docling, vision=vision, vision_min_chars=s.vision_min_chars,
-                         prefer_docling=s.prefer_docling)
+                         prefer_docling=s.prefer_docling,
+                         strip_product=s.strip_product if s.strip_boilerplate else None)
     tally = Counter(r.tier if r.ok else "error" for r in res)
     console.print(f"[bold]{dict(tally)}[/] ({len(res)} docs) → atomic")
 

@@ -11,6 +11,7 @@ from pathlib import Path
 from okfprep.curation_plan import Plan
 from okfprep.docling_client import DoclingError
 from okfprep.slugs import PASSTHROUGH_EXTS, assign_slugs, slugify
+from okfprep.stripper import strip_boilerplate
 
 VISION_MIN_CHARS = 100
 IMG_DOMINANT_FRAC = 0.5
@@ -119,10 +120,16 @@ def _write_atomic(atomic_dir: Path, source_doc: str, slug: str, tier: str, body_
     return out
 
 
+def _strip(body: str, strip_product: str | None) -> str:
+    """Scrub copyright/trademark/confidentiality/page-number boilerplate from converted markdown.
+    No-op when strip_product is None (stripping disabled). Not applied to passthrough (fenced code)."""
+    return strip_boilerplate(body, product=strip_product).text if strip_product else body
+
+
 def transform_pdf(pdf: Path, source_doc: str, product: str, atomic_dir: Path, *,
                   docling, vision, render_dir: Path, vision_min_chars: int = VISION_MIN_CHARS,
                   prefer_docling: bool = True, force_tier: str | None = None,
-                  slug: str | None = None) -> TransformResult:
+                  strip_product: str | None = None, slug: str | None = None) -> TransformResult:
     slug = slug or slugify(product, source_doc)
     try:
         prof = pdf_text_profile(pdf)
@@ -132,13 +139,13 @@ def transform_pdf(pdf: Path, source_doc: str, product: str, atomic_dir: Path, *,
         use_text = force_tier == "text" or (force_tier is None and auto == "text")
         if use_text:
             body = extract_text_markdown(pdf, docling=docling if prefer_docling else None)
-            out = _write_atomic(atomic_dir, source_doc, slug, "text", body)
+            out = _write_atomic(atomic_dir, source_doc, slug, "text", _strip(body, strip_product))
             return TransformResult(source_doc, ok=True, md_path=out, pages=prof["pages"], tier="text")
         pages = render_pdf_pages(pdf, render_dir)
         if not pages:
             return TransformResult(source_doc, ok=False, error="no pages rendered")
         body = "\n\n".join(vision.describe_image(p.read_bytes()) for p in pages)
-        out = _write_atomic(atomic_dir, source_doc, slug, "vision", body)
+        out = _write_atomic(atomic_dir, source_doc, slug, "vision", _strip(body, strip_product))
         return TransformResult(source_doc, ok=True, md_path=out, pages=len(pages), tier="vision")
     except Exception as e:  # noqa: BLE001 — flag, never crash the batch
         return TransformResult(source_doc, ok=False, error=str(e))
@@ -146,7 +153,8 @@ def transform_pdf(pdf: Path, source_doc: str, product: str, atomic_dir: Path, *,
 
 def transform_plan(plan: Plan, work_dir: Path, *, docling, vision,
                    vision_min_chars: int = VISION_MIN_CHARS, prefer_docling: bool = True,
-                   skip_existing: bool = True, routing: dict[str, str] | None = None) -> list[TransformResult]:
+                   skip_existing: bool = True, routing: dict[str, str] | None = None,
+                   strip_product: str | None = None) -> list[TransformResult]:
     pdf_root, atomic, render = work_dir / "pdf", work_dir / "atomic", work_dir / "_pages"
     corpus_root = Path(plan.corpus_root)
     valid: list[dict] = []
@@ -179,7 +187,7 @@ def transform_plan(plan: Plan, work_dir: Path, *, docling, vision,
         results.append(transform_pdf(
             pdf, rel.name, product, atomic, docling=docling, vision=vision, render_dir=render,
             vision_min_chars=vision_min_chars, prefer_docling=prefer_docling,
-            force_tier=(routing or {}).get(slug), slug=slug))
+            force_tier=(routing or {}).get(slug), strip_product=strip_product, slug=slug))
     return results
 
 

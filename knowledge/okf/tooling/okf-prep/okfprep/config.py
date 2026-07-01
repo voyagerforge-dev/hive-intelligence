@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     # LibreOffice parallel workers for normalize.
     lo_jobs: int = 8
 
+    # Boilerplate stripping — scrub copyright/trademark/confidentiality/page-number noise from
+    # converted markdown before it is written as an atomic doc. strip_product selects the
+    # <product>.yaml ruleset (falls back to default.yaml). Set strip_boilerplate=false to disable.
+    strip_boilerplate: bool = True
+    strip_product: str = "wmos"
+
 
 @lru_cache
 def get_settings() -> Settings:
