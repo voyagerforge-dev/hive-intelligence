@@ -532,6 +532,57 @@ Every code file in the pipeline and its one-line job.
 | **Qwen3.6-27B** VLM (vLLM) | Host-D `llm-host.internal:8000` | okf-prep vision tier |
 | **Authentik** | in front of okf-serve | serving identity/auth |
 
+### Deployment topology
+
+Where each piece runs, and how the model calls, git, and connectors flow across the network:
+
+```mermaid
+flowchart TB
+    team["🧑‍💻 Team<br/>Claude Desktop"]
+    op["🧑‍💻 Operator<br/>Claude Code"]
+
+    subgraph dev["🖥️ dev box (dev-box)"]
+        prep["okf-prep"]
+        gen["okfgen"]
+        repo["git working tree<br/>tooling/ · concepts/ · sources/"]
+    end
+
+    subgraph host-a["Host-A · hive-host.internal"]
+        bifrost["Bifrost :4001<br/>VK_OKF → minimax-m3 / deepseek-v4-flash"]
+        docling["Docling (GPU)<br/>text tier"]
+        checkout["cards checkout<br/>(operator: git pull)"]
+        serve["okf-serve --http<br/>REST + /mcp"]
+        authentik["Authentik<br/>OAuth gate"]
+        sqlite[("objectives.db<br/>SQLite ledger")]
+    end
+
+    subgraph host-d["Host-D · llm-host.internal:8000"]
+        qwen["Qwen3.6-27B (vLLM)<br/>vision tier"]
+    end
+
+    gh["☁️ GitHub<br/>cards + corpus"]
+    r2["☁️ R2<br/>atomic-corpus backup"]
+
+    prep -->|"convert (text)"| docling
+    prep -->|"figures / scans"| qwen
+    gen -->|"taxonomy · distill"| bifrost
+    prep --> repo
+    gen --> repo
+    repo -->|push| gh
+    repo -.->|backup| r2
+    gh -->|pull| checkout
+    checkout --> serve
+    serve <--> sqlite
+    team -->|"HTTPS + identity header"| authentik --> serve
+    op -->|"MCP stdio / http"| serve
+```
+
+**Reading it:** content creation (Stages 1–2) runs on the **dev box**, calling the sovereign models
+on **Host-A** (Bifrost, Docling) and **Host-D** (Qwen); its output is committed to **git** and pushed to
+**GitHub**, with the atomic corpus mirrored to **R2**. Serving (Stage 3) runs on **Host-A** from a
+cards checkout the operator keeps current with `git pull` (no redeploy for content updates); the team
+reaches it through **Authentik**, which injects the identity header the ledger keys work on.
+
 ---
 
 ## 9. Running it
