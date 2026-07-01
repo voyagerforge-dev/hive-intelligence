@@ -137,10 +137,7 @@ def transform_pdf(pdf: Path, source_doc: str, product: str, atomic_dir: Path, *,
         pages = render_pdf_pages(pdf, render_dir)
         if not pages:
             return TransformResult(source_doc, ok=False, error="no pages rendered")
-        # p.exists() guard: real render_pdf_pages() only returns paths it just wrote (via
-        # pdftoppm + glob), so this is always True in production; it exists so a fake
-        # render_pdf_pages() (as used in tests) can hand back paths with no bytes on disk.
-        body = "\n\n".join(vision.describe_image(p.read_bytes() if p.exists() else b"") for p in pages)
+        body = "\n\n".join(vision.describe_image(p.read_bytes()) for p in pages)
         out = _write_atomic(atomic_dir, source_doc, slug, "vision", body)
         return TransformResult(source_doc, ok=True, md_path=out, pages=len(pages), tier="vision")
     except Exception as e:  # noqa: BLE001 — flag, never crash the batch

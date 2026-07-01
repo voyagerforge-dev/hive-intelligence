@@ -60,7 +60,13 @@ def test_transform_pdf_text_tier_writes_atomic(tmp_path, monkeypatch):
 def test_transform_pdf_vision_tier_uses_qwen(tmp_path, monkeypatch):
     pdf = tmp_path / "scan.pdf"; pdf.write_bytes(b"%PDF-1.4")
     monkeypatch.setattr(tf, "pdf_text_profile", lambda p: {"pages": 2, "avg_chars": 5.0, "img_page_frac": 0.9})
-    monkeypatch.setattr(tf, "render_pdf_pages", lambda pdf, out: [out / "p1.png", out / "p2.png"])
+    def _fake_render(pdf, out):
+        out.mkdir(parents=True, exist_ok=True)
+        paths = [out / "p1.png", out / "p2.png"]
+        for p in paths:
+            p.write_bytes(b"x")
+        return paths
+    monkeypatch.setattr(tf, "render_pdf_pages", _fake_render)
     dc, vc = FakeDocling(), FakeVision()
     res = tf.transform_pdf(pdf, "scan.pdf", "WMS", tmp_path / "atomic", docling=dc,
                            vision=vc, render_dir=tmp_path / "_pages")
