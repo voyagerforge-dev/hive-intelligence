@@ -1,23 +1,27 @@
 product: wmos
 # Manhattan WMS / WMOS boilerplate. Ported from the retired gwen-platform stripper and
-# extended for the copyright/trademark/confidentiality targets this pipeline cares about.
+# extended/tightened for the copyright/trademark/confidentiality targets this pipeline cares
+# about. Rules are line-anchored AND scoped to footer/header *form* so they cannot eat real
+# prose — the corpus is Manhattan documentation, so "starts with Manhattan/Confidential" alone
+# would be far too broad (it would delete legitimate sentences).
 patterns:
-  # Manhattan vendor header/footer lines
+  # Bare vendor footer line ("Manhattan Associates" / "Manhattan Associates, Inc.")
   - type: regex
-    pattern: "^\\s*Manhattan Associates.*$"
+    pattern: "^\\s*Manhattan Associates(,?\\s+Inc\\.?)?\\s*[.]?\\s*$"
     flags: MULTILINE
-  # Confidentiality notice lines
+  # Vendor name co-occurring with a legal marker on one line (a header/footer, not prose)
   - type: regex
-    pattern: "^\\s*Confidential.*$"
+    pattern: "^.*Manhattan Associates\\b.*\\b(Confidential|Proprietary|All Rights Reserved|Copyright|©|Trademark)\\b.*$"
+    flags: "MULTILINE IGNORECASE"
+  # Confidentiality notice lines — scoped to footer phrases, NOT prose starting with "Confidential"
+  - type: regex
+    pattern: "^\\s*Confidential(ity)?( and Proprietary( Information)?| Information| Material| Notice.*)?\\s*[.:-]?\\s*$"
     flags: "MULTILINE IGNORECASE"
   # "Page 3 of 10" footers
   - type: regex
     pattern: "^\\s*Page \\d+ of \\d+\\s*$"
     flags: MULTILINE
-  # Copyright lines — Manhattan-specific and generic (© / (c) / Copyright + a year)
-  - type: regex
-    pattern: "^\\s*Copyright.*Manhattan.*$"
-    flags: "MULTILINE IGNORECASE"
+  # Copyright lines (© / (c) / the word Copyright, carrying a year)
   - type: regex
     pattern: "^\\s*(©|\\(c\\)|Copyright).*\\d{4}.*$"
     flags: "MULTILINE IGNORECASE"
@@ -30,7 +34,8 @@ patterns:
   - type: regex
     pattern: "^.*(is a (registered )?trademark|trademarks? (of|are the property of)).*$"
     flags: "MULTILINE IGNORECASE"
-  # Table-of-contents dot leaders that resolve to a page number
+  # Table-of-contents dot leaders that resolve to a page number. (The text tier's _clean_text_md
+  # already collapses 4+-dot runs, so this mainly catches literal 3-dot leaders / vision output.)
   - type: regex
     pattern: "^\\.{3,}\\d+$"
     flags: MULTILINE
