@@ -149,8 +149,14 @@ def transform_plan(plan: Plan, work_dir: Path, *, docling, vision,
                    skip_existing: bool = True, routing: dict[str, str] | None = None) -> list[TransformResult]:
     pdf_root, atomic, render = work_dir / "pdf", work_dir / "atomic", work_dir / "_pages"
     corpus_root = Path(plan.corpus_root)
+    valid: list[dict] = []
     results: list[TransformResult] = []
-    for e, slug in zip(plan.include, assign_slugs(plan.include)):
+    for e in plan.include:
+        if not e.get("path"):
+            results.append(TransformResult("<missing path>", ok=False, error="include entry missing 'path'"))
+        else:
+            valid.append(e)
+    for e, slug in zip(valid, assign_slugs(valid)):
         rel = Path(e["path"]); product = e.get("product", "WMS"); ext = rel.suffix.lower()
         if skip_existing and (atomic / f"{slug}.md").exists():
             results.append(TransformResult(rel.name, ok=True, md_path=atomic / f"{slug}.md", tier="skip"))
@@ -181,8 +187,14 @@ def route_plan(plan: Plan, work_dir: Path, vision_min_chars: int = VISION_MIN_CH
     """GPU-free precheck: profile every normalized PDF and flag its tier so the vision workload
     can be quantified/reviewed before any Qwen pass runs."""
     pdf_root, corpus_root = work_dir / "pdf", Path(plan.corpus_root)
+    valid: list[dict] = []
     out: list[RouteResult] = []
-    for e, slug in zip(plan.include, assign_slugs(plan.include)):
+    for e in plan.include:
+        if not e.get("path"):
+            out.append(RouteResult(str(e), "", "missing"))
+        else:
+            valid.append(e)
+    for e, slug in zip(valid, assign_slugs(valid)):
         rel = Path(e["path"]); ext = rel.suffix.lower()
         if ext in PASSTHROUGH_EXTS:
             ok = (corpus_root / rel).exists()

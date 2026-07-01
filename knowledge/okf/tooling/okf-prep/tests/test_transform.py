@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import okfprep.transform as tf
+from okfprep.curation_plan import Plan
 
 
 class FakeDocling:
@@ -72,3 +73,23 @@ def test_transform_pdf_vision_tier_uses_qwen(tmp_path, monkeypatch):
                            vision=vc, render_dir=tmp_path / "_pages")
     assert res.ok and res.tier == "vision" and vc.calls == 2
     assert "extracted_via: vision" in (res.md_path).read_text()
+
+
+def test_transform_plan_skips_path_less_include_without_crashing(tmp_path):
+    corpus_root = tmp_path / "corpus"
+    corpus_root.mkdir()
+    (corpus_root / "notes.txt").write_text("hello world")
+    plan = Plan(
+        scope="unit-test", corpus_root=str(corpus_root), subtree="",
+        include=[
+            {"product": "WMS"},                          # missing "path" — must not crash the batch
+            {"path": "notes.txt", "product": "WMS"},      # valid passthrough entry
+        ],
+        exclude=[], dedup_groups=[], supersedes=[],
+    )
+    work_dir = tmp_path / "work"
+    results = tf.transform_plan(plan, work_dir, docling=FakeDocling(), vision=FakeVision())
+    assert len(results) == 2
+    bad, good = results
+    assert bad.ok is False and "missing" in bad.error
+    assert good.ok is True and good.tier == "passthrough"
