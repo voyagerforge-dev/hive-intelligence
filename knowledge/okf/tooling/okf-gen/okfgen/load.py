@@ -35,6 +35,20 @@ AREAS: dict[str, tuple[str, ...]] = {
     "config": ("Configuration Workflows", "Common Update Documents", "WMS process/config"),
     "training": ("WMS technical training", "WMS user guide"),
     "release-notes": ("WMOS release notes",),
+    # WMOS guide/manual chapters, re-topiced out of the generic "WMS reference doc" bucket
+    # (see okfprep/retopic classifier). Guide-overview cards complement the FS concept cards.
+    "guide-outbound": ("Guide: Outbound Fulfillment",),
+    "guide-inventory": ("Guide: Inventory Counting",),
+    "guide-shipping-docs": ("Guide: Shipping Documents",),
+    "guide-parcel-carrier": ("Guide: Parcel Carrier",),
+    "guide-platform-admin": ("Guide: Platform Admin",),
+    "guide-retail-compliance": ("Guide: Retail Compliance",),
+    "guide-store-assortment": ("Guide: Store Assortment",),
+    "guide-labor-task": ("Guide: Labor Task",),
+    "guide-integration": ("Guide: Integration",),
+    "guide-transportation": ("Guide: Transportation Routing",),
+    "guide-yard": ("Guide: Yard",),
+    "guide-reports": ("Guide: Reports",),
 }
 
 
