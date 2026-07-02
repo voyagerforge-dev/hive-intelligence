@@ -51,19 +51,27 @@ def generate_drafts(docs: list[Doc], concepts: list[Concept], assign_llm: ChatLL
 
 def main() -> None:  # pragma: no cover — live wiring (detached)
     from okfgen.config import get_settings
-    from okfgen.load import AREAS, load_area_local, load_docs, load_docs_local
+    from okfgen.load import (AREAS, SUBAREAS, load_area_local, load_docs, load_docs_local,
+                             load_subarea_local)
     from okfgen.taxonomy import load_taxonomy, propose_taxonomy, write_taxonomy
 
     s = get_settings()
     root = Path(__file__).resolve().parents[3]  # voyagerforge-knowledge repo root
     area = s.slice_area.strip()
-    if area and area not in AREAS:
-        raise SystemExit(f"unknown SLICE_AREA '{area}'; known: {sorted(AREAS)}")
+    is_sub = area in SUBAREAS
+    if area and not is_sub and area not in AREAS:
+        raise SystemExit(
+            f"unknown SLICE_AREA '{area}'; areas: {sorted(AREAS)}; sub-areas: {sorted(SUBAREAS)}")
     label = area or "Wave/Replenishment"
     stem = f"taxonomy.{area}" if area else "taxonomy"  # per-area taxonomy — areas never clobber
 
     if s.atomic_dir:
-        docs = load_area_local(s.atomic_dir, area) if area else load_docs_local(s.atomic_dir)
+        if is_sub:
+            docs = load_subarea_local(s.atomic_dir, area)
+        elif area:
+            docs = load_area_local(s.atomic_dir, area)
+        else:
+            docs = load_docs_local(s.atomic_dir)
         print(f"loaded {len(docs)} {label} docs from {s.atomic_dir}", flush=True)
     else:
         import boto3

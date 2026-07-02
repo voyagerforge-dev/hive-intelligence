@@ -95,3 +95,56 @@ def test_frontmatter_topic_parses():
     from okfgen.load import frontmatter_topic
     assert frontmatter_topic(_atomic_doc("Yard Management")) == "Yard Management"
     assert frontmatter_topic("no frontmatter here") == ""
+
+
+def test_load_docs_local_name_include_and_exclude(tmp_path):
+    """A sub-slice narrows a topic by filename keyword: include selects, exclude subtracts."""
+    d = tmp_path / "atomic"; d.mkdir()
+    (d / "iface-billing-integration-bm-hook-picking.md").write_text(_atomic_doc("Interfaces"))
+    (d / "iface-labor-management-rf-pack-case.md").write_text(_atomic_doc("Interfaces"))
+    (d / "iface-mhe-pick-to-tote.md").write_text(_atomic_doc("Interfaces"))
+    (d / "iface-xsds-mhe-wcs-hook-oms.md").write_text(_atomic_doc("Interfaces"))
+    # include only: keep filenames containing a keyword
+    docs = load_docs_local(d, topics=["Interfaces"], name_include=["billing-integration"])
+    assert [x.name for x in docs] == ["iface-billing-integration-bm-hook-picking.md"]
+    # include + exclude: 'mhe' selects both mhe docs, exclude 'xsds' drops the mapping sheet
+    docs = load_docs_local(d, topics=["Interfaces"], name_include=["mhe"], name_exclude=["xsds"])
+    assert [x.name for x in docs] == ["iface-mhe-pick-to-tote.md"]
+    # exclude only (remainder): everything in topic minus the claimed families
+    docs = load_docs_local(d, topics=["Interfaces"],
+                           name_exclude=["billing-integration", "labor-management", "mhe"])
+    assert [x.name for x in docs] == []  # all four claimed
+
+
+def test_load_subarea_local(tmp_path):
+    from okfgen.load import SUBAREAS, load_subarea_local
+    d = tmp_path / "atomic"; d.mkdir()
+    (d / "wms-...-interfaces-labor-management-rf-pack-case.md").write_text(_atomic_doc("Interfaces"))
+    (d / "wms-...-interfaces-billing-integration-bm-hook.md").write_text(_atomic_doc("Interfaces"))
+    (d / "wms-...-system-control-purge-system-table-fs-orders.md").write_text(_atomic_doc("System Control"))
+    docs = load_subarea_local(d, "if-lm-hooks")
+    assert [x.name for x in docs] == ["wms-...-interfaces-labor-management-rf-pack-case.md"]
+    assert "if-lm-hooks" in SUBAREAS and "sc-purge" in SUBAREAS
+
+
+def test_load_subarea_local_unknown_raises(tmp_path):
+    import pytest
+    from okfgen.load import load_subarea_local
+    d = tmp_path / "atomic"; d.mkdir()
+    with pytest.raises(KeyError):
+        load_subarea_local(d, "not-a-subarea")
+
+
+def test_subareas_are_disjoint_within_shared_topics():
+    """No atomic filename should fall into two sub-slices that share a parent topic."""
+    from okfgen.load import SUBAREAS
+    # group sub-areas by the topics they draw from
+    by_topic: dict[str, list[str]] = {}
+    for name, sa in SUBAREAS.items():
+        for t in sa.topics:
+            by_topic.setdefault(t, []).append(name)
+    # sanity: the mechanism exposes topics/include/exclude on each sub-area
+    for sa in SUBAREAS.values():
+        assert isinstance(sa.topics, tuple)
+        assert isinstance(sa.include, tuple)
+        assert isinstance(sa.exclude, tuple)

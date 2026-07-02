@@ -38,6 +38,53 @@ AREAS: dict[str, tuple[str, ...]] = {
 }
 
 
+@dataclass(frozen=True)
+class SubArea:
+    """A keyword sub-slice *within* one or more topics, for topics too large/heterogeneous to
+    generate as one area (e.g. Interfaces, System Control). A doc matches when its ``topic:`` is in
+    ``topics`` AND its filename contains one of ``include`` (or ``include`` is empty) AND its
+    filename contains none of ``exclude``. ``exclude`` keeps sibling sub-slices disjoint and lets a
+    remainder slice (empty ``include``) sweep whatever the named families didn't claim."""
+    topics: tuple[str, ...]
+    include: tuple[str, ...] = ()
+    exclude: tuple[str, ...] = ()
+
+
+# Keyword sub-slices for the two oversized single-topic areas. Filename keywords are the stable
+# curator naming (…-interfaces-<family>-…, …-system-control-<family>-…). Sub-slices sharing a topic
+# are disjoint: each names its family in ``include``; the remainder slice ``exclude``s the others.
+_IFACE = ("Interfaces",)
+_IFACE_HOST = ("Interfaces", "WMS integration/interfaces")
+_SYSCTL = ("System Control",)
+SUBAREAS: dict[str, SubArea] = {
+    # Interfaces (229) + MHE integration (6) + WMS integration/interfaces (5)
+    "if-lm-hooks": SubArea(_IFACE, include=("labor-management",)),
+    "if-mhe": SubArea(("Interfaces", "MHE integration"), include=("mhe",),
+                      exclude=("xsds-and-mapping-sheets",)),
+    "if-billing-hooks": SubArea(_IFACE, include=("billing-integration",)),
+    "if-voice": SubArea(_IFACE, include=("voice",)),
+    "if-carrier": SubArea(_IFACE, include=("newgistics", "dynamic-routing")),
+    "if-mapping-sheets": SubArea(_IFACE, include=("xsds-and-mapping-sheets",)),
+    "if-host-data": SubArea(_IFACE_HOST, exclude=(
+        "labor-management", "mhe", "billing-integration", "voice",
+        "newgistics", "dynamic-routing", "xsds-and-mapping-sheets")),
+    # System Control (111) — sc-purge claims all purge/archive; siblings exclude it.
+    "sc-purge": SubArea(_SYSCTL, include=("purge", "archive")),
+    "sc-print-label": SubArea(_SYSCTL, include=(
+        "print-queue", "printer", "barcode", "smartlabel", "label-translation"),
+        exclude=("purge", "archive")),
+    "sc-message-i18n": SubArea(_SYSCTL, include=(
+        "message-log", "message-lookup", "message-master", "literal-translation",
+        "report-translation", "text-inq", "country-inquiry", "international-decimal",
+        "send-message"), exclude=("purge", "archive")),
+    "sc-admin": SubArea(_SYSCTL, exclude=(
+        "purge", "archive", "print-queue", "printer", "barcode", "smartlabel",
+        "label-translation", "message-log", "message-lookup", "message-master",
+        "literal-translation", "report-translation", "text-inq", "country-inquiry",
+        "international-decimal", "send-message")),
+}
+
+
 def is_wave_replen(name: str) -> bool:
     low = name.lower()
     return any(kw in low for kw in _WAVE_REPLEN)
@@ -80,12 +127,19 @@ def load_docs(s3, bucket: str, prefix: str, *, only_wave_replen: bool = True) ->
 
 
 def load_docs_local(root, *, only_wave_replen: bool = True,
-                    topics: Iterable[str] | None = None) -> list[Doc]:
+                    topics: Iterable[str] | None = None,
+                    name_include: Iterable[str] | None = None,
+                    name_exclude: Iterable[str] | None = None) -> list[Doc]:
     """Read atomic markdown from a local directory. When ``topics`` is given, select docs whose
     ``topic:`` frontmatter is in that set (case-insensitive), ignoring the wave/replen keyword
-    filter. Otherwise fall back to the legacy ``only_wave_replen`` filename filter."""
+    filter. ``name_include``/``name_exclude`` further narrow by filename substring (lower-cased):
+    a doc is kept only if its filename contains an ``include`` keyword (when any are given) and no
+    ``exclude`` keyword — this is how sub-slices carve one topic. Without ``topics`` we fall back to
+    the legacy ``only_wave_replen`` filename filter."""
     root = Path(root)
     want = {t.strip().lower() for t in topics} if topics is not None else None
+    inc = tuple(k.lower() for k in name_include) if name_include else ()
+    exc = tuple(k.lower() for k in name_exclude) if name_exclude else ()
     out: list[Doc] = []
     for path in sorted(root.glob("*.md")):
         text = path.read_text()
@@ -93,6 +147,11 @@ def load_docs_local(root, *, only_wave_replen: bool = True,
             if frontmatter_topic(text).lower() not in want:
                 continue
         elif only_wave_replen and not is_wave_replen(path.name):
+            continue
+        low = path.name.lower()
+        if inc and not any(k in low for k in inc):
+            continue
+        if exc and any(k in low for k in exc):
             continue
         out.append(Doc(id=path.name, name=path.name, text=text))
     return out
@@ -103,3 +162,13 @@ def load_area_local(root, area: str) -> list[Doc]:
     if area not in AREAS:
         raise KeyError(f"unknown area '{area}'; known: {sorted(AREAS)}")
     return load_docs_local(root, topics=AREAS[area])
+
+
+def load_subarea_local(root, name: str) -> list[Doc]:
+    """Load the atomic docs for a named keyword sub-slice (see ``SUBAREAS``)."""
+    if name not in SUBAREAS:
+        raise KeyError(f"unknown sub-area '{name}'; known: {sorted(SUBAREAS)}")
+    sa = SUBAREAS[name]
+    return load_docs_local(root, topics=sa.topics,
+                           name_include=sa.include or None,
+                           name_exclude=sa.exclude or None)
