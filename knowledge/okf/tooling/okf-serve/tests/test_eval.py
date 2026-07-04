@@ -1,4 +1,4 @@
-from okfserve.eval import judge_answer, load_qa, run_eval, score_selection
+from okfserve.eval import judge_answer, load_qa, run_eval, score_regime, score_selection
 
 
 def test_load_qa(tmp_path):
@@ -12,6 +12,12 @@ def test_score_selection():
     assert score_selection(["a"], ["a"], ["a"]) == {"select_hit": True, "bundle_hit": True}
     assert score_selection(["a"], ["b"], ["b", "a"]) == {"select_hit": False, "bundle_hit": True}
     assert score_selection(["a"], ["b"], ["b"]) == {"select_hit": False, "bundle_hit": False}
+
+
+def test_score_regime_counts_cross_regime():
+    assert score_regime("ops", ["ops", "ops"]) == {"cross_regime": 0, "regime_ok": True}
+    assert score_regime("ops", ["ops", "traditional"]) == {"cross_regime": 1, "regime_ok": False}
+    assert score_regime(None, ["ops", "traditional"]) == {"cross_regime": 0, "regime_ok": True}
 
 
 class JudgeLLM:
