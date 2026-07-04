@@ -19,7 +19,7 @@ def test_list_concepts(tmp_path):
     d = _seed(tmp_path)
     idx = tools.list_concepts(d)
     assert idx == [{"id": "wave-replen", "title": "Wave Replen",
-                    "description": "how replen feeds waves"}]
+                    "description": "how replen feeds waves", "regime": None, "type": "concept"}]
 
 
 def test_get_card_text_present_and_missing(tmp_path):

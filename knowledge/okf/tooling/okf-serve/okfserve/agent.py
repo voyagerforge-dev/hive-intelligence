@@ -20,7 +20,9 @@ _ANSWER_SYS = (
 
 
 def _index_text(index: list[dict]) -> str:
-    return "\n".join(f"- {c['id']}: {c['title']} — {c['description']}" for c in index)
+    def tag(c):
+        return f"[{c['regime']}] " if c.get("regime") else ""
+    return "\n".join(f"- {c['id']}: {tag(c)}{c['title']} — {c['description']}" for c in index)
 
 
 def select_ids(index, question: str, llm, *, known_ids: set[str]) -> list[str]:

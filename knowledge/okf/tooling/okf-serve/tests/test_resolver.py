@@ -97,3 +97,10 @@ def test_resolve_max_chars_caps_and_records_dropped(tmp_path):
 
 def test_parse_frontmatter_non_dict_returns_empty():
     assert parse_frontmatter("---\njust a string\n---\nbody") == {}
+
+
+def test_load_index_includes_regime_and_type(tmp_path):
+    (tmp_path / "x.md").write_text(
+        "---\ntitle: X\ndescription: d\ntype: concept\nregime: ops\n---\nbody\n")
+    idx = load_index(tmp_path)
+    assert idx[0]["regime"] == "ops" and idx[0]["type"] == "concept"

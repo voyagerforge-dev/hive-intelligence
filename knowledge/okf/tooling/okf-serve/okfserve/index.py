@@ -17,7 +17,8 @@ _OUR_SECTION = re.compile(r"\n## Related\n.*\Z", re.DOTALL)
 def build_index_md(concepts_dir) -> str:
     lines = ["# Index", ""]
     for c in load_index(concepts_dir):
-        lines.append(f"- [{c['title']}](./{c['id']}.md) — {c['description']}")
+        tag = f" _(regime: {c['regime']})_" if c.get("regime") else ""
+        lines.append(f"- [{c['title']}](./{c['id']}.md){tag} — {c['description']}")
     return "\n".join(lines) + "\n"
 
 

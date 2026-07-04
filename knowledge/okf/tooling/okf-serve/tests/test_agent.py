@@ -1,4 +1,4 @@
-from okfserve.agent import answer_question, select_ids
+from okfserve.agent import _index_text, answer_question, select_ids
 
 INDEX = [{"id": "pre-wave-process", "title": "Pre-Wave", "description": "preview wave"},
          {"id": "shipping-wave-major-minor-order", "title": "Major/Minor", "description": "m/n"}]
@@ -57,3 +57,8 @@ def test_answer_question_ceiling_loads_all(tmp_path):
                           select_llm=None, answer_llm=AnswerLLM(), mode="ceiling")
     assert out["mode"] == "ceiling"
     assert out["bundle_ids"] == ["pre-wave-process"]
+
+
+def test_index_text_shows_regime():
+    line = _index_text([{"id": "a", "title": "A", "description": "d", "regime": "ops", "type": "concept"}])
+    assert "[ops]" in line and "a:" in line
