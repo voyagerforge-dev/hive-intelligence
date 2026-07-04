@@ -18,3 +18,10 @@ def test_guided_learning():
     p = prompts.guided_learning("wave/replen")
     assert "wave/replen" in p
     assert "record_quiz_result" in p and "learn" in p and "sources:" in p
+
+
+def test_all_modes_carry_regime_rule():
+    for text in (prompts.investigate("s"), prompts.implementation_advisor("t"),
+                 prompts.guided_learning("x")):
+        assert "mutually exclusive" in text
+        assert "regime" in text
