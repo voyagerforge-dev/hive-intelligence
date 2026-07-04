@@ -104,3 +104,22 @@ def test_load_index_includes_regime_and_type(tmp_path):
         "---\ntitle: X\ndescription: d\ntype: concept\nregime: ops\n---\nbody\n")
     idx = load_index(tmp_path)
     assert idx[0]["regime"] == "ops" and idx[0]["type"] == "concept"
+
+
+OPS = "---\ntitle: OPS\ndescription: ops card\nregime: ops\nrelated:\n- trad\n---\nOPS body.\n"
+TRAD = "---\ntitle: Trad\ndescription: trad card\nregime: traditional\nrelated: []\n---\nTrad body.\n"
+
+
+def test_resolve_guards_cross_regime_expansion(tmp_path):
+    (tmp_path / "ops.md").write_text(OPS)
+    (tmp_path / "trad.md").write_text(TRAD)
+    out = resolve(tmp_path, ["ops"], depth=1, max_cards=8)
+    assert out["card_ids"] == ["ops"]            # trad is a cross-regime neighbour → not expanded
+    assert "Trad body." not in out["bundle"]     # trad's own content never loaded
+
+
+def test_resolve_still_honours_explicit_cross_regime_seed(tmp_path):
+    (tmp_path / "ops.md").write_text(OPS)
+    (tmp_path / "trad.md").write_text(TRAD)
+    out = resolve(tmp_path, ["ops", "trad"], depth=1, max_cards=8)
+    assert set(out["card_ids"]) == {"ops", "trad"}  # explicit seeds always loaded

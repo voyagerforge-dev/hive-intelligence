@@ -48,12 +48,18 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
             selected.append(cid)
             if level < depth:
                 fm = parse_frontmatter((concepts_dir / f"{cid}.md").read_text())
+                parent_regime = fm.get("regime")
                 for rid in fm.get("related") or []:
                     if rid in seen:
                         continue
                     seen.add(rid)
-                    if (concepts_dir / f"{rid}.md").exists():  # tolerate broken links
-                        next_frontier.append(rid)
+                    if not (concepts_dir / f"{rid}.md").exists():  # tolerate broken links
+                        continue
+                    child_regime = parse_frontmatter(
+                        (concepts_dir / f"{rid}.md").read_text()).get("regime")
+                    if parent_regime and child_regime and parent_regime != child_regime:
+                        continue  # cross-regime auto-expansion guard
+                    next_frontier.append(rid)
         frontier = next_frontier
         level += 1
     if max_chars is not None:  # char budget; always keep at least the first card
