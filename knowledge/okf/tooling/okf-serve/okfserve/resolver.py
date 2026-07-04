@@ -52,13 +52,14 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
                 for rid in fm.get("related") or []:
                     if rid in seen:
                         continue
-                    seen.add(rid)
                     if not (concepts_dir / f"{rid}.md").exists():  # tolerate broken links
                         continue
                     child_regime = parse_frontmatter(
                         (concepts_dir / f"{rid}.md").read_text()).get("regime")
                     if parent_regime and child_regime and parent_regime != child_regime:
-                        continue  # cross-regime auto-expansion guard
+                        continue  # cross-regime auto-expansion guard — do NOT mark seen; a
+                        # same-regime parent may still legitimately reach this neighbour
+                    seen.add(rid)
                     next_frontier.append(rid)
         frontier = next_frontier
         level += 1

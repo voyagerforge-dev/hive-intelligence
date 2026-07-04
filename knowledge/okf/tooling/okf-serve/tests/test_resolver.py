@@ -123,3 +123,19 @@ def test_resolve_still_honours_explicit_cross_regime_seed(tmp_path):
     (tmp_path / "trad.md").write_text(TRAD)
     out = resolve(tmp_path, ["ops", "trad"], depth=1, max_cards=8)
     assert set(out["card_ids"]) == {"ops", "trad"}  # explicit seeds always loaded
+
+
+# regression: a neighbour guarded out from a cross-regime parent must stay reachable
+# via a legitimate same-regime parent in the same traversal (order-independent).
+OPS2 = "---\ntitle: Ops2\ndescription: ops\nregime: ops\nrelated:\n- shared\n---\nOps2 body.\n"
+TRAD2 = "---\ntitle: Trad2\ndescription: trad\nregime: traditional\nrelated:\n- shared\n---\nTrad2 body.\n"
+SHARED = "---\ntitle: Shared\ndescription: shared trad\nregime: traditional\nrelated: []\n---\nShared body.\n"
+
+
+def test_resolve_guarded_neighbour_still_reachable_via_same_regime_parent(tmp_path):
+    (tmp_path / "ops2.md").write_text(OPS2)      # processed first; would guard-out 'shared'
+    (tmp_path / "trad2.md").write_text(TRAD2)    # same regime as 'shared' → must reach it
+    (tmp_path / "shared.md").write_text(SHARED)
+    out = resolve(tmp_path, ["ops2", "trad2"], depth=1, max_cards=8)
+    assert "shared" in out["card_ids"]
+    assert "Shared body." in out["bundle"]
