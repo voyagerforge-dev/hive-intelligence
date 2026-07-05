@@ -8,6 +8,11 @@ from okfserve.resolver import load_index, resolve
 _SELECT_SYS = (
     "You are given an INDEX of knowledge-card ids with titles and descriptions, and a QUESTION. "
     "Choose the card id(s) whose content best answers the question. "
+    "Some cards are tagged with a regime — [ops] (OPS / Order Planning Strategy) or [traditional] "
+    "(standalone replenishment/tasking/fulfilment). OPS and traditional are MUTUALLY EXCLUSIVE by "
+    "site configuration: first decide which regime the QUESTION is about, then pick ONLY cards of "
+    "that regime plus untagged (regime-neutral) cards. Never pick a card tagged the other regime — "
+    "e.g. for an OPS question do not pick [traditional] cards even if their keywords match. "
     'Reply with ONLY {"card_ids": ["<id>", ...]} using ids from the index verbatim.'
 )
 
