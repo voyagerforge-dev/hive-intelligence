@@ -1,4 +1,9 @@
-from okfserve.agent import _index_text, answer_question, select_ids
+from okfserve.agent import _SELECT_SYS, _index_text, answer_question, select_ids
+
+
+def test_select_prompt_carries_regime_rule():
+    assert "mutually exclusive" in _SELECT_SYS.lower()
+    assert "[ops]" in _SELECT_SYS and "[traditional]" in _SELECT_SYS
 
 INDEX = [{"id": "pre-wave-process", "title": "Pre-Wave", "description": "preview wave"},
          {"id": "shipping-wave-major-minor-order", "title": "Major/Minor", "description": "m/n"}]
