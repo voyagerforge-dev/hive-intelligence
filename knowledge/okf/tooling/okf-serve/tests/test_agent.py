@@ -67,3 +67,9 @@ def test_answer_question_ceiling_loads_all(tmp_path):
 def test_index_text_shows_regime():
     line = _index_text([{"id": "a", "title": "A", "description": "d", "regime": "ops", "type": "concept"}])
     assert "[ops]" in line and "a:" in line
+
+
+def test_index_text_shows_version():
+    line = _index_text([{"id": "a", "title": "A", "description": "d",
+                         "regime": None, "type": "concept", "version": ["2020"]}])
+    assert "(v2020)" in line

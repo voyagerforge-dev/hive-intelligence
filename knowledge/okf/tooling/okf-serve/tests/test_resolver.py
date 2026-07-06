@@ -106,6 +106,13 @@ def test_load_index_includes_regime_and_type(tmp_path):
     assert idx[0]["regime"] == "ops" and idx[0]["type"] == "concept"
 
 
+def test_load_index_includes_version(tmp_path):
+    (tmp_path / "v.md").write_text(
+        "---\ntitle: V\ndescription: d\nversion:\n- '2020'\n---\nbody\n")
+    idx = load_index(tmp_path)
+    assert idx[0]["version"] == ["2020"]
+
+
 OPS = "---\ntitle: OPS\ndescription: ops card\nregime: ops\nrelated:\n- trad\n---\nOPS body.\n"
 TRAD = "---\ntitle: Trad\ndescription: trad card\nregime: traditional\nrelated: []\n---\nTrad body.\n"
 

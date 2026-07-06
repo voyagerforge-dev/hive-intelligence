@@ -22,7 +22,8 @@ def load_index(concepts_dir) -> list[dict]:
         fm = parse_frontmatter(p.read_text())
         out.append({"id": p.stem, "title": fm.get("title", p.stem),
                     "description": fm.get("description", ""),
-                    "regime": fm.get("regime"), "type": fm.get("type", "concept")})
+                    "regime": fm.get("regime"), "type": fm.get("type", "concept"),
+                    "version": fm.get("version")})
     return out
 
 

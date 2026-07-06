@@ -26,7 +26,9 @@ _ANSWER_SYS = (
 
 def _index_text(index: list[dict]) -> str:
     def tag(c):
-        return f"[{c['regime']}] " if c.get("regime") else ""
+        r = f"[{c['regime']}] " if c.get("regime") else ""
+        v = f"(v{','.join(c['version'])}) " if c.get("version") else ""
+        return r + v
     return "\n".join(f"- {c['id']}: {tag(c)}{c['title']} — {c['description']}" for c in index)
 
 
