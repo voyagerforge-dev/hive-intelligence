@@ -2,6 +2,8 @@
 """Pure facet helpers over OKF card frontmatter: read, idempotent stamp, cross-facet edge lint."""
 from __future__ import annotations
 
+import re
+
 import yaml
 
 
@@ -52,3 +54,14 @@ def cross_facet_edges(cards: dict[str, str], facet: str = "regime") -> list[tupl
             if src is not None and dv is not None and src != dv:
                 edges.append((cid, dst))
     return edges
+
+
+_VERSION_RE = re.compile(r"open-systems-(20\d\d)")
+
+
+def derive_versions(card_text: str) -> list[str]:
+    years: set[str] = set()
+    for s in read_facets(card_text).get("sources") or []:
+        ref = s.get("ref", "") if isinstance(s, dict) else ""
+        years.update(_VERSION_RE.findall(ref))
+    return sorted(years)
