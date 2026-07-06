@@ -1,4 +1,11 @@
-from okfserve.eval import judge_answer, load_qa, run_eval, score_regime, score_selection
+from okfserve.eval import (
+    judge_answer,
+    load_qa,
+    run_eval,
+    score_regime,
+    score_selection,
+    score_version,
+)
 
 
 def test_load_qa(tmp_path):
@@ -18,6 +25,13 @@ def test_score_regime_counts_cross_regime():
     assert score_regime("ops", ["ops", "ops"]) == {"cross_regime": 0, "regime_ok": True}
     assert score_regime("ops", ["ops", "traditional"]) == {"cross_regime": 1, "regime_ok": False}
     assert score_regime(None, ["ops", "traditional"]) == {"cross_regime": 0, "regime_ok": True}
+
+
+def test_score_version_soft_filter():
+    assert score_version("2020", [["2020"], None]) == {"version_ok": True, "off_version": 0}
+    assert score_version("2020", [["2018"]]) == {"version_ok": False, "off_version": 1}
+    assert score_version("2020", [None, ["2018", "2020"]]) == {"version_ok": True, "off_version": 0}
+    assert score_version(None, [["2018"]]) == {"version_ok": True, "off_version": 0}
 
 
 class JudgeLLM:
