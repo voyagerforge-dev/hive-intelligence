@@ -1,5 +1,5 @@
 # knowledge/okf/tooling/okf-gen/tests/test_facets.py
-from okfgen.facets import read_facets, card_regime, stamp_facets, cross_facet_edges
+from okfgen.facets import read_facets, card_regime, stamp_facets, cross_facet_edges, derive_versions
 
 CARD = "---\ntitle: A\ndescription: d\nrelated:\n- b\ntype: concept\n---\n\nBody.\n"
 
@@ -33,7 +33,6 @@ def test_cross_facet_edges_flags_crossing():
     assert ("c", "b") not in edges            # traditional -> traditional is fine
 
 
-from okfgen.facets import derive_versions
 
 _GUIDE = ("---\ntitle: X\nsources:\n"
           "- kind: wms-doc\n  ref: wms-wmos-warehouse-management-for-open-systems-2020-x-guide.md\n"
