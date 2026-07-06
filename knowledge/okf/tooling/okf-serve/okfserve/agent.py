@@ -13,6 +13,10 @@ _SELECT_SYS = (
     "site configuration: first decide which regime the QUESTION is about, then pick ONLY cards of "
     "that regime plus untagged (regime-neutral) cards. Never pick a card tagged the other regime — "
     "e.g. for an OPS question do not pick [traditional] cards even if their keywords match. "
+    "Some cards are tagged with a release version like (v2020). If the QUESTION names a release, "
+    "PREFER cards for that release plus version-neutral (untagged) cards, and avoid cards tagged only "
+    "for a different release — but a version-neutral card always applies, and do not exclude a "
+    "different-release card if nothing better answers the question. "
     'Reply with ONLY {"card_ids": ["<id>", ...]} using ids from the index verbatim.'
 )
 

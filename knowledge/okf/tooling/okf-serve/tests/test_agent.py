@@ -5,6 +5,11 @@ def test_select_prompt_carries_regime_rule():
     assert "mutually exclusive" in _SELECT_SYS.lower()
     assert "[ops]" in _SELECT_SYS and "[traditional]" in _SELECT_SYS
 
+
+def test_select_prompt_carries_version_rule():
+    assert "version-neutral" in _SELECT_SYS.lower()
+    assert "prefer" in _SELECT_SYS.lower()
+
 INDEX = [{"id": "pre-wave-process", "title": "Pre-Wave", "description": "preview wave"},
          {"id": "shipping-wave-major-minor-order", "title": "Major/Minor", "description": "m/n"}]
 
