@@ -5,6 +5,11 @@ def test_select_prompt_carries_regime_rule():
     assert "mutually exclusive" in _SELECT_SYS.lower()
     assert "[ops]" in _SELECT_SYS and "[traditional]" in _SELECT_SYS
 
+
+def test_select_prompt_carries_version_rule():
+    assert "version-neutral" in _SELECT_SYS.lower()
+    assert "prefer" in _SELECT_SYS.lower()
+
 INDEX = [{"id": "pre-wave-process", "title": "Pre-Wave", "description": "preview wave"},
          {"id": "shipping-wave-major-minor-order", "title": "Major/Minor", "description": "m/n"}]
 
@@ -67,3 +72,9 @@ def test_answer_question_ceiling_loads_all(tmp_path):
 def test_index_text_shows_regime():
     line = _index_text([{"id": "a", "title": "A", "description": "d", "regime": "ops", "type": "concept"}])
     assert "[ops]" in line and "a:" in line
+
+
+def test_index_text_shows_version():
+    line = _index_text([{"id": "a", "title": "A", "description": "d",
+                         "regime": None, "type": "concept", "version": ["2020"]}])
+    assert "(v2020)" in line

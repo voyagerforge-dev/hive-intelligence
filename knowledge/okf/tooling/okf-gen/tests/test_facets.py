@@ -1,5 +1,5 @@
 # knowledge/okf/tooling/okf-gen/tests/test_facets.py
-from okfgen.facets import read_facets, card_regime, stamp_facets, cross_facet_edges
+from okfgen.facets import read_facets, card_regime, stamp_facets, cross_facet_edges, derive_versions
 
 CARD = "---\ntitle: A\ndescription: d\nrelated:\n- b\ntype: concept\n---\n\nBody.\n"
 
@@ -31,3 +31,21 @@ def test_cross_facet_edges_flags_crossing():
     edges = cross_facet_edges({"a": a, "b": b, "c": c}, facet="regime")
     assert ("a", "b") in edges                # ops -> traditional crosses
     assert ("c", "b") not in edges            # traditional -> traditional is fine
+
+
+
+_GUIDE = ("---\ntitle: X\nsources:\n"
+          "- kind: wms-doc\n  ref: wms-wmos-warehouse-management-for-open-systems-2020-x-guide.md\n"
+          "- kind: wms-doc\n  ref: wms-wmos-warehouse-management-for-open-systems-2018-x-guide.md\n"
+          "---\nbody\n")
+_FS = ("---\ntitle: Y\nsources:\n"
+       "- kind: wms-doc\n  ref: wms-wmos-functional-specification-50000-outbound-distribution-y-fs.md\n"
+       "---\nbody\n")
+
+
+def test_derive_versions_sorted_unique():
+    assert derive_versions(_GUIDE) == ["2018", "2020"]
+
+
+def test_derive_versions_empty_for_fs_only():
+    assert derive_versions(_FS) == []

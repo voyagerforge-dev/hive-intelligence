@@ -33,6 +33,13 @@ def score_regime(expected_regime, selected_regimes) -> dict:
     return {"cross_regime": cross, "regime_ok": cross == 0}
 
 
+def score_version(expected_version, selected_versions) -> dict:
+    if not expected_version:
+        return {"version_ok": True, "off_version": 0}
+    off = sum(1 for v in selected_versions if v and expected_version not in v)
+    return {"version_ok": off == 0, "off_version": off}
+
+
 def judge_answer(question, answer, reference_text, llm) -> dict:
     user = f"QUESTION: {question}\n\nANSWER: {answer}\n\nREFERENCE:\n{reference_text}"
     data = extract_json(llm.complete(_JUDGE_SYS, user) or "")
@@ -46,7 +53,9 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
              mode: str = "progressive", depth: int = 1, max_cards: int = 8,
              max_chars: int | None = None) -> dict:
     from okfserve.resolver import load_index
-    regime_of = {c["id"]: c.get("regime") for c in load_index(concepts_dir)}
+    idx = load_index(concepts_dir)
+    regime_of = {c["id"]: c.get("regime") for c in idx}
+    version_of = {c["id"]: c.get("version") for c in idx}
     rows = []
     for item in qa:
         res = answer_question(concepts_dir, item["question"], select_llm=select_llm,
@@ -55,16 +64,19 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
         sel = score_selection(item["expected_card_ids"], res["selected_ids"], res["bundle_ids"])
         reg = score_regime(item.get("expected_regime"),
                             [regime_of.get(i) for i in res["selected_ids"]])
+        ver = score_version(item.get("expected_version"),
+                            [version_of.get(i) for i in res["selected_ids"]])
         ref = "\n\n".join(filter(None, (get_card_fn(cid) for cid in item["expected_card_ids"])))
         verdict = judge_answer(item["question"], res["answer"], ref, judge_llm)
         rows.append({"id": item["id"], "question": item["question"],
                      "selected_ids": res["selected_ids"], "bundle_ids": res["bundle_ids"],
-                     **sel, **reg, **verdict, "answer": res["answer"]})
+                     **sel, **reg, **ver, **verdict, "answer": res["answer"]})
     agg = {
         "n": len(rows),
         "select_hit": sum(1 for r in rows if r["select_hit"]),
         "bundle_hit": sum(1 for r in rows if r["bundle_hit"]),
         "regime_ok": sum(1 for r in rows if r["regime_ok"]),
+        "version_ok": sum(1 for r in rows if r["version_ok"]),
         "correct": sum(1 for r in rows if r["correct"] is True),
         "grounded": sum(1 for r in rows if r["grounded"] is True),
         "unscored": sum(1 for r in rows if r["note"] == "unscored"),
