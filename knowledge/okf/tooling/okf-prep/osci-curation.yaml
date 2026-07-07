@@ -1,0 +1,706 @@
+scope: osci
+corpus_root: /home/user/Documents/ingest_content/SCPP/Supply Chain Intelligence
+subtree: ''
+generated_by: dedup-formats
+include:
+- path: Supply_Chain_Intelligence_2018/Installation and Configuration of Hortonworks
+    Data Platform and IBM BigSQL for SCI Operational Analytics.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/Yard Management and Appointment Scheduling
+    Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2018/Configuration Guide for SSL.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/SCI Deliverables for OMNI.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2018/WMi Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2018/Installation Guide for Operational Analytics.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/Software Requirements Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: technical-spec
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/TLM Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2018/System Audit Tools Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: user-manual
+  topic: oSCI Workspaces & Reports
+- path: Supply_Chain_Intelligence_2018/SCI Deliverables for Yard Management & Appointment
+    Scheduling.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2018/Replenishment IBMi Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2018/Installation Guide for Operational SCI.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/Configuration Guide for Drill Throughs.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/SCI Deliverables for Warehouse Management for
+    IBMi.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2018/OMNI Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2018/Configuration Guide for Operational SCI.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/Event Studio DB Update Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: config-guide
+  topic: oSCI Workspaces & Reports
+- path: Supply_Chain_Intelligence_2018/SCI Deliverables for DFIO &  Replenishment
+    OS.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2018/SCI Deliverables for Transportation and Logistics
+    Management.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2018/EEM Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2018/Browser_Certification_Support.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/Installation Guide for IBM Products.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/Release Notes.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: release-notes
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/SCI Deliverables for Extended Enterprise Management.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2018/Replenishment OS Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2018/Prerequisites Checker Tool Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/Installation Guide Cognos Silent Install.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/SCI_2010.1_HP_IBM i_Report_Summaries.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2018/SCI Deliverables for Advanced Planning.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2018/Advanced Planning Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2018/Performance Tuning Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: best-practices
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/Database Setup Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/SCI_2010.1_HP_WM_Open_System_Report_Summaries.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2018/Version Management Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/SCI2018_installation_doc.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2018/Event Studio Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: user-manual
+  topic: oSCI Workspaces & Reports
+- path: Supply_Chain_Intelligence_2018/Deploying Audit Reports Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2018'
+  doc_type: implementation-guide
+  topic: oSCI Workspaces & Reports
+- path: Supply_Chain_Intelligence_2020/SCALE - Configuration Guide for Azure AD with
+    Cognos Analytics.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/WMOS Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/SCALE - Installation Guide for Operational
+    SCI.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/TLM Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/Release Notes.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: release-notes
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for Yard Management
+    & Appointment Scheduling.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for Distribution
+    Management.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Configuration Guide for AD FS with Cognos Analytics.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Slotting Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/SCALE - Multitenant Setup and Configuration
+    Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for WMOS.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/EEM Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/Configuration Guide for Azure AD with Cognos
+    Analytics.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Configuration Guide for Operational SCI.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/SCALE Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/Installation Guide for IBM Products.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for WMOS MultiSite.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Distribution Management Workspace and Reports.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: user-manual
+  topic: oSCI Workspaces & Reports
+- path: Supply_Chain_Intelligence_2020/Configuration Guide for Drill Throughs.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Software Requirements Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for Advanced Planning.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for Slotting.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for Transportation
+    and Logistics Management.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Configuration Guide for OKTA with Cognos Analytics.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Database Setup Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Installation Guide for Operational SCI.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Configuration Guide for SSL.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Yard Management & Appointment Scheduling Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/Labor Management MultiSite Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for Labor Management.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Installation and Configuration Guide for Operational
+    Analytics.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Deploying Audit Reports Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: implementation-guide
+  topic: oSCI Workspaces & Reports
+- path: Supply_Chain_Intelligence_2020/Advanced Planning Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for Warehouse
+    Management for IBMi.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/WMOS MultiSite Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for SCALE.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Labor Management Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/Installation Guide for MS Office.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Event Studio DB Update Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Workspaces & Reports
+- path: Supply_Chain_Intelligence_2020/SCI DST Time Zone Conversion Implementation
+    Guide - Oracle and DB2.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Performance Tuning Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: best-practices
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Operational Analytics Deliverables for WMOS.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for Labor Management
+    MultiSite.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Installation Guide Cognos Silent Install.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Operational Analytics Deliverables for Labor
+    Management.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Event Studio Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: user-manual
+  topic: oSCI Workspaces & Reports
+- path: Supply_Chain_Intelligence_2020/SCI Deliverables for WMOS Operational Analytics.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Prerequisites Checker Tool Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Multitenant Setup and Configuration Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for Extended Enterprise
+    Management.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Browser Certification Support.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Operational Analytics Deliverables for Replenishment
+    OS.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Installation and Configuration Guide for Hortonworks
+    Data Platform And IBM BigSQL.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/SCI Deliverables for WMOS.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Replenishment IBMi Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for OMNI.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/EXAMPLECO- SCI Installation Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Operational Analytics Deliverables for TLM.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Replenishment OS Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/TLM Workspaces and Reports.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: user-manual
+  topic: oSCI Workspaces & Reports
+- path: Supply_Chain_Intelligence_2020/Installation Guide for Operational Analytics.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: implementation-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Operational Analytics SCI Deliverables for
+    Warehouse Management for IBMi.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/System Audit Tools Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: user-manual
+  topic: oSCI Workspaces & Reports
+- path: Supply_Chain_Intelligence_2020/OMNI Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for Replenishment
+    IBM I Stand-Alone.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Version Management Guide.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: config-guide
+  topic: oSCI Architecture & Environment
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for DFIO & Replenishment
+    OS.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for Replenishment
+    OS.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/WMi Framework.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: technical-spec
+  topic: oSCI Frameworks
+- path: Supply_Chain_Intelligence_2020/Operational SCI Deliverables for OMNI Reports.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/SCI_2010.1_HP_IBM i_Report_Summaries.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/SCI Deliverables for Labor Management Operational
+    Analytics.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+- path: Supply_Chain_Intelligence_2020/SCI_2010.1_HP_WM_Open_System_Report_Summaries.pdf
+  platform: SCPP
+  product: oSCI
+  version: '2020'
+  doc_type: documentation
+  topic: oSCI Analytics Deliverables
+exclude:
+- path: Supply_Chain_Intelligence_2018/pdf_send.png
+  reason: UI-button icon asset (pdf_send/pdf_save), not documentation content
+- path: Supply_Chain_Intelligence_2018/pdf_send2.png
+  reason: UI-button icon asset (pdf_send/pdf_save), not documentation content
+- path: Supply_Chain_Intelligence_2018/pdf_save.png
+  reason: UI-button icon asset (pdf_send/pdf_save), not documentation content
+- path: Supply_Chain_Intelligence_2020/pdf_save.png
+  reason: UI-button icon asset (pdf_send/pdf_save), not documentation content
+- path: Supply_Chain_Intelligence_2020/pdf_send.png
+  reason: UI-button icon asset (pdf_send/pdf_save), not documentation content
+- path: Supply_Chain_Intelligence_2020/pdf_send2.png
+  reason: UI-button icon asset (pdf_send/pdf_save), not documentation content
+dedup_groups: []
+supersedes: []
