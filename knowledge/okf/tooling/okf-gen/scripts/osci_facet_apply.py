@@ -8,7 +8,6 @@ import os
 import sys
 from pathlib import Path
 
-import yaml
 
 from okfgen.facets import read_facets, stamp_facets
 
