@@ -49,6 +49,11 @@ AREAS: dict[str, tuple[str, ...]] = {
     "guide-transportation": ("Guide: Transportation Routing",),
     "guide-yard": ("Guide: Yard",),
     "guide-reports": ("Guide: Reports",),
+    # oSCI (Supply Chain Intelligence) — Cognos-based analytics repurposed for WMOS.
+    "osci-frameworks": ("oSCI Frameworks",),
+    "osci-analytics": ("oSCI Analytics Deliverables",),
+    "osci-workspaces": ("oSCI Workspaces & Reports",),
+    "osci-architecture": ("oSCI Architecture & Environment",),
 }
 
 

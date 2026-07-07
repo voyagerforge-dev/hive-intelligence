@@ -78,3 +78,12 @@ def test_index_text_shows_version():
     line = _index_text([{"id": "a", "title": "A", "description": "d",
                          "regime": None, "type": "concept", "version": ["2020"]}])
     assert "(v2020)" in line
+
+
+def test_index_text_renders_product_tag():
+    line = _index_text([{"id": "c", "title": "C", "description": "d", "product": "osci"}])
+    assert "{osci}" in line
+
+
+def test_select_sys_has_product_rule():
+    assert "product" in _SELECT_SYS.lower()

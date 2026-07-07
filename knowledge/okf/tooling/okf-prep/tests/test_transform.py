@@ -110,6 +110,17 @@ def test_transform_pdf_strips_boilerplate_when_enabled(tmp_path, monkeypatch):
     assert "WM triggers replenishment below minimum." in body   # content kept
 
 
+def test_clean_text_md_strips_base64_data_uri_images():
+    from okfprep.transform import _clean_text_md
+    md = "# Title\n\n![Image](data:image/png;base64,AAAABBBBCCCCDDDD)\n\n\n\nReal prose here.\n"
+    out = _clean_text_md(md)
+    assert "data:image" not in out
+    assert "base64" not in out
+    assert "Real prose here." in out
+    assert "# Title" in out
+    assert "\n\n\n" not in out  # blank runs collapsed
+
+
 def test_transform_pdf_keeps_boilerplate_when_disabled(tmp_path, monkeypatch):
     pdf = tmp_path / "s.pdf"; pdf.write_bytes(b"%PDF-1.4")
     monkeypatch.setattr(tf, "pdf_text_profile",

@@ -146,3 +146,11 @@ def test_resolve_guarded_neighbour_still_reachable_via_same_regime_parent(tmp_pa
     out = resolve(tmp_path, ["ops2", "trad2"], depth=1, max_cards=8)
     assert "shared" in out["card_ids"]
     assert "Shared body." in out["bundle"]
+
+
+def test_load_index_surfaces_product(tmp_path):
+    from okfserve.resolver import load_index
+    (tmp_path / "c.md").write_text(
+        "---\ntitle: C\ndescription: d\nproduct: osci\nversion: ['2020']\n---\n\nbody\n")
+    idx = {c["id"]: c for c in load_index(tmp_path)}
+    assert idx["c"]["product"] == "osci"

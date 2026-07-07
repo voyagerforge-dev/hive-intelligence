@@ -51,10 +51,13 @@ def pdf_text_profile(pdf: Path) -> dict:
 
 
 _DOTLEADER = re.compile(r"\.{4,}")
+_DATA_URI_IMG = re.compile(r"!\[[^\]]*\]\(data:[^)]*\)")
 
 
 def _clean_text_md(md: str) -> str:
-    return _DOTLEADER.sub(" ", md).strip()
+    md = _DATA_URI_IMG.sub("", md)
+    md = _DOTLEADER.sub(" ", md)
+    return re.sub(r"\n{3,}", "\n\n", md).strip()
 
 
 def _pymupdf4llm_markdown(pdf: Path) -> str:

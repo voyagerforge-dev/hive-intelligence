@@ -34,6 +34,14 @@ def test_score_version_soft_filter():
     assert score_version(None, [["2018"]]) == {"version_ok": True, "off_version": 0}
 
 
+def test_score_product_counts_cross_product():
+    from okfserve.eval import score_product
+    assert score_product("osci", ["osci", "osci"]) == {"cross_product": 0, "product_ok": True}
+    assert score_product("osci", ["osci", "wms"]) == {"cross_product": 1, "product_ok": False}
+    assert score_product("osci", ["osci", None]) == {"cross_product": 0, "product_ok": True}
+    assert score_product(None, ["wms"]) == {"cross_product": 0, "product_ok": True}
+
+
 class JudgeLLM:
     def __init__(self, reply): self._reply = reply
     def complete(self, system, user): return self._reply
