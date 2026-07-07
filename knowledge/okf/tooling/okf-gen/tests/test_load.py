@@ -148,3 +148,18 @@ def test_subareas_are_disjoint_within_shared_topics():
         assert isinstance(sa.topics, tuple)
         assert isinstance(sa.include, tuple)
         assert isinstance(sa.exclude, tuple)
+
+
+from okfgen.load import AREAS, load_area_local
+
+
+def test_osci_areas_registered():
+    for area in ("osci-frameworks", "osci-analytics", "osci-workspaces", "osci-architecture"):
+        assert area in AREAS
+
+
+def test_osci_area_selects_by_topic(tmp_path):
+    (tmp_path / "a.md").write_text("---\ntopic: oSCI Frameworks\n---\n\nx\n")
+    (tmp_path / "b.md").write_text("---\ntopic: oSCI Architecture & Environment\n---\n\ny\n")
+    ids = {d.id for d in load_area_local(tmp_path, "osci-frameworks")}
+    assert ids == {"a.md"}
