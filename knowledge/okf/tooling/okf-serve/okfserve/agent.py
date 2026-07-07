@@ -8,6 +8,9 @@ from okfserve.resolver import load_index, resolve
 _SELECT_SYS = (
     "You are given an INDEX of knowledge-card ids with titles and descriptions, and a QUESTION. "
     "Choose the card id(s) whose content best answers the question. "
+    "Some cards are tagged with a product like {osci} (Supply Chain Intelligence), {slotting}, "
+    "{labour-management}, or {wms}. First decide which product the QUESTION is about, then pick "
+    "ONLY cards of that product plus any untagged (product-neutral) cards; never mix products. "
     "Some cards are tagged with a regime — [ops] (OPS / Order Planning Strategy) or [traditional] "
     "(standalone replenishment/tasking/fulfilment). OPS and traditional are MUTUALLY EXCLUSIVE by "
     "site configuration: first decide which regime the QUESTION is about, then pick ONLY cards of "
@@ -30,9 +33,10 @@ _ANSWER_SYS = (
 
 def _index_text(index: list[dict]) -> str:
     def tag(c):
+        p = f"{{{c['product']}}} " if c.get("product") else ""
         r = f"[{c['regime']}] " if c.get("regime") else ""
         v = f"(v{','.join(c['version'])}) " if c.get("version") else ""
-        return r + v
+        return p + r + v
     return "\n".join(f"- {c['id']}: {tag(c)}{c['title']} — {c['description']}" for c in index)
 
 
