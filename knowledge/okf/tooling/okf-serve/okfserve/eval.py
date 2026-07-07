@@ -33,6 +33,13 @@ def score_regime(expected_regime, selected_regimes) -> dict:
     return {"cross_regime": cross, "regime_ok": cross == 0}
 
 
+def score_product(expected_product, selected_products) -> dict:
+    if not expected_product:
+        return {"cross_product": 0, "product_ok": True}
+    cross = sum(1 for p in selected_products if p and p != expected_product)
+    return {"cross_product": cross, "product_ok": cross == 0}
+
+
 def score_version(expected_version, selected_versions) -> dict:
     if not expected_version:
         return {"version_ok": True, "off_version": 0}
@@ -56,6 +63,7 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
     idx = load_index(concepts_dir)
     regime_of = {c["id"]: c.get("regime") for c in idx}
     version_of = {c["id"]: c.get("version") for c in idx}
+    product_of = {c["id"]: c.get("product") for c in idx}
     rows = []
     for item in qa:
         res = answer_question(concepts_dir, item["question"], select_llm=select_llm,
@@ -66,17 +74,20 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
                             [regime_of.get(i) for i in res["selected_ids"]])
         ver = score_version(item.get("expected_version"),
                             [version_of.get(i) for i in res["selected_ids"]])
+        prod = score_product(item.get("expected_product"),
+                             [product_of.get(i) for i in res["selected_ids"]])
         ref = "\n\n".join(filter(None, (get_card_fn(cid) for cid in item["expected_card_ids"])))
         verdict = judge_answer(item["question"], res["answer"], ref, judge_llm)
         rows.append({"id": item["id"], "question": item["question"],
                      "selected_ids": res["selected_ids"], "bundle_ids": res["bundle_ids"],
-                     **sel, **reg, **ver, **verdict, "answer": res["answer"]})
+                     **sel, **reg, **ver, **prod, **verdict, "answer": res["answer"]})
     agg = {
         "n": len(rows),
         "select_hit": sum(1 for r in rows if r["select_hit"]),
         "bundle_hit": sum(1 for r in rows if r["bundle_hit"]),
         "regime_ok": sum(1 for r in rows if r["regime_ok"]),
         "version_ok": sum(1 for r in rows if r["version_ok"]),
+        "product_ok": sum(1 for r in rows if r["product_ok"]),
         "correct": sum(1 for r in rows if r["correct"] is True),
         "grounded": sum(1 for r in rows if r["grounded"] is True),
         "unscored": sum(1 for r in rows if r["note"] == "unscored"),
