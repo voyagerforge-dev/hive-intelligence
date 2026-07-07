@@ -23,7 +23,7 @@ def load_index(concepts_dir) -> list[dict]:
         out.append({"id": p.stem, "title": fm.get("title", p.stem),
                     "description": fm.get("description", ""),
                     "regime": fm.get("regime"), "type": fm.get("type", "concept"),
-                    "version": fm.get("version")})
+                    "version": fm.get("version"), "product": fm.get("product")})
     return out
 
 
