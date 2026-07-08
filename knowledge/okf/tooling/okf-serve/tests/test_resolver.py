@@ -205,3 +205,13 @@ def test_resolve_follows_related_across_subfolders(tmp_path):
     out = resolve(tmp_path, ["osci/alpha"], depth=1, max_cards=8)
     assert out["card_ids"] == ["osci/alpha", "osci/beta"]
     assert "Beta body." in out["bundle"]
+
+
+def test_get_card_rejects_traversal(tmp_path):
+    from okfserve.resolver import get_card
+    (tmp_path / "wms").mkdir()
+    (tmp_path / "wms" / "a.md").write_text("---\ntitle: A\n---\n\nbody\n")
+    (tmp_path.parent / "secret.md").write_text("secret")
+    assert get_card(tmp_path, "wms/a") is not None          # valid path-id works
+    assert get_card(tmp_path, "../secret") is None           # traversal blocked
+    assert get_card(tmp_path, "../../etc/passwd") is None

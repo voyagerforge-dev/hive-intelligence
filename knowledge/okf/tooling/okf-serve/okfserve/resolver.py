@@ -30,7 +30,12 @@ def load_index(concepts_dir) -> list[dict]:
 
 
 def get_card(concepts_dir, card_id: str) -> str | None:
-    p = Path(concepts_dir) / f"{card_id}.md"
+    # Path-ids contain "/", and /card/{card_id:path} accepts arbitrary input — guard against
+    # traversal escaping the bundle (e.g. card_id "../../etc/passwd").
+    base = Path(concepts_dir).resolve()
+    p = (base / f"{card_id}.md").resolve()
+    if base not in p.parents:
+        return None
     return p.read_text() if p.exists() else None
 
 
