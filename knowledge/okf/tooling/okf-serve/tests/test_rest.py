@@ -34,3 +34,18 @@ def test_resolve(tmp_path):
     c = _client(tmp_path)
     r = c.post("/resolve", json={"ids": ["wave-replen"], "depth": 1}).json()
     assert r["card_ids"] == ["wave-replen"]
+
+
+def test_card_route_accepts_path_id_with_slash(tmp_path):
+    sub = tmp_path / "osci"
+    sub.mkdir()
+    (sub / "omni-framework.md").write_text(
+        "---\ntitle: Omni\ndescription: d\nrelated: []\nsources: []\n---\n\nOmni body.\n")
+    s = Settings(concepts_dir=str(tmp_path))
+    app = FastAPI()
+    app.include_router(build_rest_router(s))
+    c = TestClient(app)
+    r = c.get("/card/osci/omni-framework")
+    assert r.status_code == 200
+    assert "Omni body." in r.json()["markdown"]
+    assert r.json()["id"] == "osci/omni-framework"

@@ -154,3 +154,54 @@ def test_load_index_surfaces_product(tmp_path):
         "---\ntitle: C\ndescription: d\nproduct: osci\nversion: ['2020']\n---\n\nbody\n")
     idx = {c["id"]: c for c in load_index(tmp_path)}
     assert idx["c"]["product"] == "osci"
+
+
+def test_load_index_flat_card_id_is_stem(tmp_path):
+    """A card directly in concepts_dir (no subfolder) keeps id = stem (flat-layout backcompat)."""
+    (tmp_path / "omni-framework.md").write_text(
+        "---\ntitle: Omni\ndescription: d\n---\n\nbody\n")
+    idx = {c["id"]: c for c in load_index(tmp_path)}
+    assert "omni-framework" in idx
+
+
+def test_load_index_subfolder_card_id_is_path(tmp_path):
+    """A card inside a product subfolder gets a path id: <subfolder>/<stem>."""
+    sub = tmp_path / "osci"
+    sub.mkdir()
+    (sub / "omni-framework.md").write_text(
+        "---\ntitle: Omni\ndescription: d\n---\n\nbody\n")
+    idx = {c["id"]: c for c in load_index(tmp_path)}
+    assert "osci/omni-framework" in idx
+    assert idx["osci/omni-framework"]["title"] == "Omni"
+
+
+def test_load_index_skips_reserved_files_at_any_level(tmp_path):
+    sub = tmp_path / "osci"
+    sub.mkdir()
+    (tmp_path / "index.md").write_text("---\ntitle: I\ndescription: d\n---\n\nbody\n")
+    (tmp_path / "log.md").write_text("---\ntitle: L\ndescription: d\n---\n\nbody\n")
+    (sub / "index.md").write_text("---\ntitle: I2\ndescription: d\n---\n\nbody\n")
+    (sub / "log.md").write_text("---\ntitle: L2\ndescription: d\n---\n\nbody\n")
+    (sub / "real.md").write_text("---\ntitle: Real\ndescription: d\n---\n\nbody\n")
+    ids = {c["id"] for c in load_index(tmp_path)}
+    assert ids == {"osci/real"}
+
+
+def test_get_card_by_path_id(tmp_path):
+    sub = tmp_path / "osci"
+    sub.mkdir()
+    (sub / "omni-framework.md").write_text(
+        "---\ntitle: Omni\ndescription: d\n---\n\nOmni body.\n")
+    assert "Omni body." in get_card(tmp_path, "osci/omni-framework")
+
+
+def test_resolve_follows_related_across_subfolders(tmp_path):
+    sub = tmp_path / "osci"
+    sub.mkdir()
+    (sub / "alpha.md").write_text(
+        "---\ntitle: A\ndescription: d\nrelated:\n- osci/beta\n---\n\nAlpha body.\n")
+    (sub / "beta.md").write_text(
+        "---\ntitle: B\ndescription: d\nrelated: []\n---\n\nBeta body.\n")
+    out = resolve(tmp_path, ["osci/alpha"], depth=1, max_cards=8)
+    assert out["card_ids"] == ["osci/alpha", "osci/beta"]
+    assert "Beta body." in out["bundle"]

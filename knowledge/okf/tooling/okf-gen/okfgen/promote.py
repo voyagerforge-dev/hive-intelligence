@@ -25,20 +25,28 @@ def validate_card(text: str, known_ids: set[str]) -> list[str]:
     return errors
 
 
-def promote(drafts_dir, concepts_dir) -> tuple[list[str], dict[str, list[str]]]:
+def promote(drafts_dir, concepts_dir, product) -> tuple[list[str], dict[str, list[str]]]:
     drafts_dir, concepts_dir = Path(drafts_dir), Path(concepts_dir)
-    known_ids = {p.stem for p in drafts_dir.glob("*.md")} | {p.stem for p in concepts_dir.glob("*.md")}
+    known_ids = {p.relative_to(concepts_dir).with_suffix("").as_posix()
+                 for p in concepts_dir.rglob("*.md")}
+    known_ids |= {f"{product}/{p.stem}" for p in drafts_dir.glob("*.md")}
     promoted: list[str] = []
     invalid: dict[str, list[str]] = {}
+    dest_dir = concepts_dir / product
     for p in sorted(drafts_dir.glob("*.md")):
         text = p.read_text()
         if parse_frontmatter(text).get("status") != "approved":
+            continue
+        dest = dest_dir / p.name
+        if dest.exists():
+            invalid[p.name] = [f"would overwrite existing card at {product}/{p.name}"]
             continue
         errs = validate_card(text, known_ids)
         if errs:
             invalid[p.name] = errs
             continue
-        (concepts_dir / p.name).write_text(text)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest.write_text(text)
         p.unlink()
         promoted.append(p.name)
     return promoted, invalid

@@ -37,7 +37,7 @@ def versions_for_card(card_text: str, atomic_dir) -> list[str]:
 
 def apply(concepts_dir: str, atomic_dir: str, product: str, platform: str) -> None:
     n = 0
-    for p in sorted(glob.glob(f"{concepts_dir}/*.md")):
+    for p in sorted(glob.glob(f"{concepts_dir}/**/*.md", recursive=True)):
         if os.path.basename(p) == "index.md":
             continue
         text = open(p).read()
