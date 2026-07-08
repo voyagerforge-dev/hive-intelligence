@@ -25,7 +25,7 @@ def build_rest_router(settings) -> APIRouter:
     def concepts() -> list[dict]:
         return tools.list_concepts(cdir)
 
-    @router.get("/card/{card_id}")
+    @router.get("/card/{card_id:path}")
     def card(card_id: str) -> dict:
         text = get_card(cdir, card_id)
         if text is None:

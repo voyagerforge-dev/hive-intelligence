@@ -28,6 +28,21 @@ def test_apply_stamps_product_platform_version(tmp_path):
     assert "product: slotting" in out and "platform: open-systems" in out and "version:" in out
 
 
+def test_apply_stamps_cards_in_subfolders(tmp_path):
+    """Cards inside a product subfolder (post-namespacing) must also get stamped."""
+    atomic = tmp_path / "atomic"; atomic.mkdir()
+    (atomic / "s1.md").write_text("---\nversion: '2020'\n---\n\nx\n")
+    concepts = tmp_path / "concepts"; concepts.mkdir()
+    sub = concepts / "slotting"; sub.mkdir()
+    (sub / "card.md").write_text(
+        "---\ntitle: T\nsources:\n- kind: slotting-doc\n  ref: s1.md\n---\n\nbody\n")
+    (concepts / "index.md").write_text("# Index\n")
+    mod.apply(str(concepts), str(atomic), "slotting", "open-systems")
+    out = (sub / "card.md").read_text()
+    assert "product: slotting" in out and "platform: open-systems" in out and "version:" in out
+    assert (concepts / "index.md").read_text() == "# Index\n"  # index.md untouched
+
+
 def test_apply_is_idempotent(tmp_path):
     atomic = tmp_path / "atomic"; atomic.mkdir()
     (atomic / "s1.md").write_text("---\nversion: '2020'\n---\n\nx\n")

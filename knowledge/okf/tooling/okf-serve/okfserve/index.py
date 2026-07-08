@@ -38,12 +38,12 @@ def apply_format_pass(concepts_dir) -> dict:
     titles = {c["id"]: c["title"] for c in load_index(concepts_dir)}
     (concepts_dir / "index.md").write_text(build_index_md(concepts_dir))
     updated: list[str] = []
-    for p in sorted(concepts_dir.glob("*.md")):
-        if p.name == "index.md":
+    for p in sorted(concepts_dir.rglob("*.md")):
+        if p.name in ("index.md", "log.md"):
             continue
         before = p.read_text()
         after = render_crosslinks(before, titles)
         if after != before:
             p.write_text(after)
-            updated.append(p.stem)
+            updated.append(p.relative_to(concepts_dir).with_suffix("").as_posix())
     return {"index": "index.md", "updated": updated}

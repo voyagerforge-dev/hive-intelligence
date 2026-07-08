@@ -15,12 +15,14 @@ def parse_frontmatter(text: str) -> dict:
 
 
 def load_index(concepts_dir) -> list[dict]:
+    concepts_dir = Path(concepts_dir)
     out: list[dict] = []
-    for p in sorted(Path(concepts_dir).glob("*.md")):
-        if p.name == "index.md":
+    for p in sorted(concepts_dir.rglob("*.md")):
+        if p.name in ("index.md", "log.md"):
             continue
+        cid = p.relative_to(concepts_dir).with_suffix("").as_posix()
         fm = parse_frontmatter(p.read_text())
-        out.append({"id": p.stem, "title": fm.get("title", p.stem),
+        out.append({"id": cid, "title": fm.get("title", cid),
                     "description": fm.get("description", ""),
                     "regime": fm.get("regime"), "type": fm.get("type", "concept"),
                     "version": fm.get("version"), "product": fm.get("product")})
@@ -28,7 +30,12 @@ def load_index(concepts_dir) -> list[dict]:
 
 
 def get_card(concepts_dir, card_id: str) -> str | None:
-    p = Path(concepts_dir) / f"{card_id}.md"
+    # Path-ids contain "/", and /card/{card_id:path} accepts arbitrary input — guard against
+    # traversal escaping the bundle (e.g. card_id "../../etc/passwd").
+    base = Path(concepts_dir).resolve()
+    p = (base / f"{card_id}.md").resolve()
+    if base not in p.parents:
+        return None
     return p.read_text() if p.exists() else None
 
 
