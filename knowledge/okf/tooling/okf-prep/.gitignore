@@ -4,3 +4,5 @@ wms-work/
 slotting-work/
 *_include.txt
 *_exclude_lmdup.txt
+lm-work/
+lm_unique.txt

@@ -1,0 +1,397 @@
+docs:
+  - file: "ActivityReport.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Activity Structure Comparison Report.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Archive and Purge Process Document.pdf"
+    topic: "LM Interfaces & Data"
+    doc_type: technical-spec
+  - file: "Browser_Certification_Support.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: technical-spec
+  - file: "Dashboard Installation and configuration using MMC.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: config-guide
+  - file: "Dashboard User Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: user-manual
+  - file: "Database_Server_and_Schema_Setup_Oracle.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: config-guide
+  - file: "Data Loader User Guide.pdf"
+    topic: "LM Interfaces & Data"
+    doc_type: user-manual
+  - file: "Deployment_Overview.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: implementation-guide
+  - file: "DM Mobile Fulfillment Dashboard Process Flow.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: functional-flow
+  - file: "DM_Mobile_Installation_Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: config-guide
+  - file: "DM_Mobile_Quick_Start_Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: training-material
+  - file: "EmployeeClockInOutReport.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Employee Detail Performance by Department Report.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Employee Detail Performance by Job Function Report.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Employee Detail Performance by Shift Report.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Employee Detail Performance by Supervisor Report.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Employee Detail Performance by Warehouse Report.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Employee Payroll Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "EmployeeThroughputReportbyDepartment.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "EmpThruputRptByJF.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "EmpThruputRptByShift.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "EmpThruputRptBySupervisor.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "EmpThruputRptByWhse.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Emp Tracking Report.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Event Adjustment Code Report.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Event Adjustment Summary Report.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Event Duration Exception Report.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Events Overlap Report.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "EventsWithoutClockInReport.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "IllnessAndIncidentInfo.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Installation_and_Configuration_Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: config-guide
+  - file: "InteractionManagement Report.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Interface_Mapping_Guide.pdf"
+    topic: "LM Interfaces & Data"
+    doc_type: technical-spec
+  - file: "Interfaces_Setup_and_Configuration_SCPP_Adapter.pdf"
+    topic: "LM Interfaces & Data"
+    doc_type: config-guide
+  - file: "JFThroughputReportByEmployee.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Job Function Detail Performance by Department.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Job Function Detail Performance by Employee.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Job Function Detail Performance by Supervisor Report.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Job Function Detail Performance by Warehouse Report.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "JobFunctionThroughPutBySupervisor.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Job Function Throughput Report By Shift.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Keyboard Shortcut Reference Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: documentation
+  - file: "Labor ABC by Job Function.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Labor Plan Simulation report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Labor Scheduling Assignements by Department Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Labor Scheduling Assignements by Employee Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Labor Scheduling Assignements by Shift Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Labor Scheduling Assignements by Supervisor Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Labor_Scheduling_Assign_Summ_by_Shift.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Labor Scheduling Assign Summ by Suprvr.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Labor Scheduling Staffing Assignements by Department Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Labor Scheduling Staffing Assignements by Shift Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Labor_Summary_Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "LbrSchedSummaryReport.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Location Configuration Report.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: functional-flow
+  - file: "Location Slot Type Configuration Report.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: functional-flow
+  - file: "MDA Installation and configuration using MMC.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: config-guide
+  - file: "Message Log Report.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "MIF_Introductory_Guide.pdf"
+    topic: "LM Interfaces & Data"
+    doc_type: training-material
+  - file: "MIF_User_Guide.pdf"
+    topic: "LM Interfaces & Data"
+    doc_type: user-manual
+  - file: "MilestoneReportEmp.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "MilestoneReportTeam.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "MIP Installation and configuration using MMC.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: config-guide
+  - file: "MLS Data Process Statistics Report.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "MMC Installation Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: config-guide
+  - file: "MMC User Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: user-manual
+  - file: "Mobile Device Requirements Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: technical-spec
+  - file: "MSF Data Application User Guide.pdf"
+    topic: "LM Interfaces & Data"
+    doc_type: user-manual
+  - file: "Negative Payroll Rollover Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Non Standard Labor Summary by Job Function Report.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Non Standard Labor Summary by Shift Report.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Non Standard Labor Summary by Supervisor Report .pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Observationmanagement.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "OnStandardEventSummaryReport-Employee.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "On Standard Event Summary Report-Supervisor.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "On Standard Event summary Report-Warehouse.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Payroll Audit Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "PayrollExportReprotByDate.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Payroll Report by Department.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Payroll Report by Jobfunction.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Payroll Report by Shift.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "PendingReprocessEmployeeReport.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Pending Supervisor Approval Report.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Quality Audit by Employee Report.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Quality Audit by Job Function.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Quality Audit by Team Standards Group Report.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Reflective_Stds_Total.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Release_Notes.pdf"
+    topic: "LM Interfaces & Data"
+    doc_type: release-notes
+  - file: "Reprocess Error Log Report.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Scheduling Remaining Workload Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "SCPP Adapter Guide.pdf"
+    topic: "LM Interfaces & Data"
+    doc_type: config-guide
+  - file: "SCPP_Adapter_User_Guide.pdf"
+    topic: "LM Interfaces & Data"
+    doc_type: user-manual
+  - file: "SCPP UI Behaviors and Personalization Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: config-guide
+  - file: "Search Server Installation Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: config-guide
+  - file: "ShiftReport.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "SimulationResultsByActivity_Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "SimulationSummary_Report.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Slot Type Item Handling Attribute Config Report.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: functional-flow
+  - file: "Software Requirements Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: technical-spec
+  - file: "Staffing Report by Department.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Staffing Report By Shift.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Staffing Report by Supervisor.pdf"
+    topic: "LM Payroll, Scheduling & Staffing"
+    doc_type: functional-flow
+  - file: "Standard Audit Report-Detail.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Standard Audit Summary Report by Transaction.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Standards Audit Summary Report - Activity.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "SummaryOfWorkRelatedInjuryandIllness.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Supervisor Detail Performance by Employee Report.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "SupervisorThroughputReportbyEmployee.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "System_Administration_Guide.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: config-guide
+  - file: "Team Standards Performance by Shift Report.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Team Standards Performance by Warehouse Report.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Team Standards Throughput by Employee Report.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Team Standards Throughput by Job Function Report.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Team Standards Throughput by Supervisor Report.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Team Standards Throughput by Warehouse Report.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "TeamStandardsThroughputReportByTeam.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "TeamStdsPerformanceByEmployee.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "TeamStdsPerformanceByJobfunctionReport.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "TeamStdsPerformanceByShift.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "TeamStdsPerformanceBySupervisor.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "TeamStdsPerformancebyTeamStdGroupReport.pdf"
+    topic: "LM Team Standards & Quality"
+    doc_type: functional-flow
+  - file: "Third Party Software Support Guidelines.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: best-practices
+  - file: "ThruputReportByJobFn.pdf"
+    topic: "LM Employee & Job-Function Reports"
+    doc_type: functional-flow
+  - file: "Transit_Time_calculation.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Travel_Audit_Alternativepath.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "Travel_Audit_Shortestpath.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
+  - file: "VehicleAisleConfigurationReport.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: functional-flow
+  - file: "VehicleConfigurationReport.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: functional-flow
+  - file: "Vehicle Zone to Zone Configuration Report.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: functional-flow
+  - file: "Virtualization and Support Strategy Guidelines.pdf"
+    topic: "LM Configuration & Deployment"
+    doc_type: best-practices
+  - file: "WorkRelatedInjuriesAndIllnesses.pdf"
+    topic: "LM Events, Activity & Operations"
+    doc_type: functional-flow
