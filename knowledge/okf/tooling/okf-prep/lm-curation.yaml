@@ -1,0 +1,1579 @@
+scope: labour-management
+corpus_root: /home/user/Documents/ingest_content/SCPP/Labour Management
+subtree: ''
+include:
+- path: labor_management_2018/ActivityReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/ActivityReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Activity Structure Comparison Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Activity Structure Comparison Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Archive and Purge Process Document.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: technical-spec
+  topic: LM Interfaces & Data
+- path: labor_management_2020/Archive and Purge Process Document.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: technical-spec
+  topic: LM Interfaces & Data
+- path: labor_management_2018/Browser_Certification_Support.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: technical-spec
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Browser_Certification_Support.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: technical-spec
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Dashboard Installation and configuration using MMC.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Dashboard Installation and configuration using MMC.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Dashboard User Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: user-manual
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Dashboard User Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: user-manual
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Database_Server_and_Schema_Setup_Oracle.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Database_Server_and_Schema_Setup_Oracle.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Data Loader User Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: user-manual
+  topic: LM Interfaces & Data
+- path: labor_management_2020/Data Loader User Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: user-manual
+  topic: LM Interfaces & Data
+- path: labor_management_2018/Deployment_Overview.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: implementation-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Deployment_Overview.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: implementation-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/DM Mobile Fulfillment Dashboard Process Flow.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/DM Mobile Fulfillment Dashboard Process Flow.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/DM_Mobile_Installation_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/DM_Mobile_Installation_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/DM_Mobile_Quick_Start_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: training-material
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/DM_Mobile_Quick_Start_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: training-material
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/EmployeeClockInOutReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/EmployeeClockInOutReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Employee Detail Performance by Department Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Employee Detail Performance by Department Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Employee Detail Performance by Job Function Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Employee Detail Performance by Job Function Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Employee Detail Performance by Shift Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Employee Detail Performance by Shift Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Employee Detail Performance by Supervisor Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Employee Detail Performance by Supervisor Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Employee Detail Performance by Warehouse Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Employee Detail Performance by Warehouse Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Employee Payroll Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Employee Payroll Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/EmployeeThroughputReportbyDepartment.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/EmployeeThroughputReportbyDepartment.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/EmpThruputRptByJF.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/EmpThruputRptByJF.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/EmpThruputRptByShift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/EmpThruputRptByShift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/EmpThruputRptBySupervisor.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/EmpThruputRptBySupervisor.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/EmpThruputRptByWhse.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/EmpThruputRptByWhse.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Emp Tracking Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Emp Tracking Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Event Adjustment Code Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Event Adjustment Code Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Event Adjustment Summary Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Event Adjustment Summary Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Event Duration Exception Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Event Duration Exception Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Events Overlap Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Events Overlap Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/EventsWithoutClockInReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/EventsWithoutClockInReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/IllnessAndIncidentInfo.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/IllnessAndIncidentInfo.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Installation_and_Configuration_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Installation_and_Configuration_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/InteractionManagement Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/InteractionManagement Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Interface_Mapping_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: technical-spec
+  topic: LM Interfaces & Data
+- path: labor_management_2020/Interface_Mapping_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: technical-spec
+  topic: LM Interfaces & Data
+- path: labor_management_2018/Interfaces_Setup_and_Configuration_SCPP_Adapter.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: config-guide
+  topic: LM Interfaces & Data
+- path: labor_management_2020/Interfaces_Setup_and_Configuration_SCPP_Adapter.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Interfaces & Data
+- path: labor_management_2018/JFThroughputReportByEmployee.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/JFThroughputReportByEmployee.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Job Function Detail Performance by Department.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Job Function Detail Performance by Department.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Job Function Detail Performance by Employee.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Job Function Detail Performance by Employee.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Job Function Detail Performance by Supervisor Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Job Function Detail Performance by Supervisor Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Job Function Detail Performance by Warehouse Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Job Function Detail Performance by Warehouse Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/JobFunctionThroughPutBySupervisor.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/JobFunctionThroughPutBySupervisor.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Job Function Throughput Report By Shift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Job Function Throughput Report By Shift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Keyboard Shortcut Reference Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: documentation
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Keyboard Shortcut Reference Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: documentation
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Labor ABC by Job Function.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Labor ABC by Job Function.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Labor Plan Simulation report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Labor Plan Simulation report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Labor Scheduling Assignements by Department Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Labor Scheduling Assignements by Department Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Labor Scheduling Assignements by Employee Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Labor Scheduling Assignements by Employee Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Labor Scheduling Assignements by Shift Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Labor Scheduling Assignements by Shift Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Labor Scheduling Assignements by Supervisor Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Labor Scheduling Assignements by Supervisor Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Labor_Scheduling_Assign_Summ_by_Shift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Labor_Scheduling_Assign_Summ_by_Shift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Labor Scheduling Assign Summ by Suprvr.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Labor Scheduling Assign Summ by Suprvr.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Labor Scheduling Staffing Assignements by Department
+    Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Labor Scheduling Staffing Assignements by Department
+    Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Labor Scheduling Staffing Assignements by Shift Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Labor Scheduling Staffing Assignements by Shift Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Labor_Summary_Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Labor_Summary_Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/LbrSchedSummaryReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/LbrSchedSummaryReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Location Configuration Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Location Configuration Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Location Slot Type Configuration Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Location Slot Type Configuration Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/MDA Installation and configuration using MMC.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/MDA Installation and configuration using MMC.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Message Log Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Message Log Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/MIF_Introductory_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: training-material
+  topic: LM Interfaces & Data
+- path: labor_management_2020/MIF_Introductory_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: training-material
+  topic: LM Interfaces & Data
+- path: labor_management_2018/MIF_User_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: user-manual
+  topic: LM Interfaces & Data
+- path: labor_management_2020/MIF_User_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: user-manual
+  topic: LM Interfaces & Data
+- path: labor_management_2018/MilestoneReportEmp.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/MilestoneReportEmp.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/MilestoneReportTeam.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/MilestoneReportTeam.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/MIP Installation and configuration using MMC.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/MIP Installation and configuration using MMC.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/MLS Data Process Statistics Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/MLS Data Process Statistics Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/MMC Installation Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/MMC Installation Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/MMC User Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: user-manual
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/MMC User Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: user-manual
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Mobile Device Requirements Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: technical-spec
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Mobile Device Requirements Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: technical-spec
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/MSF Data Application User Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: user-manual
+  topic: LM Interfaces & Data
+- path: labor_management_2020/MSF Data Application User Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: user-manual
+  topic: LM Interfaces & Data
+- path: labor_management_2018/Negative Payroll Rollover Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Negative Payroll Rollover Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Non Standard Labor Summary by Job Function Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Non Standard Labor Summary by Job Function Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Non Standard Labor Summary by Shift Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Non Standard Labor Summary by Shift Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Non Standard Labor Summary by Supervisor Report .pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Non Standard Labor Summary by Supervisor Report .pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Observationmanagement.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Observationmanagement.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/OnStandardEventSummaryReport-Employee.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/OnStandardEventSummaryReport-Employee.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/On Standard Event Summary Report-Supervisor.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/On Standard Event Summary Report-Supervisor.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/On Standard Event summary Report-Warehouse.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/On Standard Event summary Report-Warehouse.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Payroll Audit Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Payroll Audit Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/PayrollExportReprotByDate.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/PayrollExportReprotByDate.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Payroll Report by Department.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Payroll Report by Department.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Payroll Report by Jobfunction.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Payroll Report by Jobfunction.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Payroll Report by Shift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Payroll Report by Shift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/PendingReprocessEmployeeReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/PendingReprocessEmployeeReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Pending Supervisor Approval Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Pending Supervisor Approval Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Quality Audit by Employee Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Quality Audit by Employee Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Quality Audit by Job Function.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Quality Audit by Job Function.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Quality Audit by Team Standards Group Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Quality Audit by Team Standards Group Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Reflective_Stds_Total.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Reflective_Stds_Total.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Release_Notes.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: release-notes
+  topic: LM Interfaces & Data
+- path: labor_management_2020/Release_Notes.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: release-notes
+  topic: LM Interfaces & Data
+- path: labor_management_2018/Reprocess Error Log Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Reprocess Error Log Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Scheduling Remaining Workload Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Scheduling Remaining Workload Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/SCPP Adapter Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Interfaces & Data
+- path: labor_management_2018/SCPP_Adapter_User_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: user-manual
+  topic: LM Interfaces & Data
+- path: labor_management_2018/SCPP UI Behaviors and Personalization Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/SCPP UI Behaviors and Personalization Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Search Server Installation Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Search Server Installation Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/ShiftReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/ShiftReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/SimulationResultsByActivity_Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/SimulationResultsByActivity_Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/SimulationSummary_Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/SimulationSummary_Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Slot Type Item Handling Attribute Config Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Slot Type Item Handling Attribute Config Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Software Requirements Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: technical-spec
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Software Requirements Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: technical-spec
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Staffing Report by Department.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Staffing Report by Department.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Staffing Report By Shift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Staffing Report By Shift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Staffing Report by Supervisor.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2020/Staffing Report by Supervisor.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Payroll, Scheduling & Staffing
+- path: labor_management_2018/Standard Audit Report-Detail.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Standard Audit Report-Detail.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Standard Audit Summary Report by Transaction.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Standard Audit Summary Report by Transaction.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Standards Audit Summary Report - Activity.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Standards Audit Summary Report - Activity.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/SummaryOfWorkRelatedInjuryandIllness.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/SummaryOfWorkRelatedInjuryandIllness.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Supervisor Detail Performance by Employee Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/Supervisor Detail Performance by Employee Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/SupervisorThroughputReportbyEmployee.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/SupervisorThroughputReportbyEmployee.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/System_Administration_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/System_Administration_Guide.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: config-guide
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Team Standards Performance by Shift Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Team Standards Performance by Shift Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Team Standards Performance by Warehouse Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Team Standards Performance by Warehouse Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Team Standards Throughput by Employee Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Team Standards Throughput by Employee Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Team Standards Throughput by Job Function Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Team Standards Throughput by Job Function Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Team Standards Throughput by Supervisor Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Team Standards Throughput by Supervisor Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Team Standards Throughput by Warehouse Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/Team Standards Throughput by Warehouse Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/TeamStandardsThroughputReportByTeam.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/TeamStandardsThroughputReportByTeam.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/TeamStdsPerformanceByEmployee.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/TeamStdsPerformanceByEmployee.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/TeamStdsPerformanceByJobfunctionReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/TeamStdsPerformanceByJobfunctionReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/TeamStdsPerformanceByShift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/TeamStdsPerformanceByShift.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/TeamStdsPerformanceBySupervisor.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/TeamStdsPerformanceBySupervisor.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/TeamStdsPerformancebyTeamStdGroupReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2020/TeamStdsPerformancebyTeamStdGroupReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Team Standards & Quality
+- path: labor_management_2018/Third Party Software Support Guidelines.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: best-practices
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Third Party Software Support Guidelines.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: best-practices
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/ThruputReportByJobFn.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2020/ThruputReportByJobFn.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Employee & Job-Function Reports
+- path: labor_management_2018/Transit_Time_calculation.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Transit_Time_calculation.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Travel_Audit_Alternativepath.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Travel_Audit_Alternativepath.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/Travel_Audit_Shortestpath.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/Travel_Audit_Shortestpath.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2018/VehicleAisleConfigurationReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/VehicleAisleConfigurationReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/VehicleConfigurationReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/VehicleConfigurationReport.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Vehicle Zone to Zone Configuration Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Vehicle Zone to Zone Configuration Report.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/Virtualization and Support Strategy Guidelines.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: best-practices
+  topic: LM Configuration & Deployment
+- path: labor_management_2020/Virtualization and Support Strategy Guidelines.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: best-practices
+  topic: LM Configuration & Deployment
+- path: labor_management_2018/WorkRelatedInjuriesAndIllnesses.pdf
+  platform: SCPP
+  product: LMS
+  version: '2018'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+- path: labor_management_2020/WorkRelatedInjuriesAndIllnesses.pdf
+  platform: SCPP
+  product: LMS
+  version: '2020'
+  doc_type: functional-flow
+  topic: LM Events, Activity & Operations
+exclude: []
