@@ -59,6 +59,13 @@ AREAS: dict[str, tuple[str, ...]] = {
     "slotting-config": ("Slotting Configuration & Setup",),
     "slotting-integration": ("Slotting Integration",),
     "slotting-overview": ("Slotting Overview & Release Notes",),
+    # Labour Management — workforce performance-management product on SCPP.
+    "lm-employee-reports": ("LM Employee & Job-Function Reports",),
+    "lm-team-standards": ("LM Team Standards & Quality",),
+    "lm-payroll-scheduling": ("LM Payroll, Scheduling & Staffing",),
+    "lm-events-operations": ("LM Events, Activity & Operations",),
+    "lm-config-deployment": ("LM Configuration & Deployment",),
+    "lm-interfaces-data": ("LM Interfaces & Data",),
 }
 
 
