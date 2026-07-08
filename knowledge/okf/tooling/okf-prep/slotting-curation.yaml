@@ -1,0 +1,459 @@
+scope: slotting
+corpus_root: /home/user/Documents/ingest_content/SCPP/Slotting Optimization
+subtree: ''
+include:
+- path: Slotting_Optimization_2020/2018_Slotting_release_notes.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: release-notes
+  topic: Slotting Overview & Release Notes
+- path: Slotting_Optimization_2020/2019_Slotting_release_notes.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: release-notes
+  topic: Slotting Overview & Release Notes
+- path: Slotting_Optimization_2020/3-D Slotting and Nesting.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Automation.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Batch reslot.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Data Requirements Guide.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: technical-spec
+  topic: Slotting Configuration & Setup
+- path: Slotting_Optimization_2020/Direct Integration Guide.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: implementation-guide
+  topic: Slotting Integration
+- path: Slotting_Optimization_2020/Empty Slot Distribution.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Haves Needs Analysis.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Importing.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: implementation-guide
+  topic: Slotting Integration
+- path: Slotting_Optimization_2020/Indirect Integration Guide.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: implementation-guide
+  topic: Slotting Integration
+- path: Slotting_Optimization_2020/Installation and Configuration Guide.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: config-guide
+  topic: Slotting Configuration & Setup
+- path: Slotting_Optimization_2020/Item Weight Vs Slot Level.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Math Model Reslot.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Maximum Moves Reslot.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Movement vs Aisle.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/MRF User Guide.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: user-manual
+  topic: Slotting Integration
+- path: Slotting_Optimization_2020/Multi Warehouse and Business Unit.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: config-guide
+  topic: Slotting Configuration & Setup
+- path: Slotting_Optimization_2020/Needs Analysis.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Pick Slot Inventory and Optimal Volume.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Range Definition Report.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: config-guide
+  topic: Slotting Configuration & Setup
+- path: Slotting_Optimization_2020/Ranking Items.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Real Time Single Item Slotting.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Resource Management Framework Usage Guide.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: user-manual
+  topic: Slotting Integration
+- path: Slotting_Optimization_2020/Score Summary.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Scoring.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Security Services.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: config-guide
+  topic: Slotting Configuration & Setup
+- path: Slotting_Optimization_2020/Sequencing.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Single Item Reslot.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Slots by Item Hits vs Bay.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Viscosity.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: functional-flow
+  topic: Slotting Algorithms & Analysis
+- path: Slotting_Optimization_2020/Warehouse Configuration.pdf
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: config-guide
+  topic: Slotting Configuration & Setup
+- path: Slotting Optimization Introduction.pptx
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: training-material
+  topic: Slotting Overview & Release Notes
+- path: Slotting_Optimization_Overview.pptx
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: training-material
+  topic: Slotting Overview & Release Notes
+- path: Slotting Optimization _Use_Case_Example Retailer.pptx
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: training-material
+  topic: Slotting Overview & Release Notes
+- path: Slotting Walk Through.pptx
+  platform: SCPP
+  product: Slotting
+  version: '2020'
+  doc_type: training-material
+  topic: Slotting Overview & Release Notes
+exclude:
+- path: Slotting_Optimization_2020/ActivityReport.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Activity Structure Comparison Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Browser_Certification_Support.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Dashboard Installation and configuration using
+    MMC.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Dashboard User Guide.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Database_Server_and_Schema_Setup_Oracle.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/EmployeeClockInOutReport.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Employee Detail Performance by Department Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Employee Detail Performance by Job Function Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Employee Detail Performance by Shift Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Employee Detail Performance by Supervisor Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Employee Detail Performance by Warehouse Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Employee Payroll Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/EmployeeThroughputReportbyDepartment.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/EmpThruputRptByJF.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/EmpThruputRptByShift.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/EmpThruputRptBySupervisor.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/EmpThruputRptByWhse.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Emp Tracking Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Event Adjustment Code Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Event Adjustment Summary Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Event Duration Exception Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Events Overlap Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/EventsWithoutClockInReport.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/IllnessAndIncidentInfo.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/InteractionManagement Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/JFThroughputReportByEmployee.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Job Function Detail Performance by Department.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Job Function Detail Performance by Employee.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Job Function Detail Performance by Supervisor Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Job Function Detail Performance by Warehouse Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/JobFunctionThroughPutBySupervisor.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Job Function Throughput Report By Shift.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Labor ABC by Job Function.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Labor Plan Simulation report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Labor Scheduling Assignements by Department Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Labor Scheduling Assignements by Employee Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Labor Scheduling Assignements by Shift Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Labor Scheduling Assignements by Supervisor Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Labor_Scheduling_Assign_Summ_by_Shift.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Labor Scheduling Assign Summ by Suprvr.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Labor Scheduling Staffing Assignements by Department
+    Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Labor Scheduling Staffing Assignements by Shift
+    Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Labor_Summary_Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/LbrSchedSummaryReport.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Location Configuration Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Location Slot Type Configuration Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/MDA Installation and configuration using MMC.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Message Log Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/MIF_Introductory_Guide.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/MIF_User_Guide.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/MilestoneReportEmp.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/MilestoneReportTeam.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/MIP Installation and configuration using MMC.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/MLS Data Process Statistics Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/MMC Installation Guide.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/MMC User Guide.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/MSF Data Application User Guide.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Negative Payroll Rollover Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Non Standard Labor Summary by Job Function Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Non Standard Labor Summary by Shift Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Non Standard Labor Summary by Supervisor Report
+    .pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Observationmanagement.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/OnStandardEventSummaryReport-Employee.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/On Standard Event Summary Report-Supervisor.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/On Standard Event summary Report-Warehouse.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Payroll Audit Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/PayrollExportReprotByDate.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Payroll Report by Department.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Payroll Report by Jobfunction.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Payroll Report by Shift.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/PendingReprocessEmployeeReport.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Pending Supervisor Approval Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Quality Audit by Employee Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Quality Audit by Job Function.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Quality Audit by Team Standards Group Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Reflective_Stds_Total.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Reprocess Error Log Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Scheduling Remaining Workload Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/SCPP Adapter Guide.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/SCPP UI Behaviors and Personalization Guide.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Search Server Installation Guide.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/ShiftReport.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Slot Type Item Handling Attribute Config Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Software Requirements Guide.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Staffing Report by Department.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Staffing Report By Shift.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Staffing Report by Supervisor.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Standard Audit Report-Detail.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Standard Audit Summary Report by Transaction.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Standards Audit Summary Report - Activity.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/SummaryOfWorkRelatedInjuryandIllness.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Supervisor Detail Performance by Employee Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/SupervisorThroughputReportbyEmployee.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Team Standards Performance by Shift Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Team Standards Performance by Warehouse Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Team Standards Throughput by Employee Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Team Standards Throughput by Job Function Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Team Standards Throughput by Supervisor Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Team Standards Throughput by Warehouse Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/TeamStandardsThroughputReportByTeam.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/TeamStdsPerformanceByEmployee.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/TeamStdsPerformanceByJobfunctionReport.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/TeamStdsPerformanceByShift.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/TeamStdsPerformanceBySupervisor.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/TeamStdsPerformancebyTeamStdGroupReport.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Third Party Software Support Guidelines.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/ThruputReportByJobFn.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Transit_Time_calculation.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Travel_Audit_Alternativepath.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Travel_Audit_Shortestpath.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/VehicleAisleConfigurationReport.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/VehicleConfigurationReport.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Vehicle Zone to Zone Configuration Report.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/Virtualization and Support Strategy Guidelines.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Slotting_Optimization_2020/WorkRelatedInjuriesAndIllnesses.pdf
+  reason: byte-identical Labour Management duplicate (distilled in LM run)
+- path: Introduction_To Slotting_Optimization_CSO Team.pptx
+  reason: corrupt pptx (36MB) — LibreOffice cannot load

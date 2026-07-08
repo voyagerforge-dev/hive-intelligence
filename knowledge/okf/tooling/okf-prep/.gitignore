@@ -1,1 +1,6 @@
 osci-work/
+prod-work/
+wms-work/
+slotting-work/
+*_include.txt
+*_exclude_lmdup.txt

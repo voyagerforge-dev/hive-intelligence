@@ -54,6 +54,11 @@ AREAS: dict[str, tuple[str, ...]] = {
     "osci-analytics": ("oSCI Analytics Deliverables",),
     "osci-workspaces": ("oSCI Workspaces & Reports",),
     "osci-architecture": ("oSCI Architecture & Environment",),
+    # Slotting Optimization — warehouse slot-optimization product on SCPP.
+    "slotting-algorithms": ("Slotting Algorithms & Analysis",),
+    "slotting-config": ("Slotting Configuration & Setup",),
+    "slotting-integration": ("Slotting Integration",),
+    "slotting-overview": ("Slotting Overview & Release Notes",),
 }
 
 
