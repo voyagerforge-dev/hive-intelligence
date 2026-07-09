@@ -29,7 +29,10 @@ def lint(concepts_dir):
         tgt = fm.get("corrects")
         if tgt not in cards or cards.get(tgt, {}).get("type") == "correction":
             errors.append(f"{cid}: dangling corrects target '{tgt}'")
-        for sid in fm.get("supersedes") or []:
+        sup = fm.get("supersedes") or []
+        if isinstance(sup, str):
+            sup = [sup]
+        for sid in sup:
             if sid not in corrections:
                 errors.append(f"{cid}: supersedes unknown correction '{sid}'")
             elif fm.get("status") == "approved":
