@@ -37,3 +37,11 @@ def test_round_trip():
     for k in ("corrects", "title", "description", "correction", "rationale",
               "citations", "supersedes", "product", "status", "timestamp"):
         assert back[k] == REC[k], k
+
+
+def test_round_trip_with_dashes_in_fields():
+    rec = dict(REC, title="Before --- after: duplicate rule", description="Fixes the --- inverted --- rule.")
+    back = correction_to_record(record_to_correction(rec))
+    for k in ("corrects", "title", "description", "correction", "rationale",
+              "citations", "supersedes", "product", "status", "timestamp"):
+        assert back[k] == rec[k], k

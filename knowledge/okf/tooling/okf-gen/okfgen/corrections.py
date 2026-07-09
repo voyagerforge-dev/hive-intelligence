@@ -5,6 +5,8 @@ Issue-Form Action both author cards through record_to_correction. `resource` and
 `# Citations` body section are added later by scripts/conformance_pass.py, not here."""
 from __future__ import annotations
 
+import re
+
 import yaml
 
 
@@ -28,15 +30,21 @@ def record_to_correction(record: dict) -> str:
 
 
 def _section(body: str, heading: str) -> str:
-    import re
     m = re.search(rf"(?ms)^{re.escape(heading)}\s*\n(.*?)(?=\n#|\Z)", body)
     return m.group(1).strip() if m else ""
 
 
+_FRONTMATTER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n?(.*)$")
+
+
 def correction_to_record(card_text: str) -> dict:
-    parts = card_text.split("---", 2)
-    fm = yaml.safe_load(parts[1]) or {}
-    body = parts[2] if len(parts) > 2 else ""
+    m = _FRONTMATTER_RE.match(card_text)
+    if not m:
+        fm: dict = {}
+        body = ""
+    else:
+        fm = yaml.safe_load(m.group(1)) or {}
+        body = m.group(2)
     return {
         "corrects": fm.get("corrects", ""),
         "title": fm.get("title", ""),
