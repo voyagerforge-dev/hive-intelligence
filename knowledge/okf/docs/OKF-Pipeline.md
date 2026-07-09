@@ -6,6 +6,14 @@
 > came to be and how it runs end to end. Diagrams are [Mermaid](https://mermaid.js.org/)
 > and render inline on GitHub.
 
+> **Currency note (2026-07-09).** This doc's three-stage spine (prep → cards → serve) still holds, but
+> the pipeline has since grown to **4 Manhattan products** (WMOS + oSCI + Slotting + Labour Management,
+> 990 cards) and changed shape in three ways the sections below now reflect: (1) cards are **namespaced
+> into per-product folders** with **path-ids** (`concepts/<product>/<id>.md`, id = the path); (2) a
+> **post-promote step** (facets → conformance → index — the *"Stage 5"* in run-order) sits between card
+> creation and serving (see the new subsection at the end of §4); (3) a **product-isolation eval gates
+> every deploy**. Full history + lessons: memory `project_okf_osci_distillation.md`; PRs #9–#13.
+
 ---
 
 ## Contents
@@ -267,20 +275,33 @@ type: concept
 title: 2013 Replenishment Logic — Excess Wave Need Processing
 description: Manhattan WMOS replenishment logic for moving inventory…
 tags: [replenishment, wave, pick-location]
-resource: wmos
+resource: https://hive.example.com/card/wms/base-replenishment-logic   # served-card URI
 sources:
   - kind: wms-doc
     ref: wms-wmos-…-2013-replenishment-logic.md   # traces back to the atomic source
 related:
-  - shipping-wave-replenishment-subprocess          # edges into the concept graph
-  - replenishment-process-flow
+  - wms/shipping-wave-replenishment-subprocess      # path-id edges into the concept graph
+  - wms/replenishment-process-flow
 distilled_at: '2026-06-30'
+timestamp: '2026-06-30'          # OKF-recommended last-change field
 status: approved
+product: wms                     # facets: selection + isolation (product/platform/version/regime)
+platform: wmos
+version: ['2018', '2020']
 ---
 
 ## Overview
 …self-contained, reusable prose (the bulk of the value)…
+
+## Related
+- [Shipping Wave Replenishment Subprocess](/wms/shipping-wave-replenishment-subprocess.md)
+- [Replenishment Process Flow](/wms/replenishment-process-flow.md)
+
+# Citations
+1. `wms-wmos-…-2013-replenishment-logic.md`
 ```
+
+The card lives at **`concepts/<product>/<id>.md`** and its **concept ID is that path** (`wms/base-replenishment-logic`) — the OKF-spec identity model. `## Related` (bundle-relative markdown links, regenerated from `related:`) and `# Citations` (from `sources:`) make the graph and provenance visible to any OKF consumer, not just okf-serve. The `product`/`platform`/`version`/`regime` facets drive selection + cross-product/regime isolation.
 
 ### `okfgen` file map
 
@@ -294,6 +315,28 @@ status: approved
 | `run.py` | Gate-aware orchestrator + entrypoint (taxonomy → assign+distill → drafts). |
 | `llm.py` | `BifrostChat` (OpenAI-compatible client, bounded retry) + `extract_json` (strips `<think>` reasoning, pulls JSON). |
 | `config.py` | Settings: source (`ATOMIC_DIR` wins, else R2), Bifrost base/key, the three model slots, timeouts. |
+
+### Post-promote — facets, conformance & index (the "Stage 5" run-order step)
+
+Promote (gate 3) lands cards in `concepts/<product>/`, but they are not *servable-ready* until three
+deterministic, **idempotent, LLM-free** scripts run over the whole `concepts/` dir. This is a
+first-class pipeline step — run it after every distillation, for any product:
+
+| Step | Script | What it does |
+|---|---|---|
+| **1. Facet stamp** | `okf-gen/scripts/product_facet_apply.py <concepts> <atomic> <product> <platform>` | Stamps `product` + `platform` + `version` (union of the card's source-doc folder-years) onto the product's cards. |
+| **2. Conformance pass** | `okf-gen/scripts/conformance_pass.py <concepts>` | Sets `resource` → served-card URI; adds the OKF-recommended `timestamp`; regenerates `## Related` (bundle-relative markdown links, from `related:`) and `# Citations` (from `sources:`) body sections. |
+| **3. Index generation** | `okf-gen/scripts/index_generate.py <concepts>` | Writes the root `index.md` (`okf_version: "0.1"` frontmatter) + per-product `index.md` progressive-disclosure listings. |
+
+Why it exists: it takes the corpus from *formally* OKF-conformant (parseable frontmatter + non-empty
+`type`) to *idiomatically* conformant — path-id identity, a graph expressed as inline bundle-relative
+markdown links, `# Citations`, and a spec-shaped index. The scripts are idempotent, so re-running over
+the full corpus leaves already-conformant cards untouched and only transforms new ones. (There is no
+official OKF validator yet — `okf-lint` is a v0.0.1 stub — so conformance is checked by an in-repo audit
+script against the spec text.)
+
+**Isolation eval = the deploy gate.** Before deploy, `okf-serve/run_eval` over `data/<product>_product_qa.jsonl`
+must show **0 cross-product bleed** (plus no regime/version regression). No product ships without it.
 
 ---
 
@@ -607,10 +650,17 @@ cd tooling/okf-prep && uv sync --extra dev
 
 # ── Stage 2: atomic markdown → concept cards (3 gates) ──────────────────
 cd tooling/okf-gen && uv sync --extra dev
-#   set ATOMIC_DIR (defaults to sources/wms-atomic/docs) + Bifrost VK_OKF in .env
-python -m okfgen.run          # gate 1: writes taxonomy.draft.yaml, stops
-#   review → save as taxonomy.yaml → re-run for drafts/ (gate 2)
-#   flip status: approved → promote into concepts/ (gate 3)
+#   register the product's areas in okfgen/load.py AREAS (topic→area)
+#   set ATOMIC_DIR + Bifrost VK_OKF in .env; run per area: SLICE_AREA=<area>
+SLICE_AREA=<area> python -m okfgen.run   # gate 1: writes taxonomy.<area>.draft.yaml, stops
+#   review → save as taxonomy.<area>.yaml → re-run for drafts/ (gate 2)
+#   flip status: approved → promote(drafts, concepts, <product>) → concepts/<product>/ (gate 3)
+
+# ── Stage 2b (run-order "Stage 5"): facets → conformance → index ────────
+python scripts/product_facet_apply.py ../../concepts <atomic> <product> <platform>
+python scripts/conformance_pass.py    ../../concepts     # resource-URI, timestamp, ## Related, # Citations
+python scripts/index_generate.py      ../../concepts     # root + per-product index.md
+#   then: isolation eval must pass 0-bleed before deploy (okf-serve/run_eval)
 
 # ── Stage 3: serve the cards to Claude + track work in SQLite ───────────
 cd tooling/okf-serve && uv sync --extra dev
@@ -641,6 +691,8 @@ All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev
 
 ---
 
-*This document describes the system as of the `okf-prep` merge (2026-07). The three packages live
-under `tooling/`; the knowledge lives in `concepts/`; the work state lives in a single SQLite file.
+*This document describes the system as of the OKF-conformance merge (2026-07-09; PRs #9–#13): 4 products,
+per-product folders with path-ids, post-promote facets/conformance/index, isolation-gated deploys. The
+three packages live under `tooling/`; the knowledge lives in `concepts/<product>/`; the work state lives
+in a single SQLite file.
 Small, simple, sovereign.*
