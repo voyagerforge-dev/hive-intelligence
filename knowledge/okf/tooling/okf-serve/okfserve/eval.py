@@ -47,6 +47,12 @@ def score_version(expected_version, selected_versions) -> dict:
     return {"version_ok": off == 0, "off_version": off}
 
 
+def score_correction(expected_correction, bundle_correction_ids) -> dict:
+    if not expected_correction:
+        return {"correction_ok": True}
+    return {"correction_ok": expected_correction in set(bundle_correction_ids)}
+
+
 def judge_answer(question, answer, reference_text, llm) -> dict:
     user = f"QUESTION: {question}\n\nANSWER: {answer}\n\nREFERENCE:\n{reference_text}"
     data = extract_json(llm.complete(_JUDGE_SYS, user) or "")
@@ -76,11 +82,13 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
                             [version_of.get(i) for i in res["selected_ids"]])
         prod = score_product(item.get("expected_product"),
                              [product_of.get(i) for i in res["selected_ids"]])
+        corr = score_correction(item.get("expects_correction"),
+                                [b for b in res["bundle_ids"] if "/corrections/" in b])
         ref = "\n\n".join(filter(None, (get_card_fn(cid) for cid in item["expected_card_ids"])))
         verdict = judge_answer(item["question"], res["answer"], ref, judge_llm)
         rows.append({"id": item["id"], "question": item["question"],
                      "selected_ids": res["selected_ids"], "bundle_ids": res["bundle_ids"],
-                     **sel, **reg, **ver, **prod, **verdict, "answer": res["answer"]})
+                     **sel, **reg, **ver, **prod, **corr, **verdict, "answer": res["answer"]})
     agg = {
         "n": len(rows),
         "select_hit": sum(1 for r in rows if r["select_hit"]),
@@ -88,6 +96,7 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
         "regime_ok": sum(1 for r in rows if r["regime_ok"]),
         "version_ok": sum(1 for r in rows if r["version_ok"]),
         "product_ok": sum(1 for r in rows if r["product_ok"]),
+        "correction_ok": sum(1 for r in rows if r["correction_ok"]),
         "correct": sum(1 for r in rows if r["correct"] is True),
         "grounded": sum(1 for r in rows if r["grounded"] is True),
         "unscored": sum(1 for r in rows if r["note"] == "unscored"),
