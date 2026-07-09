@@ -621,7 +621,7 @@ Post-promote + authoring scripts live in `tooling/okf-gen/scripts/` (`product_fa
 |---|---|
 | `sources/wms-atomic/docs/*.md` | The WMS atomic-markdown corpus (Stage 1 output, Stage 2 input). |
 | `sources/wms-atomic/_curation/` | The WMS curation judgment (`wms-curation.yaml`, `relations.yaml`, `dups.yaml`, …). |
-| `tooling/okf-prep/{osci,slotting,lm}-curation.yaml` | The curation judgment for the 3 later products (oSCI/Slotting/LM). |
+| `sources/{osci,slotting,lm}-atomic/_curation/` | The curation judgment for the 3 later products (oSCI/Slotting/LM); atomic `docs/` for these live in R2/local, not git. |
 | `taxonomy.<area>.yaml` | The approved per-area concept taxonomies (Stage 2 Gate 1). Draft proposals are gitignored scratch. |
 | `regime-classification.yaml` | The human-reviewed regime labels (WMS), applied by `regime_apply.py`. |
 | `drafts/*.md` | Distilled cards awaiting approval (Stage 2 Gate 2) — gitignored scratch. |
