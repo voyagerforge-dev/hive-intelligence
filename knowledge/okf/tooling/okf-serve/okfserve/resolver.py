@@ -25,7 +25,17 @@ def load_index(concepts_dir) -> list[dict]:
         out.append({"id": cid, "title": fm.get("title", cid),
                     "description": fm.get("description", ""),
                     "regime": fm.get("regime"), "type": fm.get("type", "concept"),
-                    "version": fm.get("version"), "product": fm.get("product")})
+                    "version": fm.get("version"), "product": fm.get("product"),
+                    "corrects": fm.get("corrects"), "status": fm.get("status")})
+    return out
+
+
+def corrections_by_target(index: list[dict]) -> dict[str, list[str]]:
+    """concept id -> active correction ids (type==correction, status==approved)."""
+    out: dict[str, list[str]] = {}
+    for c in index:
+        if c.get("type") == "correction" and c.get("status") == "approved" and c.get("corrects"):
+            out.setdefault(c["corrects"], []).append(c["id"])
     return out
 
 
@@ -40,7 +50,8 @@ def get_card(concepts_dir, card_id: str) -> str | None:
 
 
 def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
-            max_chars: int | None = None) -> dict:
+            max_chars: int | None = None,
+            corrections: dict[str, list[str]] | None = None) -> dict:
     concepts_dir = Path(concepts_dir)
     selected: list[str] = []
     dropped: list[str] = []
@@ -82,5 +93,15 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
                 kept.append(cid)
                 used += len(text)
         selected = kept
-    bundle = "\n\n---\n\n".join((concepts_dir / f"{c}.md").read_text() for c in selected)
-    return {"card_ids": selected, "bundle": bundle, "dropped": dropped}
+    if corrections is None:
+        corrections = corrections_by_target(load_index(concepts_dir))
+    correction_ids: list[str] = []
+    for cid in selected:
+        for corr in corrections.get(cid, []):
+            if corr in selected or corr in correction_ids:
+                continue
+            if (concepts_dir / f"{corr}.md").exists():
+                correction_ids.append(corr)
+    all_ids = selected + correction_ids
+    bundle = "\n\n---\n\n".join((concepts_dir / f"{c}.md").read_text() for c in all_ids)
+    return {"card_ids": all_ids, "bundle": bundle, "dropped": dropped, "corrections": correction_ids}

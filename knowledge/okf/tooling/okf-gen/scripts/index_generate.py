@@ -28,6 +28,8 @@ def _cards_by_product(concepts_dir):
         product = os.path.relpath(p, concepts_dir).split("/", 1)[0]
         cid = os.path.relpath(p, concepts_dir)[:-3]
         fm = yaml.safe_load(open(p).read().split("---", 2)[1]) or {}
+        if fm.get("type") == "correction":
+            continue
         out.setdefault(product, []).append(
             (cid, fm.get("title", cid), fm.get("description", "")))
     return out

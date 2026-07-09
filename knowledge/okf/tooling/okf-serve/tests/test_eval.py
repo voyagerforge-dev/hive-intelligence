@@ -83,3 +83,10 @@ def test_run_eval_aggregates():
     assert res["aggregate"]["n"] == 1
     assert res["aggregate"]["select_hit"] == 1
     assert res["aggregate"]["correct"] == 1
+
+
+def test_score_correction():
+    from okfserve.eval import score_correction
+    assert score_correction(None, []) == {"correction_ok": True}
+    assert score_correction("wms/corrections/fix", ["wms/corrections/fix"]) == {"correction_ok": True}
+    assert score_correction("wms/corrections/fix", []) == {"correction_ok": False}

@@ -27,7 +27,10 @@ _ANSWER_SYS = (
     "Answer the QUESTION using ONLY the provided knowledge cards. Be specific and preserve "
     "exact fields, codes, and table/column names. Ground every claim and cite the source file "
     "from a card's `sources:` in square brackets, e.g. [some-doc.md]. If the cards do not "
-    "contain the answer, say so explicitly."
+    "contain the answer, say so explicitly. "
+    "Some knowledge cards are followed by CORRECTION cards that target them (type: correction). "
+    "A correction is AUTHORITATIVE: ground your answer in the corrected fact and note the correction; "
+    "do NOT repeat a statement the correction contradicts. "
 )
 
 
@@ -53,14 +56,18 @@ def select_ids(index, question: str, llm, *, known_ids: set[str]) -> list[str]:
 def answer_question(concepts_dir, question, *, select_llm, answer_llm,
                     mode: str = "progressive", depth: int = 1, max_cards: int = 8,
                     max_chars: int | None = None) -> dict:
+    from okfserve.resolver import corrections_by_target
     index = load_index(concepts_dir)
+    concepts = [c for c in index if c.get("type") != "correction"]
+    corr_map = corrections_by_target(index)
     if mode == "ceiling":
-        selected = [c["id"] for c in index]
-        resolved = resolve(concepts_dir, selected, depth=0, max_cards=len(selected) or 1)
+        selected = [c["id"] for c in concepts]
+        resolved = resolve(concepts_dir, selected, depth=0, max_cards=len(selected) or 1,
+                           corrections=corr_map)
     else:
-        selected = select_ids(index, question, select_llm, known_ids={c["id"] for c in index})
+        selected = select_ids(concepts, question, select_llm, known_ids={c["id"] for c in concepts})
         resolved = resolve(concepts_dir, selected, depth=depth, max_cards=max_cards,
-                           max_chars=max_chars)
+                           max_chars=max_chars, corrections=corr_map)
     user = f"KNOWLEDGE CARDS:\n{resolved['bundle']}\n\nQUESTION: {question}"
     answer = answer_llm.complete(_ANSWER_SYS, user) or ""
     return {"answer": answer, "selected_ids": selected,

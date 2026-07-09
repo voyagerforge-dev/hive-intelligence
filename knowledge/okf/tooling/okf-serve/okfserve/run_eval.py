@@ -16,10 +16,15 @@ def main() -> None:
     mode = sys.argv[1] if len(sys.argv) > 1 else "progressive"
     if mode not in ("progressive", "ceiling"):
         raise SystemExit(f"unknown mode {mode!r}; use 'progressive' or 'ceiling'")
+    # optional 2nd arg: qa set — a bare name under data/ (e.g. corrections_qa) or a path.
+    qa_arg = sys.argv[2] if len(sys.argv) > 2 else "wave_replen_qa"
     s = get_settings()
     pkg = Path(__file__).resolve().parents[1]
     concepts = pkg.parents[1] / "concepts"
-    qa = load_qa(pkg / "data" / "wave_replen_qa.jsonl")
+    qa_path = Path(qa_arg)
+    if not qa_path.suffix:
+        qa_path = pkg / "data" / f"{qa_arg}.jsonl"
+    qa = load_qa(qa_path)
     select_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.select_model,
                              timeout_s=s.bifrost_timeout_s)
     answer_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.answer_model,
@@ -32,8 +37,8 @@ def main() -> None:
                    max_chars=s.max_chars)
     out_dir = pkg / ".eval"
     out_dir.mkdir(exist_ok=True)
-    (out_dir / f"report-{mode}.json").write_text(json.dumps(res, indent=2))
-    print(f"mode={mode} aggregate={res['aggregate']}")
+    (out_dir / f"report-{mode}-{qa_path.stem}.json").write_text(json.dumps(res, indent=2))
+    print(f"mode={mode} qa={qa_path.stem} aggregate={res['aggregate']}")
 
 
 if __name__ == "__main__":

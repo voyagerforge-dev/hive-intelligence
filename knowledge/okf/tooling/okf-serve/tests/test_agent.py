@@ -87,3 +87,31 @@ def test_index_text_renders_product_tag():
 
 def test_select_sys_has_product_rule():
     assert "product" in _SELECT_SYS.lower()
+
+
+from okfserve.agent import _ANSWER_SYS
+
+
+def test_answer_sys_has_correction_precedence():
+    s = _ANSWER_SYS.lower()
+    assert "correction" in s and ("authoritative" in s or "override" in s)
+
+
+def test_answer_excludes_corrections_from_selection(tmp_path, monkeypatch):
+    from okfserve import agent
+    (tmp_path / "wms").mkdir(); (tmp_path / "wms" / "corrections").mkdir()
+    (tmp_path / "wms" / "c.md").write_text("---\ntitle: C\ntype: concept\nrelated: []\n---\n\nbody\n")
+    (tmp_path / "wms" / "corrections" / "fix.md").write_text(
+        "---\ntitle: Fix\ntype: correction\ncorrects: wms/c\nstatus: approved\n---\n\n## Correction\n\nfix\n")
+    seen = {}
+    class Sel:
+        def complete(self, system, user):
+            seen["known"] = user
+            return '{"card_ids": ["wms/c"]}'
+    class Ans:
+        def complete(self, system, user): return "ok"
+    res = agent.answer_question(tmp_path, "q?", select_llm=Sel(), answer_llm=Ans())
+    # the correction id must NOT be offered to the selector...
+    assert "wms/corrections/fix" not in seen["known"]
+    # ...but it IS co-pulled into the bundle
+    assert "wms/corrections/fix" in res["bundle_ids"]
