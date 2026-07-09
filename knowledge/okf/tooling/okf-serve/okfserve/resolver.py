@@ -25,7 +25,17 @@ def load_index(concepts_dir) -> list[dict]:
         out.append({"id": cid, "title": fm.get("title", cid),
                     "description": fm.get("description", ""),
                     "regime": fm.get("regime"), "type": fm.get("type", "concept"),
-                    "version": fm.get("version"), "product": fm.get("product")})
+                    "version": fm.get("version"), "product": fm.get("product"),
+                    "corrects": fm.get("corrects"), "status": fm.get("status")})
+    return out
+
+
+def corrections_by_target(index: list[dict]) -> dict[str, list[str]]:
+    """concept id -> active correction ids (type==correction, status==approved)."""
+    out: dict[str, list[str]] = {}
+    for c in index:
+        if c.get("type") == "correction" and c.get("status") == "approved" and c.get("corrects"):
+            out.setdefault(c["corrects"], []).append(c["id"])
     return out
 
 

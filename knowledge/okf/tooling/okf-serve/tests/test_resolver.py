@@ -215,3 +215,27 @@ def test_get_card_rejects_traversal(tmp_path):
     assert get_card(tmp_path, "wms/a") is not None          # valid path-id works
     assert get_card(tmp_path, "../secret") is None           # traversal blocked
     assert get_card(tmp_path, "../../etc/passwd") is None
+
+
+def test_load_index_surfaces_corrects_status(tmp_path):
+    from okfserve.resolver import load_index
+    (tmp_path / "wms").mkdir()
+    (tmp_path / "wms" / "corrections").mkdir()
+    (tmp_path / "wms" / "c.md").write_text("---\ntitle: C\ntype: concept\n---\n\nbody\n")
+    (tmp_path / "wms" / "corrections" / "fix.md").write_text(
+        "---\ntitle: Fix\ntype: correction\ncorrects: wms/c\nstatus: approved\n---\n\n## Correction\n\nx\n")
+    idx = {c["id"]: c for c in load_index(tmp_path)}
+    assert idx["wms/c"]["corrects"] is None
+    assert idx["wms/corrections/fix"]["type"] == "correction"
+    assert idx["wms/corrections/fix"]["corrects"] == "wms/c"
+    assert idx["wms/corrections/fix"]["status"] == "approved"
+
+
+def test_corrections_by_target_active_only():
+    from okfserve.resolver import corrections_by_target
+    index = [
+        {"id": "wms/c", "type": "concept"},
+        {"id": "wms/corrections/a", "type": "correction", "corrects": "wms/c", "status": "approved"},
+        {"id": "wms/corrections/b", "type": "correction", "corrects": "wms/c", "status": "superseded"},
+    ]
+    assert corrections_by_target(index) == {"wms/c": ["wms/corrections/a"]}
