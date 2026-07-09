@@ -35,3 +35,21 @@ def test_parse_issue(tmp_path):
     assert rec["citations"] == ["slotting-slotting-optimization-2020-data-requirements-guide.md"]
     assert rec["supersedes"] == []
     assert rec["status"] == "approved"
+
+
+def test_validate_record_rejects_traversal():
+    import pytest
+    # product ".." from a traversal target must be rejected
+    with pytest.raises(ValueError):
+        mod.validate_record({"corrects": "../../.github/workflows/evil", "product": ".."})
+
+
+def test_validate_record_rejects_unknown_product():
+    import pytest
+    with pytest.raises(ValueError):
+        mod.validate_record({"corrects": "notaproduct/foo", "product": "notaproduct"})
+
+
+def test_validate_record_accepts_valid():
+    # a real product/concept passes cleanly (no raise)
+    mod.validate_record({"corrects": "slotting/data-requirements", "product": "slotting"})

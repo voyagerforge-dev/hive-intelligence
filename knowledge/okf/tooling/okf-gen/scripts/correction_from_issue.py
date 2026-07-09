@@ -8,6 +8,8 @@ from pathlib import Path
 
 from okfgen.corrections import record_to_correction
 
+ALLOWED_PRODUCTS = {"wms", "osci", "slotting", "labour-management"}
+
 
 def _field(body: str, heading: str) -> str:
     m = re.search(rf"(?ms)^###\s*{re.escape(heading)}\s*\n(.*?)(?=\n###|\Z)", body)
@@ -34,12 +36,28 @@ def parse_issue(body: str) -> dict:
 def _slug(t): return re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")[:60]
 
 
+def validate_record(rec: dict) -> None:
+    """Reject records whose corrects/product could escape concepts/<product>/corrections/.
+    Raises ValueError on any unsafe value."""
+    corrects = rec.get("corrects", "")
+    product = rec.get("product", "")
+    if "/" not in corrects:
+        raise ValueError(f"invalid Target concept id '{corrects}': expected '<product>/<concept>'")
+    if product not in ALLOWED_PRODUCTS:
+        raise ValueError(f"unknown product '{product}': must be one of {sorted(ALLOWED_PRODUCTS)}")
+    # defense in depth: no traversal / absolute segments anywhere in the id
+    if ".." in corrects.split("/") or corrects.startswith("/"):
+        raise ValueError(f"unsafe Target concept id '{corrects}'")
+
+
 if __name__ == "__main__":  # pragma: no cover
     body = Path(sys.argv[1]).read_text()
     concepts = sys.argv[2]
     rec = parse_issue(body)
-    if "/" not in rec["corrects"] or not rec["product"]:
-        raise SystemExit(f"invalid Target concept id '{rec['corrects']}': expected '<product>/<concept>'")
+    try:
+        validate_record(rec)
+    except ValueError as e:
+        raise SystemExit(str(e))
     d = Path(concepts) / rec["product"] / "corrections"
     d.mkdir(parents=True, exist_ok=True)
     out = d / f"{_slug(rec['title'])}.md"
