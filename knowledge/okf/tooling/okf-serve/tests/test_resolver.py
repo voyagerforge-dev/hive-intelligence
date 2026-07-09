@@ -239,3 +239,26 @@ def test_corrections_by_target_active_only():
         {"id": "wms/corrections/b", "type": "correction", "corrects": "wms/c", "status": "superseded"},
     ]
     assert corrections_by_target(index) == {"wms/c": ["wms/corrections/a"]}
+
+
+def test_resolve_copulls_active_correction(tmp_path):
+    from okfserve.resolver import resolve
+    (tmp_path / "wms").mkdir(); (tmp_path / "wms" / "corrections").mkdir()
+    (tmp_path / "wms" / "c.md").write_text("---\ntitle: C\ntype: concept\nrelated: []\n---\n\nconcept body\n")
+    (tmp_path / "wms" / "corrections" / "fix.md").write_text(
+        "---\ntitle: Fix\ntype: correction\ncorrects: wms/c\nstatus: approved\n---\n\n## Correction\n\nthe fix\n")
+    res = resolve(tmp_path, ["wms/c"])
+    assert "wms/corrections/fix" in res["card_ids"]
+    assert "the fix" in res["bundle"]
+    assert res["corrections"] == ["wms/corrections/fix"]
+
+
+def test_resolve_ignores_superseded_correction(tmp_path):
+    from okfserve.resolver import resolve
+    (tmp_path / "wms").mkdir(); (tmp_path / "wms" / "corrections").mkdir()
+    (tmp_path / "wms" / "c.md").write_text("---\ntitle: C\ntype: concept\nrelated: []\n---\n\nbody\n")
+    (tmp_path / "wms" / "corrections" / "old.md").write_text(
+        "---\ntitle: Old\ntype: correction\ncorrects: wms/c\nstatus: superseded\n---\n\n## Correction\n\nold\n")
+    res = resolve(tmp_path, ["wms/c"])
+    assert res["corrections"] == []
+    assert "old" not in res["bundle"].split("concept", 1)[-1] or "wms/corrections/old" not in res["card_ids"]

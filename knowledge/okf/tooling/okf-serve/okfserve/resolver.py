@@ -50,7 +50,8 @@ def get_card(concepts_dir, card_id: str) -> str | None:
 
 
 def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
-            max_chars: int | None = None) -> dict:
+            max_chars: int | None = None,
+            corrections: dict[str, list[str]] | None = None) -> dict:
     concepts_dir = Path(concepts_dir)
     selected: list[str] = []
     dropped: list[str] = []
@@ -92,5 +93,15 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
                 kept.append(cid)
                 used += len(text)
         selected = kept
-    bundle = "\n\n---\n\n".join((concepts_dir / f"{c}.md").read_text() for c in selected)
-    return {"card_ids": selected, "bundle": bundle, "dropped": dropped}
+    if corrections is None:
+        corrections = corrections_by_target(load_index(concepts_dir))
+    correction_ids: list[str] = []
+    for cid in selected:
+        for corr in corrections.get(cid, []):
+            if corr in selected or corr in correction_ids:
+                continue
+            if (concepts_dir / f"{corr}.md").exists():
+                correction_ids.append(corr)
+    all_ids = selected + correction_ids
+    bundle = "\n\n---\n\n".join((concepts_dir / f"{c}.md").read_text() for c in all_ids)
+    return {"card_ids": all_ids, "bundle": bundle, "dropped": dropped, "corrections": correction_ids}
