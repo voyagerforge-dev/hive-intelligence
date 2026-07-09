@@ -6,13 +6,16 @@
 > came to be and how it runs end to end. Diagrams are [Mermaid](https://mermaid.js.org/)
 > and render inline on GitHub.
 
-> **Currency note (2026-07-09).** This doc's three-stage spine (prep → cards → serve) still holds, but
-> the pipeline has since grown to **4 Manhattan products** (WMOS + oSCI + Slotting + Labour Management,
-> 990 cards) and changed shape in three ways the sections below now reflect: (1) cards are **namespaced
-> into per-product folders** with **path-ids** (`concepts/<product>/<id>.md`, id = the path); (2) a
-> **post-promote step** (facets → conformance → index — the *"Stage 5"* in run-order) sits between card
-> creation and serving (see the new subsection at the end of §4); (3) a **product-isolation eval gates
-> every deploy**. Full history + lessons: memory `project_okf_osci_distillation.md`; PRs #9–#13.
+> **Currency note (2026-07-10).** This doc's three-stage spine (prep → cards → serve) still holds, but
+> the pipeline has since grown to **4 Manhattan products** (WMOS 832 + oSCI 60 + Slotting 34 + Labour
+> Management 64 = **990 concept cards**, plus a **corrections overlay** — 991 cards total live) and changed
+> shape in four ways the sections below now reflect: (1) cards are **namespaced into per-product folders**
+> with **path-ids** (`concepts/<product>/<id>.md`, id = the path); (2) a **post-promote step** (facets →
+> conformance → index — the *"Stage 5"* in run-order) sits between card creation and serving (see the
+> subsection near the end of §4); (3) a **product-isolation eval gates every deploy**; (4) a **corrections
+> layer** (Spec 2) overlays wrong/stale concept cards with `type: correction` cards that co-pull at query
+> time without editing the original (see *"The corrections layer"* in §4). Full history + lessons: memory
+> `project_okf_knowledge.md` + `project_okf_osci_distillation.md`; PRs #9–#15.
 
 ---
 
@@ -235,7 +238,7 @@ one card per concept.
 
 ```mermaid
 flowchart TD
-    atomic[("atomic markdown<br/>ATOMIC_DIR")] --> load["load → [Doc]<br/><i>is_wave_replen() slice filter</i>"]
+    atomic[("atomic markdown<br/>ATOMIC_DIR")] --> load["load → [Doc]<br/><i>AREAS / SLICE_AREA slice filter</i>"]
     load --> tax["propose_taxonomy (minimax-m3)<br/>→ taxonomy.draft.yaml"]
     tax --> g1{{"🚦 GATE 1<br/>edit → taxonomy.yaml"}}
     g1 --> assign["assign_docs (deepseek-v4-flash)<br/>each doc → one concept, or 'exclude'"]
@@ -248,9 +251,12 @@ flowchart TD
 ```
 
 - **Load** (`load.py`) reads atomic markdown into a source-agnostic `Doc {id, name, text}`. The
-  `is_wave_replen()` keyword filter is the **slice lever** — it currently keeps only the ~100
-  wave/replenishment docs (→ the 67 cards that exist today). Widening it opens the pipeline to the
-  full 1,239-doc corpus.
+  **slice lever** is the `AREAS` registry + the `SLICE_AREA` env var: distillation runs one functional
+  *area* at a time (topic → area map), so the corpus is built area-by-area and product-by-product rather
+  than all at once. (The original single-slice `is_wave_replen()` keyword filter is retained but
+  `# Legacy` — the very first wave/replen build used it; `AREAS`/`SLICE_AREA` replaced it.) All four
+  products — WMOS, oSCI, Slotting, Labour Management — were distilled this way; **990 concept cards exist
+  today** across `concepts/<product>/`.
 - **Taxonomy** (`taxonomy.py`) asks the model for a fine-grained list of concepts → `taxonomy.yaml`
   (Gate 1: you curate *what concepts exist*).
 - **Assign** (`assign.py`) classifies each doc into exactly one concept, or `exclude`.
@@ -307,12 +313,16 @@ The card lives at **`concepts/<product>/<id>.md`** and its **concept ID is that 
 
 | File | Job |
 |---|---|
-| `load.py` | Read atomic markdown (local) or R2 into `Doc`s; the `is_wave_replen()` slice filter (the only source-aware module). |
-| `taxonomy.py` | Propose a concept taxonomy from the doc inventory (LLM) → `taxonomy.yaml`. |
+| `load.py` | Read atomic markdown (local) or R2 into `Doc`s; the `AREAS`/`SLICE_AREA` slice filter (source-aware). Retains a `# Legacy` `is_wave_replen()`. |
+| `taxonomy.py` | Propose a per-area concept taxonomy from the doc inventory (LLM) → `taxonomy.<area>.yaml`. |
 | `assign.py` | Classify each doc into exactly one concept id, or `exclude`. |
 | `card.py` | Distill a concept + its assigned docs → one OKF card (frontmatter + prose); constrains `related` to real ids. |
-| `promote.py` | Validate frontmatter + cross-links; move approved drafts → `concepts/`. |
-| `run.py` | Gate-aware orchestrator + entrypoint (taxonomy → assign+distill → drafts). |
+| `promote.py` | Validate frontmatter + cross-links; move approved drafts → `concepts/<product>/`. |
+| `facets.py` | Idempotent stamp/read of the `product`/`platform`/`version`/`regime` facets; cross-facet lint. |
+| `classify_regime.py` | LLM regime proposer (ops vs. traditional), human-gated, fail-safe — the batch classifier kept for future automation. |
+| `retopic.py` | Re-map/merge concepts across a taxonomy revision (area re-slicing without a full re-distill). |
+| `corrections.py` | The pure `record ⇄ correction-card` serialization seam (Spec 2) — feeds both the CLI and the GitHub Action. |
+| `run.py` | Gate-aware orchestrator + entrypoint (taxonomy → assign+distill → drafts), area-scoped via `SLICE_AREA`. |
 | `llm.py` | `BifrostChat` (OpenAI-compatible client, bounded retry) + `extract_json` (strips `<think>` reasoning, pulls JSON). |
 | `config.py` | Settings: source (`ATOMIC_DIR` wins, else R2), Bifrost base/key, the three model slots, timeouts. |
 
@@ -324,9 +334,13 @@ first-class pipeline step — run it after every distillation, for any product:
 
 | Step | Script | What it does |
 |---|---|---|
-| **1. Facet stamp** | `okf-gen/scripts/product_facet_apply.py <concepts> <atomic> <product> <platform>` | Stamps `product` + `platform` + `version` (union of the card's source-doc folder-years) onto the product's cards. |
+| **1. Facet stamp** | `okf-gen/scripts/product_facet_apply.py <concepts> <atomic> <product> <platform>` (oSCI uses `osci_facet_apply.py`) | Stamps `product` + `platform` + `version` (union of the card's source-doc folder-years) onto the product's cards. |
+| **1b. Version facet** | `okf-gen/scripts/version_apply.py <concepts>` | Deterministically derives `version` (release scope) from source-ref years — no LLM, no gate. Soft filter-with-fallback (no `resolve()` guard). |
+| **1c. Regime facet** | `okf-gen/scripts/regime_apply.py <concepts>` (proposals from `regime_classify.py`) | Stamps `regime` (ops vs. traditional, within-product either-or) from a human-reviewed classification; drives the cross-regime `resolve()` expansion guard. |
 | **2. Conformance pass** | `okf-gen/scripts/conformance_pass.py <concepts>` | Sets `resource` → served-card URI; adds the OKF-recommended `timestamp`; regenerates `## Related` (bundle-relative markdown links, from `related:`) and `# Citations` (from `sources:`) body sections. |
-| **3. Index generation** | `okf-gen/scripts/index_generate.py <concepts>` | Writes the root `index.md` (`okf_version: "0.1"` frontmatter) + per-product `index.md` progressive-disclosure listings. |
+| **3. Index generation** | `okf-gen/scripts/index_generate.py <concepts>` | Writes the root `index.md` (`okf_version: "0.1"` frontmatter) + per-product `index.md` progressive-disclosure listings (concepts only — corrections excluded). |
+
+(The facet scripts are all **idempotent + LLM-free**; `version`/`regime` are optional per product — a product ships with `product`/`platform` always, `version`/`regime` where the source supports them.)
 
 Why it exists: it takes the corpus from *formally* OKF-conformant (parseable frontmatter + non-empty
 `type`) to *idiomatically* conformant — path-id identity, a graph expressed as inline bundle-relative
@@ -337,6 +351,39 @@ script against the spec text.)
 
 **Isolation eval = the deploy gate.** Before deploy, `okf-serve/run_eval` over `data/<product>_product_qa.jsonl`
 must show **0 cross-product bleed** (plus no regime/version regression). No product ships without it.
+
+### The corrections layer (Spec 2)
+
+A concept card can be **wrong or stale** without anyone wanting to edit the distilled prose (it's a
+reviewed artifact, and edits lose the "what the source said" provenance). The corrections layer fixes this
+with an **overlay**: a *correction* is an ordinary OKF card at `concepts/<product>/corrections/<slug>.md`
+with `type: correction` and `corrects: <path-id>` pointing at the concept it amends.
+
+- **Surface-don't-resolve.** `okf-serve`'s `resolve()` reverse-looks-up the **active** corrections
+  (`type: correction` **and** `status: approved`) of every selected concept and **co-pulls** them into the
+  answer bundle *after* the concept's own BFS/budget — intentionally **unbudgeted** (a correction is never
+  dropped, or the wrong fact would stand). The answer prompt treats a correction as **authoritative**.
+- **Never selected, never listed.** Corrections are excluded from the selectable index (`list_concepts` +
+  the agent selector) and from per-product `index.md` listings — they only ride along with their target.
+- **Supersede, don't delete.** A newer correction can `supersedes:` older ones, flipping them to
+  `status: superseded` (kept in git for history). Conflicts (>1 active correction on one concept) are a
+  **lint warning** for human resolution, not an auto-merge.
+- **Authoring is GitHub-native.** Two entry points feed one **pure `record ⇄ card` seam**
+  (`okfgen/corrections.py`): a CLI (`scripts/new_correction.py`) and an **Issue Form → Action**
+  (`.github/ISSUE_TEMPLATE/correction.yml` → `.github/workflows/correction-from-issue.yml`, fires on label
+  `okf-correction-approved` → opens a PR). `CODEOWNERS` routes each product's corrections dir to the owner;
+  `scripts/corrections_lint.py` (+ the `corrections-lint` CI workflow) gates dangling targets, bad
+  supersedes, status inconsistency, and conflicts.
+
+| Script / file | Job |
+|---|---|
+| `okf-gen/okfgen/corrections.py` | Pure `record_to_correction` / `correction_to_record` seam (shared by CLI + Action). |
+| `okf-gen/scripts/new_correction.py` | CLI: scaffold a `status: draft` correction card under `concepts/<product>/corrections/`. |
+| `okf-gen/scripts/correction_from_issue.py` | Parse a Correction Issue-Form body → record → card (product allowlist-guarded against path traversal). |
+| `okf-gen/scripts/corrections_lint.py` | Lint: dangling `corrects`, bad `supersedes`, status inconsistency, >1-active conflict warning. |
+
+Design + acceptance: `docs/superpowers/specs/2026-07-09-okf-corrections-layer-design.md`. Shipped in PR #15;
+verified live (a seeded correction on `slotting/data-requirements` co-pulls and overrides at query time).
 
 ---
 
@@ -388,7 +435,7 @@ The universal HTTP face (auto-generated OpenAPI at `/docs`). Read-only in v1.
 | `GET` | `/healthz` | liveness |
 | `GET` | `/concepts` | the card index `[{id, title, description}]` |
 | `GET` | `/card/{id}` | one card's markdown (404 if missing) |
-| `POST`| `/resolve` | `{ids, depth}` → a bundle of cards + their cross-linked neighbours |
+| `POST`| `/resolve` | `{ids, depth}` → a bundle of cards + their cross-linked neighbours, **plus any active corrections** of the selected concepts (co-pulled, authoritative) |
 
 ### Door 2 — MCP (`mcp_app.py`)
 
@@ -557,8 +604,12 @@ Every code file in the pipeline and its one-line job.
 — see the [okf-prep file map](#okf-prep-file-map).
 
 ### `tooling/okf-gen/okfgen/` — Stage 2, card creation
-`load.py` · `taxonomy.py` · `assign.py` · `card.py` · `promote.py` · `run.py` · `llm.py` ·
-`config.py` — see the [okfgen file map](#okfgen-file-map).
+`load.py` · `taxonomy.py` · `assign.py` · `card.py` · `promote.py` · `facets.py` · `classify_regime.py` ·
+`retopic.py` · `corrections.py` · `run.py` · `llm.py` · `config.py` — see the [okfgen file map](#okfgen-file-map).
+Post-promote + authoring scripts live in `tooling/okf-gen/scripts/` (`product_facet_apply.py` ·
+`osci_facet_apply.py` · `version_apply.py` · `regime_apply.py` · `regime_classify.py` ·
+`conformance_pass.py` · `index_generate.py` · `new_correction.py` · `correction_from_issue.py` ·
+`corrections_lint.py` · `run_pipeline.sh`).
 
 ### `tooling/okf-serve/okfserve/` — Stage 3, serving
 `resolver.py` · `tools.py` · `ledger.py` · `identity.py` · `prompts.py` · `app.py` · `mcp_app.py` ·
@@ -568,11 +619,14 @@ Every code file in the pipeline and its one-line job.
 ### Data & config (git-tracked)
 | Path | Role |
 |---|---|
-| `sources/wms-atomic/docs/*.md` | The atomic-markdown corpus (Stage 1 output, Stage 2 input). |
-| `sources/wms-atomic/_curation/` | The curation judgment (`wms-curation.yaml`, `relations.yaml`, `dups.yaml`, …). |
-| `taxonomy.yaml` | The approved concept taxonomy (Stage 2 Gate 1). |
-| `drafts/*.md` | Distilled cards awaiting approval (Stage 2 Gate 2). |
-| `concepts/*.md` | **The canonical concept cards** (the knowledge store). |
+| `sources/wms-atomic/docs/*.md` | The WMS atomic-markdown corpus (Stage 1 output, Stage 2 input). |
+| `sources/wms-atomic/_curation/` | The WMS curation judgment (`wms-curation.yaml`, `relations.yaml`, `dups.yaml`, …). |
+| `tooling/okf-prep/{osci,slotting,lm}-curation.yaml` | The curation judgment for the 3 later products (oSCI/Slotting/LM). |
+| `taxonomy.<area>.yaml` | The approved per-area concept taxonomies (Stage 2 Gate 1). Draft proposals are gitignored scratch. |
+| `regime-classification.yaml` | The human-reviewed regime labels (WMS), applied by `regime_apply.py`. |
+| `drafts/*.md` | Distilled cards awaiting approval (Stage 2 Gate 2) — gitignored scratch. |
+| `concepts/<product>/*.md` | **The canonical concept cards** (the knowledge store). |
+| `concepts/<product>/corrections/*.md` | **Correction overlay cards** (Spec 2) — co-pulled, never independently listed. |
 | `.claude/agents/wms-curator.md` | The curation subagent. |
 | `.claude/commands/wms-prep.md` | The `/wms-prep` orchestration command. |
 | `docs/runbooks/*.md` | Operator runbooks (doc-prep e2e; okf-serve Authentik deploy). |
@@ -691,8 +745,9 @@ All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev
 
 ---
 
-*This document describes the system as of the OKF-conformance merge (2026-07-09; PRs #9–#13): 4 products,
-per-product folders with path-ids, post-promote facets/conformance/index, isolation-gated deploys. The
-three packages live under `tooling/`; the knowledge lives in `concepts/<product>/`; the work state lives
-in a single SQLite file.
+*This document describes the system as of the corrections-layer merge (2026-07-10; PRs #9–#15): 4 products
+(990 concept cards + a corrections overlay = 991 live), per-product folders with path-ids, post-promote
+facets/conformance/index, isolation-gated deploys, and a `type: correction` overlay that co-pulls at query
+time. The three packages live under `tooling/`; the knowledge lives in `concepts/<product>/`; the work
+state lives in a single SQLite file.
 Small, simple, sovereign.*
