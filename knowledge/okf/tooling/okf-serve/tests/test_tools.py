@@ -20,7 +20,29 @@ def test_list_concepts(tmp_path):
     idx = tools.list_concepts(d)
     assert idx == [{"id": "wave-replen", "title": "Wave Replen",
                     "description": "how replen feeds waves", "regime": None,
-                    "type": "concept", "version": None, "product": None}]
+                    "type": "concept", "version": None, "product": None,
+                    "corrects": None, "status": None}]
+
+
+def test_list_concepts_excludes_corrections(tmp_path):
+    (tmp_path / "wave-replen.md").write_text(CARD)
+    correction_dir = tmp_path / "corrections"
+    correction_dir.mkdir()
+    correction_dir.joinpath("wave-replen-fix.md").write_text("""---
+title: Wave Replen Fix
+description: correction to replen feeding
+related: []
+sources: [wms.md]
+type: correction
+corrects: wave-replen
+status: approved
+---
+Corrected body text.
+""")
+    idx = tools.list_concepts(tmp_path)
+    ids = [c["id"] for c in idx]
+    assert "wave-replen" in ids
+    assert "corrections/wave-replen-fix" not in ids
 
 
 def test_get_card_text_present_and_missing(tmp_path):

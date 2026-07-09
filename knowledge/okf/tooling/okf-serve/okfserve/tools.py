@@ -5,7 +5,7 @@ from okfserve.resolver import get_card, load_index, resolve
 
 
 def list_concepts(concepts_dir) -> list[dict]:
-    return load_index(concepts_dir)
+    return [c for c in load_index(concepts_dir) if c.get("type") != "correction"]
 
 
 def get_card_text(concepts_dir, card_id: str) -> str:
