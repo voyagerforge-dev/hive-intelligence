@@ -38,6 +38,8 @@ if __name__ == "__main__":  # pragma: no cover
     body = Path(sys.argv[1]).read_text()
     concepts = sys.argv[2]
     rec = parse_issue(body)
+    if "/" not in rec["corrects"] or not rec["product"]:
+        raise SystemExit(f"invalid Target concept id '{rec['corrects']}': expected '<product>/<concept>'")
     d = Path(concepts) / rec["product"] / "corrections"
     d.mkdir(parents=True, exist_ok=True)
     out = d / f"{_slug(rec['title'])}.md"
