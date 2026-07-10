@@ -657,9 +657,9 @@ flowchart TB
     subgraph host-a["Host-A · hive-host.internal"]
         bifrost["Bifrost :4001<br/>VK_OKF → minimax-m3 / deepseek-v4-flash"]
         docling["Docling (GPU)<br/>text tier"]
-        checkout["cards checkout<br/>(operator: git pull)"]
+        checkout["cards checkout<br/>(Windmill cards_sync:<br/>git pull /15min)"]
         serve["okf-serve --http<br/>REST + /mcp"]
-        authentik["Authentik<br/>OAuth gate"]
+        authentik["CF Access OAuth gate<br/>(Authentik = alt)"]
         sqlite[("objectives.db<br/>SQLite ledger")]
     end
 
@@ -687,8 +687,10 @@ flowchart TB
 **Reading it:** content creation (Stages 1–2) runs on the **dev box**, calling the sovereign models
 on **Host-A** (Bifrost, Docling) and **Host-D** (Qwen); its output is committed to **git** and pushed to
 **GitHub**, with the atomic corpus mirrored to **R2**. Serving (Stage 3) runs on **Host-A** from a
-cards checkout the operator keeps current with `git pull` (no redeploy for content updates); the team
-reaches it through **Authentik**, which injects the identity header the ledger keys work on.
+cards checkout kept current by the Windmill `f/example/okf/cards_sync` schedule (git pull every 15 min;
+no redeploy for content updates); the team reaches it through the **Cloudflare Access** gate (keyless
+OAuth — the live deploy; Authentik is a self-hosted alternative), which injects the identity header
+(`Remote-Email`) the ledger keys work on.
 
 ---
 
