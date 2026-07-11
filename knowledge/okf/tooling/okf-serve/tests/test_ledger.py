@@ -171,3 +171,24 @@ def test_promotion_record_shape(tmp_path):
         "external_ref": {"provider": "zendesk", "id": "1421"},
         "submitted_by": "alice", "status": "approved",
     }
+
+
+def test_promote_memory_guards(tmp_path):
+    c = _conn(tmp_path)
+    assert ledger.promote_memory(c, owner="alice", memory_id="nope") == {"error": "not_found"}
+    m0 = ledger.remember(c, owner="alice", text="no client note")
+    assert ledger.promote_memory(c, owner="alice", memory_id=m0["id"]) == {"error": "client_required"}
+    assert ledger.get_memory(c, owner="alice", memory_id=m0["id"])["visibility"] == "private"
+    m1 = ledger.remember(c, owner="alice", text="alpha note", tags=["alpha"],
+                         card_ids=["wms/pick-confirm"], client="alpha")
+    out = ledger.promote_memory(c, owner="alice", memory_id=m1["id"])
+    assert out["memory_id"] == m1["id"]
+    assert out["record"]["client"] == "alpha" and out["record"]["submitted_by"] == "alice"
+    assert ledger.get_memory(c, owner="alice",
+                            memory_id=m1["id"])["visibility"] == "promotion_requested"
+
+
+def test_promote_memory_owner_scoped(tmp_path):
+    c = _conn(tmp_path)
+    m = ledger.remember(c, owner="alice", text="alpha", client="alpha")
+    assert ledger.promote_memory(c, owner="bob", memory_id=m["id"]) == {"error": "not_found"}

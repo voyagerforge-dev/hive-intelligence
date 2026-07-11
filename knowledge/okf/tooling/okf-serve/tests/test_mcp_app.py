@@ -33,24 +33,3 @@ def test_owner_from_ctx_defaults_without_request(tmp_path):
 
     s = Settings()
     assert owner_from_ctx(_Ctx(), s) == s.okf_default_owner
-
-
-def test_promote_requires_client(tmp_path):
-    from okfserve import ledger
-
-    db = tmp_path / "obj.db"
-    with ledger.session(db) as conn:
-        no_client = ledger.remember(conn, owner="alice", text="note")
-        with_client = ledger.remember(conn, owner="alice", text="alpha note", client="alpha")
-
-    # client-less memory has no client -> promote guard must refuse
-    with ledger.session(db) as conn:
-        assert ledger.get_memory(conn, owner="alice", memory_id=no_client["id"])["client"] is None
-        m = ledger.get_memory(conn, owner="alice", memory_id=with_client["id"])
-        ledger.set_memory_visibility(conn, owner="alice", memory_id=m["id"],
-                                     visibility="promotion_requested")
-        rec = ledger.promotion_record(m, owner="alice")
-    assert rec["client"] == "alpha" and rec["submitted_by"] == "alice"
-    with ledger.session(db) as conn:
-        assert ledger.get_memory(conn, owner="alice",
-                                 memory_id=with_client["id"])["visibility"] == "promotion_requested"

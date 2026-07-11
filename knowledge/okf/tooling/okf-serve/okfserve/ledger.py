@@ -227,3 +227,15 @@ def promotion_record(memory: dict, owner: str) -> dict:
         "external_ref": memory.get("external_ref"),
         "submitted_by": owner, "status": "approved",
     }
+
+
+def promote_memory(conn, *, owner, memory_id) -> dict:
+    """Guarded promotion prep: returns an error dict, or flips the row to
+    promotion_requested and returns {memory_id, record}. Requires a client."""
+    m = get_memory(conn, owner=owner, memory_id=memory_id)
+    if m is None:
+        return {"error": "not_found"}
+    if not m.get("client"):
+        return {"error": "client_required"}
+    set_memory_visibility(conn, owner=owner, memory_id=memory_id, visibility="promotion_requested")
+    return {"memory_id": memory_id, "record": promotion_record(m, owner)}
