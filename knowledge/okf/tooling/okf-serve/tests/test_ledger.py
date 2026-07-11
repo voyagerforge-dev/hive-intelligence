@@ -49,3 +49,25 @@ def test_external_ref_roundtrip(tmp_path):
     ref = {"provider": "zendesk", "id": "123", "url": "http://z/123"}
     o = ledger.start_objective(c, owner="a", mode="investigate", goal="x", external_ref=ref)
     assert ledger.get_objective(c, owner="a", objective_id=o["id"])["external_ref"] == ref
+
+
+def test_memory_remember_roundtrip(tmp_path):
+    c = _conn(tmp_path)
+    m = ledger.remember(c, owner="alice", text="ALPHA pick-confirm needs a second scan",
+                        tags=["alpha", "pick-confirm"], card_ids=["wms/pick-confirm"],
+                        external_ref={"provider": "zendesk", "id": "1421"}, client="alpha")
+    assert m["owner"] == "alice" and m["client"] == "alpha"
+    assert m["text"] == "ALPHA pick-confirm needs a second scan"
+    assert m["tags"] == ["alpha", "pick-confirm"]
+    assert m["card_ids"] == ["wms/pick-confirm"]
+    assert m["external_ref"] == {"provider": "zendesk", "id": "1421"}
+    assert m["visibility"] == "private"
+    got = ledger.get_memory(c, owner="alice", memory_id=m["id"])
+    assert got == m
+
+
+def test_memory_defaults_minimal(tmp_path):
+    c = _conn(tmp_path)
+    m = ledger.remember(c, owner="alice", text="a bare note")
+    assert m["tags"] == [] and m["card_ids"] == [] and m["external_ref"] is None
+    assert m["client"] is None and m["visibility"] == "private"
