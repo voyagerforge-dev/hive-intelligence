@@ -1,21 +1,18 @@
-# OKF — The Organizational Knowledge Fabric, End to End
+# OKF — Architecture & Concepts
 
-> **What this page is.** A single, self-contained explainer of how OKF works from a raw
-> vendor document all the way to a grounded answer inside Claude — the *why*, the *flow*,
-> and the *code*. It is meant for you and for anyone who needs to understand how this piece
-> came to be and how it runs end to end. Diagrams are [Mermaid](https://mermaid.js.org/)
-> and render inline on GitHub.
+*For anyone who needs to understand how OKF works, end to end — from a raw vendor document to a
+grounded answer inside Claude. This is the conceptual reference: the model, the pipeline, the
+serving layer, and the design decisions behind them. Diagrams are [Mermaid](https://mermaid.js.org/)
+and render inline on GitHub.*
 
-> **Currency note (2026-07-10).** This doc's three-stage spine (prep → cards → serve) still holds, but
-> the pipeline has since grown to **4 Manhattan products** (WMOS 832 + oSCI 60 + Slotting 34 + Labour
-> Management 64 = **990 concept cards**, plus a **corrections overlay** — 991 cards total live) and changed
-> shape in four ways the sections below now reflect: (1) cards are **namespaced into per-product folders**
-> with **path-ids** (`concepts/<product>/<id>.md`, id = the path); (2) a **post-promote step** (facets →
-> conformance → index — the *"Stage 5"* in run-order) sits between card creation and serving (see the
-> subsection near the end of §4); (3) a **product-isolation eval gates every deploy**; (4) a **corrections
-> layer** (Spec 2) overlays wrong/stale concept cards with `type: correction` cards that co-pull at query
-> time without editing the original (see *"The corrections layer"* in §4). Full history + lessons: memory
-> `project_okf_knowledge.md` + `project_okf_osci_distillation.md`; PRs #9–#15.
+**OKF docs:** [Overview](../README.md) · **Architecture & Concepts** (you are here) · [Guide: Prepare a corpus](runbooks/wms-prep-e2e.md) · [Operations: Deploy](../tooling/okf-serve/deploy/README.md)
+
+> **Scope.** This document describes OKF as of the corrections-layer merge (2026-07-10, PRs #9–#15):
+> four products — WMOS (832), oSCI (60), Slotting (34), Labour Management (64) = **990 concept cards**,
+> plus a **corrections overlay** (991 total). Cards are namespaced into per-product folders with
+> path-ids (`concepts/<product>/<id>.md`); a post-promote step (facets → conformance → index) sits
+> between card creation and serving; a product-isolation eval gates every deploy; and a corrections
+> layer (Spec 2) overlays stale cards without editing them. These are all covered below.
 
 ---
 
@@ -48,29 +45,29 @@ into one pipeline:
 
 ```mermaid
 flowchart LR
-    raw["📄 Raw WMS docs<br/>PDF · DOCX · PPTX · XLSX"]
+    raw["Raw WMS docs<br/>PDF · DOCX · PPTX · XLSX"]
 
     subgraph P["① okf-prep — doc prep"]
         direction TB
         p1[curate + convert]
     end
 
-    atomic[("🧱 Atomic markdown<br/>sources/wms-atomic/docs/*.md")]
+    atomic[("Atomic markdown<br/>sources/wms-atomic/docs/*.md")]
 
     subgraph G["② okfgen — card creation"]
         direction TB
         g1[taxonomy → distill]
     end
 
-    cards[("🗂️ Concept cards<br/>concepts/*.md — git")]
+    cards[("Concept cards<br/>concepts/*.md — git")]
 
     subgraph S["③ okf-serve — serving"]
         direction TB
         s1[REST door · MCP door]
     end
 
-    claude["🧑‍💻 Claude Desktop / Claude Code<br/>(the agent loop)"]
-    ledger[("🗃️ SQLite objective ledger<br/>per-owner work state")]
+    claude["Claude Desktop / Claude Code<br/>(the agent loop)"]
+    ledger[("SQLite objective ledger<br/>per-owner work state")]
 
     raw --> P --> atomic --> G --> cards --> S --> claude
     S <-->|read cards| cards
@@ -96,7 +93,7 @@ during content creation (Stages 1 and 2), on the firm's own gateway.
 
 ## 2. Design principles
 
-These are the "banked decisions" the whole system is built on:
+The whole system is built on these core decisions:
 
 | Principle | What it means in practice |
 |---|---|
@@ -122,20 +119,20 @@ the [`/wms-prep`](../.claude/commands/wms-prep.md) command; the operational runb
 
 The governing idea: **put the intelligence up front in one reviewable file, then let
 deterministic code do the rest.** A single LLM "curation" pass decides *what to keep and how to
-label it*; everything after is repeatable code. There are **two review gates** (🚦) where a human
+label it*; everything after is repeatable code. There are **two review gates** () where a human
 must approve.
 
 ```mermaid
 flowchart TD
     raw["Raw docs subtree"] --> scan["scan → inventory.csv<br/><i>deterministic</i>"]
     scan --> dups["dups → dups.yaml<br/><i>SHA-256 byte-identical groups</i>"]
-    dups --> curate["🧠 wms-curator agent<br/>→ wms-curation.yaml<br/><i>include/exclude + labels</i>"]
+    dups --> curate["wms-curator agent<br/>→ wms-curation.yaml<br/><i>include/exclude + labels</i>"]
     curate --> vplan["validate-plan<br/><i>enum + path checks</i>"]
-    vplan --> gate1{{"🚦 GATE 1<br/>review the plan"}}
+    vplan --> gate1{{"GATE 1<br/>review the plan"}}
     gate1 --> dedup["dedup-formats<br/><i>collapse .doc/.docx variants</i>"]
     dedup --> norm["normalize → PDF<br/><i>LibreOffice; strike-trim .docx</i>"]
     norm --> route["route<br/><i>GPU-free tier precheck</i>"]
-    route --> gate2{{"🚦 GATE 2<br/>review text/vision/passthrough tally"}}
+    route --> gate2{{"GATE 2<br/>review text/vision/passthrough tally"}}
     gate2 --> transform["transform → strip boilerplate → atomic/*.md"]
     transform --> stamp["stamp<br/><i>platform/product/version/doc_type</i>"]
     stamp --> vatomic["validate-atomic<br/><i>slugs/enums/relations</i>"]
@@ -154,9 +151,9 @@ flowchart TD
 
 | Actor | Good at | Where |
 |---|---|---|
-| 🧠 **LLM** (Claude / the `wms-curator` agent) | judgment, reading content | **curate** (what to keep + how to label) |
-| ⚙️ **Deterministic code** | repeatable, free | scan, dups, validate, dedup, normalize, transform, stamp |
-| 👤 **You** | approval, accountability | the two review gates |
+| **LLM** (Claude / the `wms-curator` agent) | judgment, reading content | **curate** (what to keep + how to label) |
+| **Deterministic code** | repeatable, free | scan, dups, validate, dedup, normalize, transform, stamp |
+| **You** | approval, accountability | the two review gates |
 
 ### The converter, in detail
 
@@ -240,13 +237,13 @@ one card per concept.
 flowchart TD
     atomic[("atomic markdown<br/>ATOMIC_DIR")] --> load["load → [Doc]<br/><i>AREAS / SLICE_AREA slice filter</i>"]
     load --> tax["propose_taxonomy (minimax-m3)<br/>→ taxonomy.draft.yaml"]
-    tax --> g1{{"🚦 GATE 1<br/>edit → taxonomy.yaml"}}
+    tax --> g1{{"GATE 1<br/>edit → taxonomy.yaml"}}
     g1 --> assign["assign_docs (deepseek-v4-flash)<br/>each doc → one concept, or 'exclude'"]
     assign --> distill["distill_concept (minimax-m3)<br/>concept + its docs → one card"]
     distill --> drafts[("drafts/*.md<br/>status: draft")]
-    drafts --> g2{{"🚦 GATE 2<br/>review, flip status: approved"}}
+    drafts --> g2{{"GATE 2<br/>review, flip status: approved"}}
     g2 --> promote["promote<br/><i>validate frontmatter + cross-links</i>"]
-    promote --> g3{{"🚦 GATE 3<br/>only approved + valid land"}}
+    promote --> g3{{"GATE 3<br/>only approved + valid land"}}
     g3 --> cards[("concepts/*.md — git")]
 ```
 
@@ -542,7 +539,7 @@ and [`tooling/okf-serve/deploy/README.md`](../tooling/okf-serve/deploy/README.md
 
 ## 6. The two stores: knowledge vs. work state
 
-The cleanest way to hold the whole system in your head:
+A simple way to hold the whole system in mind:
 
 ```mermaid
 flowchart LR
@@ -650,10 +647,10 @@ Where each piece runs, and how the model calls, git, and connectors flow across 
 
 ```mermaid
 flowchart TB
-    team["🧑‍💻 Team<br/>Claude Desktop"]
-    op["🧑‍💻 Operator<br/>Claude Code"]
+    team["Team<br/>Claude Desktop"]
+    op["Operator<br/>Claude Code"]
 
-    subgraph dev["🖥️ dev box (dev-box)"]
+    subgraph dev["dev box (dev-box)"]
         prep["okf-prep"]
         gen["okfgen"]
         repo["git working tree<br/>tooling/ · concepts/ · sources/"]
@@ -672,8 +669,8 @@ flowchart TB
         qwen["Qwen3.6-27B (vLLM)<br/>vision tier"]
     end
 
-    gh["☁️ GitHub<br/>cards + corpus"]
-    r2["☁️ R2<br/>atomic-corpus backup"]
+    gh["GitHub<br/>cards + corpus"]
+    r2["R2<br/>atomic-corpus backup"]
 
     prep -->|"convert (text)"| docling
     prep -->|"figures / scans"| qwen
@@ -706,8 +703,8 @@ OAuth — the live deploy; Authentik is a self-hosted alternative), which inject
 cd tooling/okf-prep && uv sync --extra dev
 #   configure .env: CORPUS_ROOT, DOCLING_BASE(+auth), QWEN_BASE, QWEN_MODEL
 #   then, in Claude Code, run the orchestration:  /wms-prep <subtree> <work_dir>
-#   (scan → dups → wms-curator → validate-plan → 🚦 → dedup → normalize →
-#    route → 🚦 → transform → stamp → validate-atomic)
+#   (scan → dups → wms-curator → validate-plan → → dedup → normalize →
+#    route → → transform → stamp → validate-atomic)
 
 # ── Stage 2: atomic markdown → concept cards (3 gates) ──────────────────
 cd tooling/okf-gen && uv sync --extra dev
@@ -739,7 +736,7 @@ All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev
 
 | Term | Meaning |
 |---|---|
-| **OKF** | Organizational Knowledge Fabric — this whole system. |
+| **OKF** | Open Knowledge Format — this system. |
 | **WMS / WMOS** | Manhattan Warehouse Management System; WMOS = WMS-on-SCPP. The domain. |
 | **Atomic markdown** | One clean, single-topic markdown file per source doc, with metadata frontmatter. Stage 1 output. |
 | **Concept card** | A reusable, cross-linked knowledge card distilled from atomic docs. Stage 2 output; the unit of knowledge. |
@@ -753,9 +750,9 @@ All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev
 
 ---
 
-*This document describes the system as of the corrections-layer merge (2026-07-10; PRs #9–#15): 4 products
-(990 concept cards + a corrections overlay = 991 live), per-product folders with path-ids, post-promote
-facets/conformance/index, isolation-gated deploys, and a `type: correction` overlay that co-pulls at query
-time. The three packages live under `tooling/`; the knowledge lives in `concepts/<product>/`; the work
-state lives in a single SQLite file.
-Small, simple, sovereign.*
+## See also
+
+- [OKF Overview](../README.md) — the documentation map and how the pieces fit together.
+- [Guide: Prepare a knowledge corpus](runbooks/wms-prep-e2e.md) — Stage 1 as a step-by-step procedure.
+- [Guide: Add OKF as a Claude connector](runbooks/okf-connector-deploy.md) — make Stage 3 available to Claude.
+- [Operations: Deploy okf-serve](../tooling/okf-serve/deploy/README.md) and [the Cloudflare Access gate](../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md) — run the serving layer.
