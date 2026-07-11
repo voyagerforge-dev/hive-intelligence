@@ -481,7 +481,7 @@ erDiagram
 ```
 
 **Identity & owner-scoping.** The app is auth-agnostic. It reads the caller's identity from a
-**trusted header injected by the gate** (live: Cloudflare Access → `Remote-Email`; `identity.py`)
+**trusted header injected by the gate** (live: Cloudflare Access → `Cf-Access-Authenticated-User-Email`; `identity.py`)
 and keys every row on it as `owner`; for stdio (Claude Code, no gate) it falls back to a configured
 `OKF_DEFAULT_OWNER`. `owner` is
 **always** derived server-side, never a tool parameter — one person can never read or write
@@ -532,7 +532,7 @@ sequenceDiagram
 | `agent.py`, `eval.py`, `run_eval.py` | (Eval tooling) the LLM select/answer harness that *proved* the no-RAG curated tier (14/14 wave/replen Qs). Not on the serving path. |
 
 Deploy is operator-run behind an identity gate. The **live** gate is **Cloudflare Access** (keyless
-OAuth → `Remote-Email`) — see
+OAuth → `Cf-Access-Authenticated-User-Email`) — see
 [`../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md`](../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md)
 and [`tooling/okf-serve/deploy/README.md`](../tooling/okf-serve/deploy/README.md). The self-hosted
 **Authentik** alternative is in
@@ -695,7 +695,7 @@ on **Host-A** (Bifrost, Docling) and **Host-D** (Qwen); its output is committed 
 cards checkout kept current by the Windmill `f/example/okf/cards_sync` schedule (git pull every 15 min;
 no redeploy for content updates); the team reaches it through the **Cloudflare Access** gate (keyless
 OAuth — the live deploy; Authentik is a self-hosted alternative), which injects the identity header
-(`Remote-Email`) the ledger keys work on.
+(`Cf-Access-Authenticated-User-Email`) the ledger keys work on.
 
 ---
 
