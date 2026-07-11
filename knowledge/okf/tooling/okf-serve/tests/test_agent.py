@@ -115,3 +115,49 @@ def test_answer_excludes_corrections_from_selection(tmp_path, monkeypatch):
     assert "wms/corrections/fix" not in seen["known"]
     # ...but it IS co-pulled into the bundle
     assert "wms/corrections/fix" in res["bundle_ids"]
+
+
+def test_select_sys_has_client_rule():
+    from okfserve.agent import _SELECT_SYS
+    s = _SELECT_SYS.lower()
+    assert "client" in s and "memory" in s
+
+
+def test_answer_sys_has_memory_rule():
+    from okfserve.agent import _ANSWER_SYS
+    s = _ANSWER_SYS.lower()
+    assert "memory" in s and "client" in s
+
+
+def test_index_text_shows_client_memory_tag():
+    from okfserve.agent import _index_text
+    line = _index_text([{"id": "clients/alpha/memory/m", "title": "M", "description": "d",
+                         "type": "memory", "client": "alpha"}])
+    assert "<client:alpha>" in line
+
+
+def test_answer_question_client_scoped_selection(tmp_path):
+    from okfserve import agent
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "wms").mkdir(parents=True)
+    (concepts / "wms" / "a.md").write_text("---\ntitle: A\ndescription: d\nrelated: []\n---\n\nbody\n")
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "m.md").write_text(
+        "---\ntitle: M\ndescription: d\ntype: memory\nclient: alpha\nrelated: []\n---\n\nalpha mem\n")
+    seen = {}
+    class Sel:
+        def complete(self, system, user):
+            seen["idx"] = user
+            return '{"card_ids": ["clients/alpha/memory/m"]}'
+    class Ans:
+        def complete(self, system, user): return "ok"
+    # in alpha scope: the memory id is offered to the selector and resolvable
+    res = agent.answer_question(concepts, "q?", select_llm=Sel(), answer_llm=Ans(),
+                                clients_dir=clients, client="alpha")
+    assert "clients/alpha/memory/m" in seen["idx"]
+    assert "clients/alpha/memory/m" in res["bundle_ids"]
+    # no client scope: the memory id must NOT be offered to the selector
+    seen.clear()
+    agent.answer_question(concepts, "q?", select_llm=Sel(), answer_llm=Ans(), clients_dir=clients)
+    assert "clients/alpha/memory/m" not in seen["idx"]

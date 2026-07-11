@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     max_chars: int = 80000
     resolve_depth: int = 1
     concepts_dir: str = "../../concepts"
+    clients_dir: str = "../../clients"
     okf_data_dir: str = "./.data"
     host: str = "127.0.0.1"
     port: int = 8000

@@ -53,6 +53,13 @@ def score_correction(expected_correction, bundle_correction_ids) -> dict:
     return {"correction_ok": expected_correction in set(bundle_correction_ids)}
 
 
+def score_memory(expected_memory, bundle_ids, expected_client, selected_clients) -> dict:
+    cross = sum(1 for c in selected_clients if c and c != expected_client)
+    if not expected_memory:
+        return {"memory_ok": cross == 0, "cross_client": cross}
+    return {"memory_ok": cross == 0 and expected_memory in set(bundle_ids), "cross_client": cross}
+
+
 def judge_answer(question, answer, reference_text, llm) -> dict:
     user = f"QUESTION: {question}\n\nANSWER: {answer}\n\nREFERENCE:\n{reference_text}"
     data = extract_json(llm.complete(_JUDGE_SYS, user) or "")
@@ -64,17 +71,19 @@ def judge_answer(question, answer, reference_text, llm) -> dict:
 
 def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn,
              mode: str = "progressive", depth: int = 1, max_cards: int = 8,
-             max_chars: int | None = None) -> dict:
+             max_chars: int | None = None, clients_dir=None) -> dict:
     from okfserve.resolver import load_index
-    idx = load_index(concepts_dir)
+    idx = load_index(concepts_dir, clients_dir)
     regime_of = {c["id"]: c.get("regime") for c in idx}
     version_of = {c["id"]: c.get("version") for c in idx}
     product_of = {c["id"]: c.get("product") for c in idx}
+    client_of = {c["id"]: c.get("client") for c in idx}
     rows = []
     for item in qa:
         res = answer_question(concepts_dir, item["question"], select_llm=select_llm,
                               answer_llm=answer_llm, mode=mode, depth=depth,
-                              max_cards=max_cards, max_chars=max_chars)
+                              max_cards=max_cards, max_chars=max_chars,
+                              clients_dir=clients_dir, client=item.get("client"))
         sel = score_selection(item["expected_card_ids"], res["selected_ids"], res["bundle_ids"])
         reg = score_regime(item.get("expected_regime"),
                             [regime_of.get(i) for i in res["selected_ids"]])
@@ -84,11 +93,13 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
                              [product_of.get(i) for i in res["selected_ids"]])
         corr = score_correction(item.get("expects_correction"),
                                 [b for b in res["bundle_ids"] if "/corrections/" in b])
+        mem = score_memory(item.get("expects_memory"), res["bundle_ids"], item.get("client"),
+                           [client_of.get(i) for i in res["bundle_ids"]])
         ref = "\n\n".join(filter(None, (get_card_fn(cid) for cid in item["expected_card_ids"])))
         verdict = judge_answer(item["question"], res["answer"], ref, judge_llm)
         rows.append({"id": item["id"], "question": item["question"],
                      "selected_ids": res["selected_ids"], "bundle_ids": res["bundle_ids"],
-                     **sel, **reg, **ver, **prod, **corr, **verdict, "answer": res["answer"]})
+                     **sel, **reg, **ver, **prod, **corr, **mem, **verdict, "answer": res["answer"]})
     agg = {
         "n": len(rows),
         "select_hit": sum(1 for r in rows if r["select_hit"]),
@@ -97,6 +108,7 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
         "version_ok": sum(1 for r in rows if r["version_ok"]),
         "product_ok": sum(1 for r in rows if r["product_ok"]),
         "correction_ok": sum(1 for r in rows if r["correction_ok"]),
+        "memory_ok": sum(1 for r in rows if r["memory_ok"]),
         "correct": sum(1 for r in rows if r["correct"] is True),
         "grounded": sum(1 for r in rows if r["grounded"] is True),
         "unscored": sum(1 for r in rows if r["note"] == "unscored"),

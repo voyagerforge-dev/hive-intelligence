@@ -20,6 +20,10 @@ _SELECT_SYS = (
     "PREFER cards for that release plus version-neutral (untagged) cards, and avoid cards tagged only "
     "for a different release — but a version-neutral card always applies, and do not exclude a "
     "different-release card if nothing better answers the question. "
+    "Some cards are client-specific MEMORY, tagged like <client:alpha>. Memory applies ONLY to that "
+    "client — it records how THAT client's system was modified, not vanilla product behaviour. Pick a "
+    "client-memory card ONLY when the QUESTION is about that same client; never pick another client's "
+    "memory, and never use memory as general product knowledge. "
     'Reply with ONLY {"card_ids": ["<id>", ...]} using ids from the index verbatim.'
 )
 
@@ -31,15 +35,19 @@ _ANSWER_SYS = (
     "Some knowledge cards are followed by CORRECTION cards that target them (type: correction). "
     "A correction is AUTHORITATIVE: ground your answer in the corrected fact and note the correction; "
     "do NOT repeat a statement the correction contradicts. "
+    "Some knowledge cards are client-specific MEMORY (type: memory, client: <name>). A memory card "
+    "describes how THAT client's system behaves after a modification; it is NOT general product fact. "
+    "Use it only for that client and never generalise it to core product behaviour or another client. "
 )
 
 
 def _index_text(index: list[dict]) -> str:
     def tag(c):
+        cl = f"<client:{c['client']}> " if c.get("client") else ""
         p = f"{{{c['product']}}} " if c.get("product") else ""
         r = f"[{c['regime']}] " if c.get("regime") else ""
         v = f"(v{','.join(c['version'])}) " if c.get("version") else ""
-        return p + r + v
+        return cl + p + r + v
     return "\n".join(f"- {c['id']}: {tag(c)}{c['title']} — {c['description']}" for c in index)
 
 
@@ -55,19 +63,22 @@ def select_ids(index, question: str, llm, *, known_ids: set[str]) -> list[str]:
 
 def answer_question(concepts_dir, question, *, select_llm, answer_llm,
                     mode: str = "progressive", depth: int = 1, max_cards: int = 8,
-                    max_chars: int | None = None) -> dict:
+                    max_chars: int | None = None, clients_dir=None, client=None) -> dict:
     from okfserve.resolver import corrections_by_target
-    index = load_index(concepts_dir)
-    concepts = [c for c in index if c.get("type") != "correction"]
+    index = load_index(concepts_dir, clients_dir)
     corr_map = corrections_by_target(index)
+    concepts = [c for c in index
+                if c.get("type") != "correction"
+                and not (c.get("type") == "memory" and (client is None or c.get("client") != client))]
     if mode == "ceiling":
         selected = [c["id"] for c in concepts]
         resolved = resolve(concepts_dir, selected, depth=0, max_cards=len(selected) or 1,
-                           corrections=corr_map)
+                           corrections=corr_map, clients_dir=clients_dir, client=client)
     else:
         selected = select_ids(concepts, question, select_llm, known_ids={c["id"] for c in concepts})
         resolved = resolve(concepts_dir, selected, depth=depth, max_cards=max_cards,
-                           max_chars=max_chars, corrections=corr_map)
+                           max_chars=max_chars, corrections=corr_map,
+                           clients_dir=clients_dir, client=client)
     user = f"KNOWLEDGE CARDS:\n{resolved['bundle']}\n\nQUESTION: {question}"
     answer = answer_llm.complete(_ANSWER_SYS, user) or ""
     return {"answer": answer, "selected_ids": selected,

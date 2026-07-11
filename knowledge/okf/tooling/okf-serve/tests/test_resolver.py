@@ -243,7 +243,8 @@ def test_corrections_by_target_active_only():
 
 def test_resolve_copulls_active_correction(tmp_path):
     from okfserve.resolver import resolve
-    (tmp_path / "wms").mkdir(); (tmp_path / "wms" / "corrections").mkdir()
+    (tmp_path / "wms").mkdir()
+    (tmp_path / "wms" / "corrections").mkdir()
     (tmp_path / "wms" / "c.md").write_text("---\ntitle: C\ntype: concept\nrelated: []\n---\n\nconcept body\n")
     (tmp_path / "wms" / "corrections" / "fix.md").write_text(
         "---\ntitle: Fix\ntype: correction\ncorrects: wms/c\nstatus: approved\n---\n\n## Correction\n\nthe fix\n")
@@ -255,10 +256,147 @@ def test_resolve_copulls_active_correction(tmp_path):
 
 def test_resolve_ignores_superseded_correction(tmp_path):
     from okfserve.resolver import resolve
-    (tmp_path / "wms").mkdir(); (tmp_path / "wms" / "corrections").mkdir()
+    (tmp_path / "wms").mkdir()
+    (tmp_path / "wms" / "corrections").mkdir()
     (tmp_path / "wms" / "c.md").write_text("---\ntitle: C\ntype: concept\nrelated: []\n---\n\nbody\n")
     (tmp_path / "wms" / "corrections" / "old.md").write_text(
         "---\ntitle: Old\ntype: correction\ncorrects: wms/c\nstatus: superseded\n---\n\n## Correction\n\nold\n")
     res = resolve(tmp_path, ["wms/c"])
     assert res["corrections"] == []
     assert "old" not in res["bundle"].split("concept", 1)[-1] or "wms/corrections/old" not in res["card_ids"]
+
+
+def test_card_path_resolves_concept_and_client_trees(tmp_path):
+    from okfserve.resolver import card_path
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "wms").mkdir(parents=True)
+    (concepts / "wms" / "a.md").write_text("---\ntitle: A\n---\n\nbody\n")
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "m.md").write_text("---\ntitle: M\n---\n\nmem\n")
+    assert card_path(concepts, "wms/a", clients).name == "a.md"
+    assert card_path(concepts, "clients/alpha/memory/m", clients).name == "m.md"
+    assert card_path(concepts, "clients/alpha/memory/missing", clients) is None
+    assert card_path(concepts, "../secret", clients) is None            # traversal blocked
+    assert card_path(concepts, "clients/../../etc/passwd", clients) is None
+
+
+def test_load_index_includes_client_memory(tmp_path):
+    from okfserve.resolver import load_index
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "wms").mkdir(parents=True)
+    (concepts / "wms" / "a.md").write_text("---\ntitle: A\ndescription: d\nproduct: wms\n---\n\nbody\n")
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "m.md").write_text(
+        "---\ntitle: ALPHA Mem\ndescription: alpha note\ntype: memory\nclient: alpha\nproduct: wms\n---\n\nmem\n")
+    idx = {c["id"]: c for c in load_index(concepts, clients)}
+    assert idx["wms/a"]["client"] is None                       # concept rows carry client=None
+    m = idx["clients/alpha/memory/m"]
+    assert m["type"] == "memory" and m["client"] == "alpha" and m["product"] == "wms"
+
+
+def test_load_index_without_clients_dir_is_unchanged(tmp_path):
+    from okfserve.resolver import load_index
+    (tmp_path / "x.md").write_text("---\ntitle: X\ndescription: d\n---\n\nbody\n")
+    idx = load_index(tmp_path)                                  # no clients_dir
+    assert [c["id"] for c in idx] == ["x"] and idx[0]["client"] is None
+
+
+def test_load_index_skips_client_files_outside_memory_subfolder(tmp_path):
+    from okfserve.resolver import load_index
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    concepts.mkdir()
+    (clients / "alpha" / "setup").mkdir(parents=True)
+    (clients / "alpha" / "setup" / "notes.md").write_text("---\ntitle: N\n---\n\nx\n")   # not memory/
+    idx = load_index(concepts, clients)
+    assert idx == []                                            # only <client>/memory/<slug>.md counts
+
+
+def _mk_client_world(tmp_path):
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "wms").mkdir(parents=True)
+    (concepts / "wms" / "alloc.md").write_text(
+        "---\ntitle: Alloc\ndescription: allocation\nproduct: wms\nrelated: []\n---\n\nAlloc body.\n")
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "alloc-mod.md").write_text(
+        "---\ntitle: ALPHA Alloc Mod\ndescription: alpha change\ntype: memory\nclient: alpha\n"
+        "product: wms\nrelated:\n- wms/alloc\n---\n\nALPHA changed allocation.\n")
+    (clients / "acme" / "memory").mkdir(parents=True)
+    (clients / "acme" / "memory" / "a.md").write_text(
+        "---\ntitle: ACME Mem\ndescription: acme\ntype: memory\nclient: acme\nproduct: wms\nrelated: []\n---\n\nACME.\n")
+    return concepts, clients
+
+
+def test_resolve_client_memory_seed_only_in_scope(tmp_path):
+    from okfserve.resolver import resolve
+    concepts, clients = _mk_client_world(tmp_path)
+    mid = "clients/alpha/memory/alloc-mod"
+    # in scope: alpha memory resolvable + pulls its related core concept
+    out = resolve(concepts, [mid], depth=1, clients_dir=clients, client="alpha")
+    assert mid in out["card_ids"] and "wms/alloc" in out["card_ids"]
+    # out of scope (no client): the memory seed is dropped, core stays pristine
+    out2 = resolve(concepts, [mid], depth=1, clients_dir=clients, client=None)
+    assert out2["card_ids"] == []
+    # wrong client: alpha seed dropped under acme scope
+    out3 = resolve(concepts, [mid], depth=1, clients_dir=clients, client="acme")
+    assert out3["card_ids"] == []
+
+
+def test_resolve_bfs_guards_cross_client_neighbour(tmp_path):
+    from okfserve.resolver import resolve
+    concepts, clients = _mk_client_world(tmp_path)
+    # a core concept that (pathologically) links to a alpha memory must not pull it when client!=alpha
+    (concepts / "wms" / "hub.md").write_text(
+        "---\ntitle: Hub\ndescription: hub\nproduct: wms\nrelated:\n- clients/alpha/memory/alloc-mod\n---\n\nHub.\n")
+    out = resolve(concepts, ["wms/hub"], depth=1, clients_dir=clients, client=None)
+    assert out["card_ids"] == ["wms/hub"]                      # alpha memory neighbour guarded out
+    out2 = resolve(concepts, ["wms/hub"], depth=1, clients_dir=clients, client="acme")
+    assert out2["card_ids"] == ["wms/hub"]                     # acme scope still can't reach alpha memory
+    out3 = resolve(concepts, ["wms/hub"], depth=1, clients_dir=clients, client="alpha")
+    assert "clients/alpha/memory/alloc-mod" in out3["card_ids"]  # alpha scope reaches it
+
+
+def test_resolve_concept_only_path_unchanged(tmp_path):
+    from okfserve.resolver import resolve
+    (tmp_path / "a.md").write_text("---\ntitle: A\nrelated:\n- b\n---\n\nA.\n")
+    (tmp_path / "b.md").write_text("---\ntitle: B\nrelated: []\n---\n\nB.\n")
+    out = resolve(tmp_path, ["a"], depth=1)                    # no clients_dir/client
+    assert out["card_ids"] == ["a", "b"]
+
+
+def test_get_card_reads_client_tree(tmp_path):
+    from okfserve.resolver import get_card
+    concepts, clients = _mk_client_world(tmp_path)
+    assert "ALPHA changed allocation." in get_card(concepts, "clients/alpha/memory/alloc-mod", clients)
+    assert get_card(concepts, "clients/alpha/memory/nope", clients) is None
+
+
+def test_resolve_scope_from_id_not_frontmatter(tmp_path):
+    from okfserve.resolver import resolve
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "wms").mkdir(parents=True)
+    (concepts / "wms" / "a.md").write_text(
+        "---\ntitle: A\nclient: alpha\nrelated: []\n---\n\nA body.\n")
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "m.md").write_text(
+        "---\ntitle: M\ntype: memory\nrelated: []\n---\n\nM body.\n")
+    assert resolve(concepts, ["wms/a"], clients_dir=clients, client=None)["card_ids"] == ["wms/a"]
+    mid = "clients/alpha/memory/m"
+    assert resolve(concepts, [mid], clients_dir=clients, client=None)["card_ids"] == []
+    assert mid in resolve(concepts, [mid], clients_dir=clients, client="alpha")["card_ids"]
+
+
+def test_load_index_forces_memory_type_in_client_tree(tmp_path):
+    from okfserve.resolver import load_index
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    concepts.mkdir()
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "x.md").write_text(
+        "---\ntitle: X\ntype: correction\ncorrects: wms/a\nclient: alpha\n---\n\nx\n")
+    idx = {c["id"]: c for c in load_index(concepts, clients)}
+    assert idx["clients/alpha/memory/x"]["type"] == "memory"
