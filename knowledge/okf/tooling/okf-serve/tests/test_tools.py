@@ -82,3 +82,31 @@ def test_resolve_cards_honors_max_chars(tmp_path):
     out = tools.resolve_cards(tmp_path, ["a"], depth=1, max_chars=1)
     assert out["card_ids"] == ["a"]      # first card always kept
     assert "b" in out["dropped"]          # linked card dropped by the char budget
+
+
+def _client_world(tmp_path):
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "wms").mkdir(parents=True)
+    (concepts / "wms" / "a.md").write_text("---\ntitle: A\ndescription: d\nproduct: wms\n---\n\nbody\n")
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "m.md").write_text(
+        "---\ntitle: M\ndescription: d\ntype: memory\nclient: alpha\nproduct: wms\n---\n\nmem\n")
+    return concepts, clients
+
+
+def test_list_concepts_client_scoped(tmp_path):
+    from okfserve import tools
+    concepts, clients = _client_world(tmp_path)
+    ids_none = {c["id"] for c in tools.list_concepts(concepts, clients, client=None)}
+    assert ids_none == {"wms/a"}                                 # no client -> no memory
+    ids_alpha = {c["id"] for c in tools.list_concepts(concepts, clients, client="alpha")}
+    assert ids_alpha == {"wms/a", "clients/alpha/memory/m"}          # alpha sees its memory
+    ids_acme = {c["id"] for c in tools.list_concepts(concepts, clients, client="acme")}
+    assert ids_acme == {"wms/a"}                                 # acme never sees alpha memory
+
+
+def test_get_card_text_client_tree(tmp_path):
+    from okfserve import tools
+    concepts, clients = _client_world(tmp_path)
+    assert "mem" in tools.get_card_text(concepts, "clients/alpha/memory/m", clients)
