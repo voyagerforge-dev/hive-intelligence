@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 MODES = {"investigate", "implement", "learn"}
 STATUSES = {"open", "active", "resolved", "done"}
 KINDS = {"plan", "step", "finding", "decision", "quiz_result", "note"}
+MEM_VISIBILITY = {"private", "promotion_requested"}
 
 
 def _now() -> str:
@@ -55,6 +56,14 @@ def init_db(conn) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_obj_owner ON objective(owner);
         CREATE INDEX IF NOT EXISTS idx_entry_obj ON entry(objective_id);
+        CREATE TABLE IF NOT EXISTS memory (
+          id TEXT PRIMARY KEY, owner TEXT NOT NULL, text TEXT NOT NULL,
+          client TEXT,
+          tags TEXT NOT NULL DEFAULT '[]', card_ids TEXT NOT NULL DEFAULT '[]',
+          external_ref TEXT, visibility TEXT NOT NULL DEFAULT 'private',
+          created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_mem_owner ON memory(owner);
         """
     )
     conn.commit()
@@ -142,3 +151,91 @@ def record_quiz_result(conn, *, owner, objective_id, concept_id, score, detail=N
     content = json.dumps({"concept_id": concept_id, "score": score, "detail": detail})
     return append_entry(conn, owner=owner, objective_id=objective_id,
                         kind="quiz_result", content=content, card_ids=[concept_id])
+
+
+def _mem_row(r) -> dict:
+    d = dict(r)
+    d["tags"] = json.loads(d["tags"])
+    d["card_ids"] = json.loads(d["card_ids"])
+    d["external_ref"] = json.loads(d["external_ref"]) if d["external_ref"] else None
+    return d
+
+
+def remember(conn, *, owner, text, tags=None, card_ids=None, external_ref=None, client=None) -> dict:
+    mid, ts = _id(), _now()
+    conn.execute(
+        "INSERT INTO memory(id,owner,text,client,tags,card_ids,external_ref,visibility,created_at,updated_at)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?)",
+        (mid, owner, text, client, json.dumps(tags or []), json.dumps(card_ids or []),
+         json.dumps(external_ref) if external_ref else None, "private", ts, ts),
+    )
+    conn.commit()
+    return get_memory(conn, owner=owner, memory_id=mid)
+
+
+def get_memory(conn, *, owner, memory_id) -> dict | None:
+    r = conn.execute("SELECT * FROM memory WHERE id=? AND owner=?", (memory_id, owner)).fetchone()
+    return _mem_row(r) if r else None
+
+
+def recall(conn, *, owner, query=None, tags=None, card_id=None, client=None, limit=20) -> list[dict]:
+    rows = [_mem_row(r) for r in conn.execute(
+        "SELECT * FROM memory WHERE owner=? ORDER BY updated_at DESC, rowid DESC", (owner,)).fetchall()]
+
+    def match(m) -> bool:
+        if client is not None and m["client"] != client:
+            return False
+        if card_id is not None and card_id not in m["card_ids"]:
+            return False
+        if tags and not set(tags) <= set(m["tags"]):
+            return False
+        if query:
+            q = query.lower()
+            hay = [m["text"].lower(), *(t.lower() for t in m["tags"])]
+            if not any(q in h for h in hay):
+                return False
+        return True
+
+    return [m for m in rows if match(m)][:limit]
+
+
+def forget(conn, *, owner, memory_id) -> bool:
+    cur = conn.execute("DELETE FROM memory WHERE id=? AND owner=?", (memory_id, owner))
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def set_memory_visibility(conn, *, owner, memory_id, visibility) -> dict | None:
+    if visibility not in MEM_VISIBILITY:
+        raise ValueError(f"bad visibility: {visibility}")
+    if get_memory(conn, owner=owner, memory_id=memory_id) is None:
+        return None
+    conn.execute("UPDATE memory SET visibility=?, updated_at=? WHERE id=? AND owner=?",
+                 (visibility, _now(), memory_id, owner))
+    conn.commit()
+    return get_memory(conn, owner=owner, memory_id=memory_id)
+
+
+def promotion_record(memory: dict, owner: str) -> dict:
+    """Build the neutral promotion record from a memory row (consumed by okfgen.memory in Phase 3c)."""
+    return {
+        "client": memory.get("client") or "",
+        "product": "", "title": "",
+        "memory": memory["text"], "context": "",
+        "platform": "", "related": list(memory.get("card_ids", [])),
+        "tags": list(memory.get("tags", [])), "citations": [], "supersedes": [],
+        "external_ref": memory.get("external_ref"),
+        "submitted_by": owner, "status": "approved",
+    }
+
+
+def promote_memory(conn, *, owner, memory_id) -> dict:
+    """Guarded promotion prep: returns an error dict, or flips the row to
+    promotion_requested and returns {memory_id, record}. Requires a client."""
+    m = get_memory(conn, owner=owner, memory_id=memory_id)
+    if m is None:
+        return {"error": "not_found"}
+    if not m.get("client"):
+        return {"error": "client_required"}
+    set_memory_visibility(conn, owner=owner, memory_id=memory_id, visibility="promotion_requested")
+    return {"memory_id": memory_id, "record": promotion_record(m, owner)}

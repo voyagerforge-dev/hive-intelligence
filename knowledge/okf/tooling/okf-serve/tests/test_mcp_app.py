@@ -17,7 +17,8 @@ def test_tools_and_prompts_registered(tmp_path):
     prompt_names = {p.name for p in anyio.run(mcp.list_prompts)}
     assert {"list_concepts", "get_card", "resolve", "start_objective",
             "append_entry", "set_status", "record_quiz_result",
-            "list_objectives", "get_objective"} <= tool_names
+            "list_objectives", "get_objective",
+            "remember", "recall", "forget", "promote"} <= tool_names
     assert {"investigate", "implementation_advisor", "guided_learning"} <= prompt_names
 
 
