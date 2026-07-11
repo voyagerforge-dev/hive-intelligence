@@ -79,6 +79,45 @@ def build_mcp(settings, conn_factory) -> FastMCP:
                                              objective_id=objective_id, concept_id=concept_id,
                                              score=score, detail=detail)
 
+    @mcp.tool()
+    def remember(text: str, ctx: Context, tags: list[str] | None = None,
+                 card_ids: list[str] | None = None, external_ref: dict | None = None,
+                 client: str | None = None) -> dict:
+        """Save a private personal memory (owner-scoped). Optional client tag; required later to promote."""
+        with conn_factory() as conn:
+            return ledger.remember(conn, owner=owner_from_ctx(ctx, settings), text=text,
+                                   tags=tags, card_ids=card_ids, external_ref=external_ref, client=client)
+
+    @mcp.tool()
+    def recall(ctx: Context, query: str | None = None, tags: list[str] | None = None,
+               card_id: str | None = None, client: str | None = None, limit: int = 20) -> list[dict]:
+        """Recall your personal memories, filtered by substring/tag/card/client (deterministic, no LLM)."""
+        with conn_factory() as conn:
+            return ledger.recall(conn, owner=owner_from_ctx(ctx, settings), query=query,
+                                 tags=tags, card_id=card_id, client=client, limit=limit)
+
+    @mcp.tool()
+    def forget(memory_id: str, ctx: Context) -> dict:
+        """Delete one of your personal memories."""
+        with conn_factory() as conn:
+            return {"deleted": ledger.forget(conn, owner=owner_from_ctx(ctx, settings),
+                                             memory_id=memory_id)}
+
+    @mcp.tool()
+    def promote(memory_id: str, ctx: Context) -> dict:
+        """Prepare a personal memory for client-scoped promotion. Requires a client; flips it to
+        promotion_requested and returns the neutral record to hand to okf-author.submit_memory_promotion."""
+        owner = owner_from_ctx(ctx, settings)
+        with conn_factory() as conn:
+            m = ledger.get_memory(conn, owner=owner, memory_id=memory_id)
+            if m is None:
+                return {"error": "not_found"}
+            if not m.get("client"):
+                return {"error": "client_required"}
+            ledger.set_memory_visibility(conn, owner=owner, memory_id=memory_id,
+                                         visibility="promotion_requested")
+            return {"memory_id": memory_id, "record": ledger.promotion_record(m, owner)}
+
     @mcp.prompt()
     def investigate(symptom: str = "") -> str:
         """Issue Investigator mode."""
