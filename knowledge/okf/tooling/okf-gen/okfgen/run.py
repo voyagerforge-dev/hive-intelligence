@@ -56,7 +56,7 @@ def main() -> None:  # pragma: no cover — live wiring (detached)
     from okfgen.taxonomy import load_taxonomy, propose_taxonomy, write_taxonomy
 
     s = get_settings()
-    root = Path(__file__).resolve().parents[3]  # voyagerforge-knowledge repo root
+    root = Path(__file__).resolve().parents[3]  # okf bundle root (knowledge/okf/)
     area = s.slice_area.strip()
     is_sub = area in SUBAREAS
     if area and not is_sub and area not in AREAS:
