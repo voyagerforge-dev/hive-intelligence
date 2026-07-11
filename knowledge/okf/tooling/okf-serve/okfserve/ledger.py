@@ -214,3 +214,16 @@ def set_memory_visibility(conn, *, owner, memory_id, visibility) -> dict | None:
                  (visibility, _now(), memory_id, owner))
     conn.commit()
     return get_memory(conn, owner=owner, memory_id=memory_id)
+
+
+def promotion_record(memory: dict, owner: str) -> dict:
+    """Build the neutral promotion record from a memory row (consumed by okfgen.memory in Phase 3c)."""
+    return {
+        "client": memory.get("client") or "",
+        "product": "", "title": "",
+        "memory": memory["text"], "context": "",
+        "platform": "", "related": list(memory.get("card_ids", [])),
+        "tags": list(memory.get("tags", [])), "citations": [], "supersedes": [],
+        "external_ref": memory.get("external_ref"),
+        "submitted_by": owner, "status": "approved",
+    }

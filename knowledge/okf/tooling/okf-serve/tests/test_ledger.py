@@ -155,3 +155,19 @@ def test_memory_visibility_flip(tmp_path):
                                         visibility="private") is None
     with pytest.raises(ValueError):
         ledger.set_memory_visibility(c, owner="alice", memory_id=m["id"], visibility="bogus")
+
+
+def test_promotion_record_shape(tmp_path):
+    c = _conn(tmp_path)
+    m = ledger.remember(c, owner="alice", text="ALPHA mod: second scan on pick-confirm",
+                        tags=["alpha", "pick-confirm"], card_ids=["wms/pick-confirm"],
+                        external_ref={"provider": "zendesk", "id": "1421"}, client="alpha")
+    rec = ledger.promotion_record(m, owner="alice")
+    assert rec == {
+        "client": "alpha", "product": "", "title": "",
+        "memory": "ALPHA mod: second scan on pick-confirm", "context": "",
+        "platform": "", "related": ["wms/pick-confirm"], "tags": ["alpha", "pick-confirm"],
+        "citations": [], "supersedes": [],
+        "external_ref": {"provider": "zendesk", "id": "1421"},
+        "submitted_by": "alice", "status": "approved",
+    }
