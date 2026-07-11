@@ -22,10 +22,13 @@ class DoclingClient:
         tables preserved as markdown."""
         files = {"files": (filename, content)}
         data = {"to_formats": "md", "do_ocr": "false"}
+        # Docling on Host-A is LAN-keyless; only send Authorization when a key is set
+        # (an empty key would produce a malformed `Bearer ` header that httpx rejects).
+        headers = {"Authorization": f"Bearer {self._key}"} if self._key else {}
         try:
             r = httpx.post(
                 f"{self._base}/v1/convert/file",
-                headers={"Authorization": f"Bearer {self._key}"},
+                headers=headers,
                 files=files, data=data, timeout=self._timeout, verify=self._verify,
             )
         except httpx.HTTPError as e:
