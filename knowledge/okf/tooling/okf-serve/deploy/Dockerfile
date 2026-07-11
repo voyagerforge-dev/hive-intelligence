@@ -22,6 +22,7 @@ ENV TRANSPORT=http \
     HOST=0.0.0.0 \
     PORT=8000 \
     CONCEPTS_DIR=/data/concepts \
+    CLIENTS_DIR=/data/clients \
     OKF_DATA_DIR=/data/ledger \
     IDENTITY_HEADER=x-vf-identity \
     OKF_DEFAULT_OWNER=local-operator
