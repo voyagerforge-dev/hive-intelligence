@@ -1,21 +1,18 @@
-# OKF — The Organizational Knowledge Fabric, End to End
+# OKF - Architecture & Concepts
 
-> **What this page is.** A single, self-contained explainer of how OKF works from a raw
-> vendor document all the way to a grounded answer inside Claude — the *why*, the *flow*,
-> and the *code*. It is meant for you and for anyone who needs to understand how this piece
-> came to be and how it runs end to end. Diagrams are [Mermaid](https://mermaid.js.org/)
-> and render inline on GitHub.
+*For anyone who needs to understand how OKF works, end to end - from a raw vendor document to a
+grounded answer inside Claude. This is the conceptual reference: the model, the pipeline, the
+serving layer, and the design decisions behind them. Diagrams are [Mermaid](https://mermaid.js.org/)
+and render inline on GitHub.*
 
-> **Currency note (2026-07-10).** This doc's three-stage spine (prep → cards → serve) still holds, but
-> the pipeline has since grown to **4 Manhattan products** (WMOS 832 + oSCI 60 + Slotting 34 + Labour
-> Management 64 = **990 concept cards**, plus a **corrections overlay** — 991 cards total live) and changed
-> shape in four ways the sections below now reflect: (1) cards are **namespaced into per-product folders**
-> with **path-ids** (`concepts/<product>/<id>.md`, id = the path); (2) a **post-promote step** (facets →
-> conformance → index — the *"Stage 5"* in run-order) sits between card creation and serving (see the
-> subsection near the end of §4); (3) a **product-isolation eval gates every deploy**; (4) a **corrections
-> layer** (Spec 2) overlays wrong/stale concept cards with `type: correction` cards that co-pull at query
-> time without editing the original (see *"The corrections layer"* in §4). Full history + lessons: memory
-> `project_okf_knowledge.md` + `project_okf_osci_distillation.md`; PRs #9–#15.
+**OKF docs:** [Overview](../README.md) · **Architecture & Concepts** (you are here) · [Guide: Prepare a corpus](runbooks/wms-prep-e2e.md) · [Operations: Deploy](../tooling/okf-serve/deploy/README.md)
+
+> **At a glance.** OKF covers four products - WMOS (832), oSCI (60), Slotting (34), and Labour
+> Management (64) = **990 concept cards**, plus a **corrections overlay** (991 total). Cards are
+> namespaced into per-product folders with path-ids (`concepts/<product>/<id>.md`); a post-promote
+> step (facets, conformance, index) sits between card creation and serving; a product-isolation eval
+> gates every deploy; and a corrections layer overlays outdated cards without editing them. Each of
+> these is covered below.
 
 ---
 
@@ -23,9 +20,9 @@
 
 1. [The big picture](#1-the-big-picture)
 2. [Design principles](#2-design-principles)
-3. [Stage 1 — Document preparation (`okf-prep`)](#3-stage-1--document-preparation-okf-prep)
-4. [Stage 2 — Card creation (`okfgen`)](#4-stage-2--card-creation-okfgen)
-5. [Stage 3 — Serving: connectors + stateful SQLite (`okf-serve`)](#5-stage-3--serving-connectors--stateful-sqlite-okf-serve)
+3. [Stage 1: Document preparation (`okf-prep`)](#3-stage-1-document-preparation-okf-prep)
+4. [Stage 2: Card creation (`okfgen`)](#4-stage-2-card-creation-okfgen)
+5. [Stage 3: Serving (`okf-serve`)](#5-stage-3-serving-okf-serve)
 6. [The two stores: knowledge vs. work state](#6-the-two-stores-knowledge-vs-work-state)
 7. [End-to-end walkthrough](#7-end-to-end-walkthrough)
 8. [Complete file map](#8-complete-file-map)
@@ -38,7 +35,7 @@
 
 OKF turns a pile of raw Manhattan **WMS** (Warehouse Management System) documentation into a
 **curated, cross-linked knowledge base of atomic "concept cards" in git**, and serves those
-cards to the team through **Claude** — with a per-person **stateful work ledger** underneath.
+cards to the team through **Claude** - with a per-person **stateful work ledger** underneath.
 It is deliberately **small, simple, and sovereign**: it runs on the firm's own hardware, uses
 git as its system of record, and adds exactly one piece of new infrastructure (a single SQLite
 file) to the serving layer.
@@ -48,47 +45,47 @@ into one pipeline:
 
 ```mermaid
 flowchart LR
-    raw["📄 Raw WMS docs<br/>PDF · DOCX · PPTX · XLSX"]
+    raw["Raw WMS docs<br/>PDF · DOCX · PPTX · XLSX"]
 
-    subgraph P["① okf-prep — doc prep"]
+    subgraph P["① okf-prep - doc prep"]
         direction TB
         p1[curate + convert]
     end
 
-    atomic[("🧱 Atomic markdown<br/>sources/wms-atomic/docs/*.md")]
+    atomic[("Atomic markdown<br/>sources/wms-atomic/docs/*.md")]
 
-    subgraph G["② okfgen — card creation"]
+    subgraph G["② okfgen - card creation"]
         direction TB
         g1[taxonomy → distill]
     end
 
-    cards[("🗂️ Concept cards<br/>concepts/*.md — git")]
+    cards[("Concept cards<br/>concepts/*.md - git")]
 
-    subgraph S["③ okf-serve — serving"]
+    subgraph S["③ okf-serve - serving"]
         direction TB
         s1[REST door · MCP door]
     end
 
-    claude["🧑‍💻 Claude Desktop / Claude Code<br/>(the agent loop)"]
-    ledger[("🗃️ SQLite objective ledger<br/>per-owner work state")]
+    claude["Claude Desktop / Claude Code<br/>(the agent loop)"]
+    ledger[("SQLite objective ledger<br/>per-owner work state")]
 
     raw --> P --> atomic --> G --> cards --> S --> claude
     S <-->|read cards| cards
     S <-->|read/write work| ledger
 ```
 
-- **`okf-prep`** ([Stage 1](#3-stage-1--document-preparation-okf-prep)) — a human-gated,
+- **`okf-prep`** ([Stage 1](#3-stage-1-document-preparation-okf-prep)) - a human-gated,
   LLM-assisted pipeline that curates and converts raw docs into **atomic markdown** (one clean,
   single-topic file per source, with metadata frontmatter).
-- **`okfgen`** ([Stage 2](#4-stage-2--card-creation-okfgen)) — distills that atomic markdown
+- **`okfgen`** ([Stage 2](#4-stage-2-card-creation-okfgen)) - distills that atomic markdown
   into **concept cards**: a proposed *taxonomy* of concepts, then one reusable card per concept,
   cross-linked into a graph. Cards live in `concepts/` and are versioned in git.
-- **`okf-serve`** ([Stage 3](#5-stage-3--serving-connectors--stateful-sqlite-okf-serve)) — serves
+- **`okf-serve`** ([Stage 3](#5-stage-3-serving-okf-serve)) - serves
   the cards through two "doors" (a REST/OpenAPI API and an **MCP** connector for Claude), over a
   **stateful objective ledger** in SQLite that tracks each person's investigations, implementation
   work, and learning.
 
-**The whole thing is LLM-free at serving time** — Claude (the team's Claude Desktop subscription,
+**The whole thing is LLM-free at serving time** - Claude (the team's Claude Desktop subscription,
 and the operator's Claude Code) *is* the reasoning loop. The only server-side model calls happen
 during content creation (Stages 1 and 2), on the firm's own gateway.
 
@@ -96,7 +93,7 @@ during content creation (Stages 1 and 2), on the firm's own gateway.
 
 ## 2. Design principles
 
-These are the "banked decisions" the whole system is built on:
+The whole system is built on these core decisions:
 
 | Principle | What it means in practice |
 |---|---|
@@ -109,10 +106,10 @@ These are the "banked decisions" the whole system is built on:
 
 ---
 
-## 3. Stage 1 — Document preparation (`okf-prep`)
+## 3. Stage 1: Document preparation (`okf-prep`)
 
-**Goal:** take a folder of raw, messy vendor docs and produce **atomic markdown** — one clean,
-single-topic file per source document, labeled with metadata — that Stage 2 can distill.
+**Goal:** take a folder of raw, messy vendor docs and produce **atomic markdown** - one clean,
+single-topic file per source document, labeled with metadata - that Stage 2 can distill.
 
 **Package:** `tooling/okf-prep/` (package `okfprep`, CLI `okfprep`). Orchestrated end-to-end by
 the [`/wms-prep`](../.claude/commands/wms-prep.md) command; the operational runbook is
@@ -122,26 +119,26 @@ the [`/wms-prep`](../.claude/commands/wms-prep.md) command; the operational runb
 
 The governing idea: **put the intelligence up front in one reviewable file, then let
 deterministic code do the rest.** A single LLM "curation" pass decides *what to keep and how to
-label it*; everything after is repeatable code. There are **two review gates** (🚦) where a human
+label it*; everything after is repeatable code. There are **two review gates** () where a human
 must approve.
 
 ```mermaid
 flowchart TD
     raw["Raw docs subtree"] --> scan["scan → inventory.csv<br/><i>deterministic</i>"]
     scan --> dups["dups → dups.yaml<br/><i>SHA-256 byte-identical groups</i>"]
-    dups --> curate["🧠 wms-curator agent<br/>→ wms-curation.yaml<br/><i>include/exclude + labels</i>"]
+    dups --> curate["wms-curator agent<br/>→ wms-curation.yaml<br/><i>include/exclude + labels</i>"]
     curate --> vplan["validate-plan<br/><i>enum + path checks</i>"]
-    vplan --> gate1{{"🚦 GATE 1<br/>review the plan"}}
+    vplan --> gate1{{"GATE 1<br/>review the plan"}}
     gate1 --> dedup["dedup-formats<br/><i>collapse .doc/.docx variants</i>"]
     dedup --> norm["normalize → PDF<br/><i>LibreOffice; strike-trim .docx</i>"]
     norm --> route["route<br/><i>GPU-free tier precheck</i>"]
-    route --> gate2{{"🚦 GATE 2<br/>review text/vision/passthrough tally"}}
+    route --> gate2{{"GATE 2<br/>review text/vision/passthrough tally"}}
     gate2 --> transform["transform → strip boilerplate → atomic/*.md"]
     transform --> stamp["stamp<br/><i>platform/product/version/doc_type</i>"]
     stamp --> vatomic["validate-atomic<br/><i>slugs/enums/relations</i>"]
     vatomic --> out[("atomic markdown<br/>→ sources/wms-atomic/docs/")]
 
-    subgraph T["transform — 3-way router"]
+    subgraph T["transform - 3-way router"]
         direction LR
         tt["text tier<br/><b>Docling</b> (Host-A GPU)<br/>↓ fallback<br/>pymupdf4llm (local)"]
         tv["vision tier<br/><b>Qwen3.6-27B</b> (Host-D)<br/><i>scans / diagrams</i>"]
@@ -154,9 +151,9 @@ flowchart TD
 
 | Actor | Good at | Where |
 |---|---|---|
-| 🧠 **LLM** (Claude / the `wms-curator` agent) | judgment, reading content | **curate** (what to keep + how to label) |
-| ⚙️ **Deterministic code** | repeatable, free | scan, dups, validate, dedup, normalize, transform, stamp |
-| 👤 **You** | approval, accountability | the two review gates |
+| **LLM** (Claude / the `wms-curator` agent) | judgment, reading content | **curate** (what to keep + how to label) |
+| **Deterministic code** | repeatable, free | scan, dups, validate, dedup, normalize, transform, stamp |
+| **You** | approval, accountability | the two review gates |
 
 ### The converter, in detail
 
@@ -164,17 +161,16 @@ flowchart TD
 **routes** it:
 
 - **text-rich** → the **text tier**: send the file to **Docling** on Host-A (best tables/layout),
-  and *fall back to local `pymupdf4llm`* on any Docling failure — so the pipeline still runs with
+  and *fall back to local `pymupdf4llm`* on any Docling failure - so the pipeline still runs with
   no GPU.
 - **image-dominant** (a scan or a screenshot-heavy deck) → the **vision tier**: render each page
-  and describe it with **Qwen3.6-27B** on Host-D (an OpenAI-compatible VLM). This tier replaced a
-  retired GLM-4.1V model; the current WMS corpus is 100% born-digital, so it went 1,196 text +
-  43 passthrough + 0 vision — the VLM is the fallback for future scanned material.
+  and describe it with **Qwen3.6-27B** on Host-D (an OpenAI-compatible VLM). The WMS corpus is almost
+  entirely born-digital, so the vision tier is the fallback for scanned or image-heavy material.
 - **already-text formats** (`.vm/.xsd/.xml/.json/.sql/.properties`) → **passthrough**: fenced into
   markdown as-is.
 
 Immediately before an atomic file is written, the converted markdown from the **text and vision
-tiers** (never passthrough — you don't regex-scrub fenced code) is passed through the
+tiers** (never passthrough - you don't regex-scrub fenced code) is passed through the
 **boilerplate stripper** (`stripper.py`): product-tunable YAML rules that remove copyright,
 trademark notices, "all rights reserved", confidentiality lines, "Page X of Y" footers, and
 table-of-contents dot-leaders. Rules are scoped to footer/header *form* so they can't delete real
@@ -209,7 +205,7 @@ status: active
 | `folder_parser.py` | Parses folder names into classification hints (product/version/category priors). |
 | `dups.py` | SHA-256 groups byte-identical files so the curator keeps one copy. |
 | `curation_plan.py` | Loads + deterministically validates `wms-curation.yaml`; family-aware `.doc/.docx` variant dedup. |
-| `slugs.py` | Slug helpers (`PASSTHROUGH_EXTS`, `slugify`, `assign_slugs`) — stable, de-collided slugs. |
+| `slugs.py` | Slug helpers (`PASSTHROUGH_EXTS`, `slugify`, `assign_slugs`) - stable, de-collided slugs. |
 | `libreoffice.py` | Converts office formats → PDF via headless LibreOffice. |
 | `striptrim.py` | Removes struck-through / tracked-change text from a `.docx` before conversion. |
 | `normalize.py` | Source doc → PDF intermediate (strike-trim `.docx`, LibreOffice the rest, copy PDFs). |
@@ -226,9 +222,9 @@ is the one judgment step: it reads the inventory + dups, spot-reads ambiguous fi
 
 ---
 
-## 4. Stage 2 — Card creation (`okfgen`)
+## 4. Stage 2: Card creation (`okfgen`)
 
-**Goal:** distill the atomic markdown into **concept cards** — reusable, cross-linked knowledge,
+**Goal:** distill the atomic markdown into **concept cards** - reusable, cross-linked knowledge,
 one card per concept.
 
 **Package:** `tooling/okf-gen/` (package `okfgen`). It is **concept-centric** and, like `okf-prep`,
@@ -240,28 +236,26 @@ one card per concept.
 flowchart TD
     atomic[("atomic markdown<br/>ATOMIC_DIR")] --> load["load → [Doc]<br/><i>AREAS / SLICE_AREA slice filter</i>"]
     load --> tax["propose_taxonomy (minimax-m3)<br/>→ taxonomy.draft.yaml"]
-    tax --> g1{{"🚦 GATE 1<br/>edit → taxonomy.yaml"}}
+    tax --> g1{{"GATE 1<br/>edit → taxonomy.yaml"}}
     g1 --> assign["assign_docs (deepseek-v4-flash)<br/>each doc → one concept, or 'exclude'"]
     assign --> distill["distill_concept (minimax-m3)<br/>concept + its docs → one card"]
     distill --> drafts[("drafts/*.md<br/>status: draft")]
-    drafts --> g2{{"🚦 GATE 2<br/>review, flip status: approved"}}
+    drafts --> g2{{"GATE 2<br/>review, flip status: approved"}}
     g2 --> promote["promote<br/><i>validate frontmatter + cross-links</i>"]
-    promote --> g3{{"🚦 GATE 3<br/>only approved + valid land"}}
-    g3 --> cards[("concepts/*.md — git")]
+    promote --> g3{{"GATE 3<br/>only approved + valid land"}}
+    g3 --> cards[("concepts/*.md - git")]
 ```
 
 - **Load** (`load.py`) reads atomic markdown into a source-agnostic `Doc {id, name, text}`. The
   **slice lever** is the `AREAS` registry + the `SLICE_AREA` env var: distillation runs one functional
   *area* at a time (topic → area map), so the corpus is built area-by-area and product-by-product rather
-  than all at once. (The original single-slice `is_wave_replen()` keyword filter is retained but
-  `# Legacy` — the very first wave/replen build used it; `AREAS`/`SLICE_AREA` replaced it.) All four
-  products — WMOS, oSCI, Slotting, Labour Management — were distilled this way; **990 concept cards exist
-  today** across `concepts/<product>/`.
+  than all at once. All four products - WMOS, oSCI, Slotting, Labour Management - are distilled this way;
+  **990 concept cards** live across `concepts/<product>/`.
 - **Taxonomy** (`taxonomy.py`) asks the model for a fine-grained list of concepts → `taxonomy.yaml`
   (Gate 1: you curate *what concepts exist*).
 - **Assign** (`assign.py`) classifies each doc into exactly one concept, or `exclude`.
 - **Distill** (`card.py`) concatenates a concept's assigned docs and produces `{title, description,
-  tags, related, body}` — the `related` ids are constrained to the real taxonomy so links can't be
+  tags, related, body}` - the `related` ids are constrained to the real taxonomy so links can't be
   hallucinated. Output lands in `drafts/` as `status: draft` (Gate 2: you review and flip to
   `approved`).
 - **Promote** (`promote.py`) validates required frontmatter and that every `related:` id resolves,
@@ -278,7 +272,7 @@ graph (`related:` links + `sources:` provenance):
 ```yaml
 ---
 type: concept
-title: 2013 Replenishment Logic — Excess Wave Need Processing
+title: 2013 Replenishment Logic - Excess Wave Need Processing
 description: Manhattan WMOS replenishment logic for moving inventory…
 tags: [replenishment, wave, pick-location]
 resource: https://hive.example.com/card/wms/base-replenishment-logic   # served-card URI
@@ -307,46 +301,46 @@ version: ['2018', '2020']
 1. `wms-wmos-…-2013-replenishment-logic.md`
 ```
 
-The card lives at **`concepts/<product>/<id>.md`** and its **concept ID is that path** (`wms/base-replenishment-logic`) — the OKF-spec identity model. `## Related` (bundle-relative markdown links, regenerated from `related:`) and `# Citations` (from `sources:`) make the graph and provenance visible to any OKF consumer, not just okf-serve. The `product`/`platform`/`version`/`regime` facets drive selection + cross-product/regime isolation.
+The card lives at **`concepts/<product>/<id>.md`** and its **concept ID is that path** (`wms/base-replenishment-logic`) - the OKF-spec identity model. `## Related` (bundle-relative markdown links, regenerated from `related:`) and `# Citations` (from `sources:`) make the graph and provenance visible to any OKF consumer, not just okf-serve. The `product`/`platform`/`version`/`regime` facets drive selection + cross-product/regime isolation.
 
 ### `okfgen` file map
 
 | File | Job |
 |---|---|
-| `load.py` | Read atomic markdown (local) or R2 into `Doc`s; the `AREAS`/`SLICE_AREA` slice filter (source-aware). Retains a `# Legacy` `is_wave_replen()`. |
+| `load.py` | Read atomic markdown (local) or R2 into `Doc`s; the `AREAS`/`SLICE_AREA` slice filter (source-aware). |
 | `taxonomy.py` | Propose a per-area concept taxonomy from the doc inventory (LLM) → `taxonomy.<area>.yaml`. |
 | `assign.py` | Classify each doc into exactly one concept id, or `exclude`. |
 | `card.py` | Distill a concept + its assigned docs → one OKF card (frontmatter + prose); constrains `related` to real ids. |
 | `promote.py` | Validate frontmatter + cross-links; move approved drafts → `concepts/<product>/`. |
 | `facets.py` | Idempotent stamp/read of the `product`/`platform`/`version`/`regime` facets; cross-facet lint. |
-| `classify_regime.py` | LLM regime proposer (ops vs. traditional), human-gated, fail-safe — the batch classifier kept for future automation. |
+| `classify_regime.py` | LLM regime proposer (ops vs. traditional), human-gated, fail-safe - the batch classifier kept for future automation. |
 | `retopic.py` | Re-map/merge concepts across a taxonomy revision (area re-slicing without a full re-distill). |
-| `corrections.py` | The pure `record ⇄ correction-card` serialization seam (Spec 2) — feeds both the CLI and the GitHub Action. |
+| `corrections.py` | The pure `record ⇄ correction-card` serialization seam (Spec 2) - feeds both the CLI and the GitHub Action. |
 | `run.py` | Gate-aware orchestrator + entrypoint (taxonomy → assign+distill → drafts), area-scoped via `SLICE_AREA`. |
 | `llm.py` | `BifrostChat` (OpenAI-compatible client, bounded retry) + `extract_json` (strips `<think>` reasoning, pulls JSON). |
 | `config.py` | Settings: source (`ATOMIC_DIR` wins, else R2), Bifrost base/key, the three model slots, timeouts. |
 
-### Post-promote — facets, conformance & index (the "Stage 5" run-order step)
+### Post-promote - facets, conformance & index (the "Stage 5" run-order step)
 
 Promote (gate 3) lands cards in `concepts/<product>/`, but they are not *servable-ready* until three
 deterministic, **idempotent, LLM-free** scripts run over the whole `concepts/` dir. This is a
-first-class pipeline step — run it after every distillation, for any product:
+first-class pipeline step - run it after every distillation, for any product:
 
 | Step | Script | What it does |
 |---|---|---|
 | **1. Facet stamp** | `okf-gen/scripts/product_facet_apply.py <concepts> <atomic> <product> <platform>` (oSCI uses `osci_facet_apply.py`) | Stamps `product` + `platform` + `version` (union of the card's source-doc folder-years) onto the product's cards. |
-| **1b. Version facet** | `okf-gen/scripts/version_apply.py <concepts>` | Deterministically derives `version` (release scope) from source-ref years — no LLM, no gate. Soft filter-with-fallback (no `resolve()` guard). |
+| **1b. Version facet** | `okf-gen/scripts/version_apply.py <concepts>` | Deterministically derives `version` (release scope) from source-ref years - no LLM, no gate. Soft filter-with-fallback (no `resolve()` guard). |
 | **1c. Regime facet** | `okf-gen/scripts/regime_apply.py <concepts>` (proposals from `regime_classify.py`) | Stamps `regime` (ops vs. traditional, within-product either-or) from a human-reviewed classification; drives the cross-regime `resolve()` expansion guard. |
 | **2. Conformance pass** | `okf-gen/scripts/conformance_pass.py <concepts>` | Sets `resource` → served-card URI; adds the OKF-recommended `timestamp`; regenerates `## Related` (bundle-relative markdown links, from `related:`) and `# Citations` (from `sources:`) body sections. |
-| **3. Index generation** | `okf-gen/scripts/index_generate.py <concepts>` | Writes the root `index.md` (`okf_version: "0.1"` frontmatter) + per-product `index.md` progressive-disclosure listings (concepts only — corrections excluded). |
+| **3. Index generation** | `okf-gen/scripts/index_generate.py <concepts>` | Writes the root `index.md` (`okf_version: "0.1"` frontmatter) + per-product `index.md` progressive-disclosure listings (concepts only - corrections excluded). |
 
-(The facet scripts are all **idempotent + LLM-free**; `version`/`regime` are optional per product — a product ships with `product`/`platform` always, `version`/`regime` where the source supports them.)
+(The facet scripts are all **idempotent + LLM-free**; `version`/`regime` are optional per product - a product ships with `product`/`platform` always, `version`/`regime` where the source supports them.)
 
 Why it exists: it takes the corpus from *formally* OKF-conformant (parseable frontmatter + non-empty
-`type`) to *idiomatically* conformant — path-id identity, a graph expressed as inline bundle-relative
+`type`) to *idiomatically* conformant - path-id identity, a graph expressed as inline bundle-relative
 markdown links, `# Citations`, and a spec-shaped index. The scripts are idempotent, so re-running over
 the full corpus leaves already-conformant cards untouched and only transforms new ones. (There is no
-official OKF validator yet — `okf-lint` is a v0.0.1 stub — so conformance is checked by an in-repo audit
+official OKF validator yet - `okf-lint` is a v0.0.1 stub - so conformance is checked by an in-repo audit
 script against the spec text.)
 
 **Isolation eval = the deploy gate.** Before deploy, `okf-serve/run_eval` over `data/<product>_product_qa.jsonl`
@@ -361,10 +355,10 @@ with `type: correction` and `corrects: <path-id>` pointing at the concept it ame
 
 - **Surface-don't-resolve.** `okf-serve`'s `resolve()` reverse-looks-up the **active** corrections
   (`type: correction` **and** `status: approved`) of every selected concept and **co-pulls** them into the
-  answer bundle *after* the concept's own BFS/budget — intentionally **unbudgeted** (a correction is never
+  answer bundle *after* the concept's own BFS/budget - intentionally **unbudgeted** (a correction is never
   dropped, or the wrong fact would stand). The answer prompt treats a correction as **authoritative**.
 - **Never selected, never listed.** Corrections are excluded from the selectable index (`list_concepts` +
-  the agent selector) and from per-product `index.md` listings — they only ride along with their target.
+  the agent selector) and from per-product `index.md` listings - they only ride along with their target.
 - **Supersede, don't delete.** A newer correction can `supersedes:` older ones, flipping them to
   `status: superseded` (kept in git for history). Conflicts (>1 active correction on one concept) are a
   **lint warning** for human resolution, not an auto-merge.
@@ -387,9 +381,9 @@ verified live (a seeded correction on `slotting/data-requirements` co-pulls and 
 
 ---
 
-## 5. Stage 3 — Serving: connectors + stateful SQLite (`okf-serve`)
+## 5. Stage 3: Serving (`okf-serve`)
 
-**Goal:** serve the cards to people and tools, and track each person's *work* — without
+**Goal:** serve the cards to people and tools, and track each person's *work* - without
 re-introducing a heavy retrieval stack. Claude is the reasoning loop; this layer is LLM-free.
 
 **Package:** `tooling/okf-serve/` (package `okfserve`, CLI `okfserve`).
@@ -399,8 +393,8 @@ re-introducing a heavy retrieval stack. Claude is the reasoning loop; this layer
 ```mermaid
 flowchart TB
     subgraph stores["Stores"]
-        git[("git: concepts/*.md<br/>knowledge — read-only, versioned")]
-        db[("sqlite: objectives.db<br/>work state — mutable, per-owner")]
+        git[("git: concepts/*.md<br/>knowledge - read-only, versioned")]
+        db[("sqlite: objectives.db<br/>work state - mutable, per-owner")]
     end
 
     subgraph core["okfserve core"]
@@ -409,8 +403,8 @@ flowchart TB
     end
 
     subgraph doors["Two doors"]
-        rest["Door 1 — REST / OpenAPI<br/>(app.py, FastAPI)"]
-        mcp["Door 2 — MCP<br/>(mcp_app.py — tools + 3 prompts)"]
+        rest["Door 1 - REST / OpenAPI<br/>(app.py, FastAPI)"]
+        mcp["Door 2 - MCP<br/>(mcp_app.py - tools + 3 prompts)"]
     end
 
     git --- resolver
@@ -426,7 +420,7 @@ Two transports, one codebase (`server.py`): `okfserve serve --stdio` runs the MC
 stdio (the operator's Claude Code); `okfserve serve --http` serves the REST routes **and** a
 mounted MCP streamable-HTTP app from one FastAPI process (the team, behind the Cloudflare Access gate).
 
-### Door 1 — REST / OpenAPI (`app.py`)
+### Door 1 - REST / OpenAPI (`app.py`)
 
 The universal HTTP face (auto-generated OpenAPI at `/docs`). Read-only in v1.
 
@@ -437,7 +431,7 @@ The universal HTTP face (auto-generated OpenAPI at `/docs`). Read-only in v1.
 | `GET` | `/card/{id}` | one card's markdown (404 if missing) |
 | `POST`| `/resolve` | `{ids, depth}` → a bundle of cards + their cross-linked neighbours, **plus any active corrections** of the selected concepts (co-pulled, authoritative) |
 
-### Door 2 — MCP (`mcp_app.py`)
+### Door 2 - MCP (`mcp_app.py`)
 
 The connector Claude speaks. It exposes **9 tools** and **3 prompts**.
 
@@ -446,14 +440,14 @@ The connector Claude speaks. It exposes **9 tools** and **3 prompts**.
   `append_entry`, `set_status`, `record_quiz_result`.
 - **Three mode prompts** = the three "agents", each a persona plus the standing rules to
   *ground every claim in a card's `sources:`* and *track the work in the ledger*:
-  - **`investigate(symptom)`** — root-cause an issue; log hypotheses, evidence, ruled-out causes → resolution.
-  - **`implementation_advisor(task)`** — advise on an implementation; log steps, decisions, trade-offs → plan/done.
-  - **`guided_learning(topic)`** — build a curriculum from the card graph, teach one concept at a time, quiz, record scores, resume from progress.
+  - **`investigate(symptom)`** - root-cause an issue; log hypotheses, evidence, ruled-out causes → resolution.
+  - **`implementation_advisor(task)`** - advise on an implementation; log steps, decisions, trade-offs → plan/done.
+  - **`guided_learning(topic)`** - build a curriculum from the card graph, teach one concept at a time, quiz, record scores, resume from progress.
 
-### The stateful store — the SQLite objective ledger (`ledger.py`)
+### The stateful store - the SQLite objective ledger (`ledger.py`)
 
 The one new piece of infrastructure: a single SQLite file at `OKF_DATA_DIR/objectives.db`
-(WAL mode). It holds **work state**, never knowledge — just the trail of work plus citations back
+(WAL mode). It holds **work state**, never knowledge - just the trail of work plus citations back
 to the cards. All three modes share **one** abstraction: an *objective* with a log of *entries*.
 
 ```mermaid
@@ -461,11 +455,11 @@ erDiagram
     OBJECTIVE ||--o{ ENTRY : "has a log of"
     OBJECTIVE {
         text   id PK
-        text   owner        "authenticated identity — never client-supplied"
+        text   owner        "authenticated identity - never client-supplied"
         text   mode         "investigate | implement | learn"
         text   goal
         text   status       "open | active | resolved | done"
-        json   external_ref "nullable — seam for ticket linkage"
+        json   external_ref "nullable - seam for ticket linkage"
         text   visibility   "private (v1)"
         text   created_at
         text   updated_at
@@ -484,13 +478,13 @@ erDiagram
 **trusted header injected by the gate** (live: Cloudflare Access → `Cf-Access-Authenticated-User-Email`; `identity.py`)
 and keys every row on it as `owner`; for stdio (Claude Code, no gate) it falls back to a configured
 `OKF_DEFAULT_OWNER`. `owner` is
-**always** derived server-side, never a tool parameter — one person can never read or write
+**always** derived server-side, never a tool parameter - one person can never read or write
 another's objectives. The `external_ref` and `visibility` columns are designed-in seams (ticket
 linkage; team-shared objectives) that are present but unused in v1.
 
 ### A stateful mode in motion
 
-How `investigate` actually runs — Claude Desktop is the loop; the layer just retrieves and records:
+How `investigate` actually runs - Claude Desktop is the loop; the layer just retrieves and records:
 
 ```mermaid
 sequenceDiagram
@@ -521,18 +515,18 @@ sequenceDiagram
 |---|---|
 | `resolver.py` | The pure resolver: `load_index` / `get_card` / `resolve(ids, depth, caps)`. Reads cards live from `CONCEPTS_DIR`. |
 | `tools.py` | Transport-agnostic read tools wrapping the resolver. |
-| `ledger.py` | SQLite objective ledger — `objective` + `entry` CRUD, owner-scoped, enum-validated. **The stateful core.** |
+| `ledger.py` | SQLite objective ledger - `objective` + `entry` CRUD, owner-scoped, enum-validated. **The stateful core.** |
 | `identity.py` | Resolve `owner` from the trusted header (case-insensitive), else `OKF_DEFAULT_OWNER`. |
 | `prompts.py` | The three mode-prompt bodies (grounding rule + ledger-tracking rule). |
-| `app.py` | Door 1 — FastAPI REST router (`/healthz`, `/concepts`, `/card/{id}`, `/resolve`). |
-| `mcp_app.py` | Door 2 — FastMCP server: 9 tools + 3 prompts. Injects `owner` from the request context. |
+| `app.py` | Door 1 - FastAPI REST router (`/healthz`, `/concepts`, `/card/{id}`, `/resolve`). |
+| `mcp_app.py` | Door 2 - FastMCP server: 9 tools + 3 prompts. Injects `owner` from the request context. |
 | `server.py` | Entrypoint: `serve --stdio` \| `--http`; mounts the MCP streamable-HTTP app on FastAPI. |
 | `config.py` | Settings: `concepts_dir`, `okf_data_dir`, host/port/transport, `identity_header`, `okf_default_owner`. |
 | `index.py` | (Content tooling) emits `index.md`, the progressive-disclosure entry point over the cards. |
 | `agent.py`, `eval.py`, `run_eval.py` | (Eval tooling) the LLM select/answer harness that *proved* the no-RAG curated tier (14/14 wave/replen Qs). Not on the serving path. |
 
 Deploy is operator-run behind an identity gate. The **live** gate is **Cloudflare Access** (keyless
-OAuth → `Cf-Access-Authenticated-User-Email`) — see
+OAuth → `Cf-Access-Authenticated-User-Email`) - see
 [`../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md`](../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md)
 and [`tooling/okf-serve/deploy/README.md`](../tooling/okf-serve/deploy/README.md). The self-hosted
 **Authentik** alternative is in
@@ -542,18 +536,18 @@ and [`tooling/okf-serve/deploy/README.md`](../tooling/okf-serve/deploy/README.md
 
 ## 6. The two stores: knowledge vs. work state
 
-The cleanest way to hold the whole system in your head:
+A simple way to hold the whole system in mind:
 
 ```mermaid
 flowchart LR
-    subgraph K["Knowledge — git"]
+    subgraph K["Knowledge - git"]
         direction TB
         k1["concepts/*.md"]
         k2["read-only at serve time"]
         k3["versioned · curated via PR"]
         k4["portable, zero-infra"]
     end
-    subgraph W["Work state — SQLite"]
+    subgraph W["Work state - SQLite"]
         direction TB
         w1["objectives.db"]
         w2["mutable, per-owner"]
@@ -586,14 +580,14 @@ flowchart LR
    `product: WMS`), normalized to PDF, and Docling-converted to clean atomic markdown with
    frontmatter. → `sources/wms-atomic/docs/…fs300-replenishment.md`.
 2. **Create.** `okfgen` proposes an `activity-tracking-fs300-replenishment` concept, assigns this
-   doc (and any siblings) to it, and distills a card — cross-linked to `base-replenishment-logic`,
+   doc (and any siblings) to it, and distills a card - cross-linked to `base-replenishment-logic`,
    citing the atomic source. After review it's promoted to `concepts/`.
 3. **Serve.** A consultant, in Claude Desktop, invokes the **investigate** prompt. Claude calls
-   `resolve(["activity-tracking-fs300-replenishment"])`, reads the card + neighbours, and answers —
+   `resolve(["activity-tracking-fs300-replenishment"])`, reads the card + neighbours, and answers -
    **citing the card's `sources:`**. It opens an objective and logs its findings to the SQLite
    ledger, so the investigation can be resumed later or shared (via the designed-in seams).
 
-No vector database, no re-embedding, no external index — just git files and Claude, with a thin
+No vector database, no re-embedding, no external index - just git files and Claude, with a thin
 SQLite memory.
 
 ---
@@ -602,24 +596,24 @@ SQLite memory.
 
 Every code file in the pipeline and its one-line job.
 
-### `tooling/okf-prep/okfprep/` — Stage 1, doc prep
+### `tooling/okf-prep/okfprep/` - Stage 1, doc prep
 `cli.py` · `config.py` · `scanner.py` · `folder_parser.py` · `dups.py` · `curation_plan.py` ·
 `slugs.py` · `libreoffice.py` · `striptrim.py` · `normalize.py` · `docling_client.py` ·
 `vision.py` · `transform.py` · `stripper.py` (+ `stripper_rules/`) · `stamp.py` · `validate.py`
-— see the [okf-prep file map](#okf-prep-file-map).
+- see the [okf-prep file map](#okf-prep-file-map).
 
-### `tooling/okf-gen/okfgen/` — Stage 2, card creation
+### `tooling/okf-gen/okfgen/` - Stage 2, card creation
 `load.py` · `taxonomy.py` · `assign.py` · `card.py` · `promote.py` · `facets.py` · `classify_regime.py` ·
-`retopic.py` · `corrections.py` · `run.py` · `llm.py` · `config.py` — see the [okfgen file map](#okfgen-file-map).
+`retopic.py` · `corrections.py` · `run.py` · `llm.py` · `config.py` - see the [okfgen file map](#okfgen-file-map).
 Post-promote + authoring scripts live in `tooling/okf-gen/scripts/` (`product_facet_apply.py` ·
 `osci_facet_apply.py` · `version_apply.py` · `regime_apply.py` · `regime_classify.py` ·
 `conformance_pass.py` · `index_generate.py` · `new_correction.py` · `correction_from_issue.py` ·
 `corrections_lint.py` · `run_pipeline.sh`).
 
-### `tooling/okf-serve/okfserve/` — Stage 3, serving
+### `tooling/okf-serve/okfserve/` - Stage 3, serving
 `resolver.py` · `tools.py` · `ledger.py` · `identity.py` · `prompts.py` · `app.py` · `mcp_app.py` ·
 `server.py` · `config.py` (+ content/eval tooling `index.py`, `agent.py`, `eval.py`, `run_eval.py`)
-— see the [okf-serve file map](#okf-serve-file-map).
+- see the [okf-serve file map](#okf-serve-file-map).
 
 ### Data & config (git-tracked)
 | Path | Role |
@@ -629,9 +623,9 @@ Post-promote + authoring scripts live in `tooling/okf-gen/scripts/` (`product_fa
 | `sources/{osci,slotting,lm}-atomic/_curation/` | The curation judgment for the 3 later products (oSCI/Slotting/LM); atomic `docs/` for these live in R2/local, not git. |
 | `taxonomy.<area>.yaml` | The approved per-area concept taxonomies (Stage 2 Gate 1). Draft proposals are gitignored scratch. |
 | `regime-classification.yaml` | The human-reviewed regime labels (WMS), applied by `regime_apply.py`. |
-| `drafts/*.md` | Distilled cards awaiting approval (Stage 2 Gate 2) — gitignored scratch. |
+| `drafts/*.md` | Distilled cards awaiting approval (Stage 2 Gate 2) - gitignored scratch. |
 | `concepts/<product>/*.md` | **The canonical concept cards** (the knowledge store). |
-| `concepts/<product>/corrections/*.md` | **Correction overlay cards** (Spec 2) — co-pulled, never independently listed. |
+| `concepts/<product>/corrections/*.md` | **Correction overlay cards** (Spec 2) - co-pulled, never independently listed. |
 | `.claude/agents/wms-curator.md` | The curation subagent. |
 | `.claude/commands/wms-prep.md` | The `/wms-prep` orchestration command. |
 | `docs/runbooks/*.md` | Operator runbooks (doc-prep e2e; okf connector one-pager; okf-serve Authentik-alt deploy). Live CF-Access deploy → `infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md`. |
@@ -650,10 +644,10 @@ Where each piece runs, and how the model calls, git, and connectors flow across 
 
 ```mermaid
 flowchart TB
-    team["🧑‍💻 Team<br/>Claude Desktop"]
-    op["🧑‍💻 Operator<br/>Claude Code"]
+    team["Team<br/>Claude Desktop"]
+    op["Operator<br/>Claude Code"]
 
-    subgraph dev["🖥️ dev box (dev-box)"]
+    subgraph dev["dev box (dev-box)"]
         prep["okf-prep"]
         gen["okfgen"]
         repo["git working tree<br/>tooling/ · concepts/ · sources/"]
@@ -672,8 +666,8 @@ flowchart TB
         qwen["Qwen3.6-27B (vLLM)<br/>vision tier"]
     end
 
-    gh["☁️ GitHub<br/>cards + corpus"]
-    r2["☁️ R2<br/>atomic-corpus backup"]
+    gh["GitHub<br/>cards + corpus"]
+    r2["R2<br/>atomic-corpus backup"]
 
     prep -->|"convert (text)"| docling
     prep -->|"figures / scans"| qwen
@@ -689,12 +683,12 @@ flowchart TB
     op -->|"MCP stdio / http"| serve
 ```
 
-**Reading it:** content creation (Stages 1–2) runs on the **dev box**, calling the sovereign models
+**Reading it:** content creation (Stages 1-2) runs on the **dev box**, calling the sovereign models
 on **Host-A** (Bifrost, Docling) and **Host-D** (Qwen); its output is committed to **git** and pushed to
 **GitHub**, with the atomic corpus mirrored to **R2**. Serving (Stage 3) runs on **Host-A** from a
 cards checkout kept current by the Windmill `f/example/okf/cards_sync` schedule (git pull every 15 min;
 no redeploy for content updates); the team reaches it through the **Cloudflare Access** gate (keyless
-OAuth — the live deploy; Authentik is a self-hosted alternative), which injects the identity header
+OAuth - the live deploy; Authentik is a self-hosted alternative), which injects the identity header
 (`Cf-Access-Authenticated-User-Email`) the ledger keys work on.
 
 ---
@@ -706,8 +700,8 @@ OAuth — the live deploy; Authentik is a self-hosted alternative), which inject
 cd tooling/okf-prep && uv sync --extra dev
 #   configure .env: CORPUS_ROOT, DOCLING_BASE(+auth), QWEN_BASE, QWEN_MODEL
 #   then, in Claude Code, run the orchestration:  /wms-prep <subtree> <work_dir>
-#   (scan → dups → wms-curator → validate-plan → 🚦 → dedup → normalize →
-#    route → 🚦 → transform → stamp → validate-atomic)
+#   (scan → dups → wms-curator → validate-plan → → dedup → normalize →
+#    route → → transform → stamp → validate-atomic)
 
 # ── Stage 2: atomic markdown → concept cards (3 gates) ──────────────────
 cd tooling/okf-gen && uv sync --extra dev
@@ -739,13 +733,13 @@ All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev
 
 | Term | Meaning |
 |---|---|
-| **OKF** | Organizational Knowledge Fabric — this whole system. |
+| **OKF** | Open Knowledge Format - this system. |
 | **WMS / WMOS** | Manhattan Warehouse Management System; WMOS = WMS-on-SCPP. The domain. |
 | **Atomic markdown** | One clean, single-topic markdown file per source doc, with metadata frontmatter. Stage 1 output. |
 | **Concept card** | A reusable, cross-linked knowledge card distilled from atomic docs. Stage 2 output; the unit of knowledge. |
 | **Taxonomy** | The approved list of concepts (`taxonomy.yaml`) that cards are distilled against. |
 | **Objective / entry** | The stateful work unit in the ledger: an objective (a mode + goal + status) with a log of entries citing cards. |
-| **Mode** | One of `investigate` / `implementation_advisor` / `guided_learning` — an MCP prompt persona over the ledger. |
+| **Mode** | One of `investigate` / `implementation_advisor` / `guided_learning` - an MCP prompt persona over the ledger. |
 | **Door** | A way in: the REST/OpenAPI API, or the MCP connector for Claude. |
 | **Gate** | A human review/approval checkpoint where the pipeline stops. |
 | **Bifrost / `VK_OKF`** | The firm's LLM gateway and the virtual key scoped to OKF's models. |
@@ -753,9 +747,9 @@ All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev
 
 ---
 
-*This document describes the system as of the corrections-layer merge (2026-07-10; PRs #9–#15): 4 products
-(990 concept cards + a corrections overlay = 991 live), per-product folders with path-ids, post-promote
-facets/conformance/index, isolation-gated deploys, and a `type: correction` overlay that co-pulls at query
-time. The three packages live under `tooling/`; the knowledge lives in `concepts/<product>/`; the work
-state lives in a single SQLite file.
-Small, simple, sovereign.*
+## See also
+
+- [OKF Overview](../README.md) - the documentation map and how the pieces fit together.
+- [Guide: Prepare a knowledge corpus](runbooks/wms-prep-e2e.md) - Stage 1 as a step-by-step procedure.
+- [Guide: Add OKF as a Claude connector](runbooks/okf-connector-deploy.md) - make Stage 3 available to Claude.
+- [Operations: Deploy okf-serve](../tooling/okf-serve/deploy/README.md) and [the Cloudflare Access gate](../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md) - run the serving layer.
