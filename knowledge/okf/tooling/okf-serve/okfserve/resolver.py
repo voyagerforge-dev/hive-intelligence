@@ -14,7 +14,21 @@ def parse_frontmatter(text: str) -> dict:
     return fm if isinstance(fm, dict) else {}
 
 
-def load_index(concepts_dir) -> list[dict]:
+def card_path(concepts_dir, card_id, clients_dir=None):
+    """Map a card id to its file. `clients/…` ids resolve under clients_dir, all others
+    under concepts_dir. Returns None if the file is missing or the path escapes its base."""
+    if clients_dir is not None and card_id.startswith("clients/"):
+        base = Path(clients_dir).resolve()
+        p = (base / f"{card_id[len('clients/'):]}.md").resolve()
+    else:
+        base = Path(concepts_dir).resolve()
+        p = (base / f"{card_id}.md").resolve()
+    if base != p and base not in p.parents:
+        return None
+    return p if p.exists() else None
+
+
+def load_index(concepts_dir, clients_dir=None) -> list[dict]:
     concepts_dir = Path(concepts_dir)
     out: list[dict] = []
     for p in sorted(concepts_dir.rglob("*.md")):
@@ -26,7 +40,26 @@ def load_index(concepts_dir) -> list[dict]:
                     "description": fm.get("description", ""),
                     "regime": fm.get("regime"), "type": fm.get("type", "concept"),
                     "version": fm.get("version"), "product": fm.get("product"),
+                    "client": None,
                     "corrects": fm.get("corrects"), "status": fm.get("status")})
+    if clients_dir is not None:
+        cdir = Path(clients_dir)
+        if cdir.exists():
+            for p in sorted(cdir.rglob("*.md")):
+                if p.name in ("index.md", "log.md"):
+                    continue
+                rel = p.relative_to(cdir).with_suffix("")
+                parts = rel.parts
+                if len(parts) < 3 or parts[1] != "memory":
+                    continue  # only <client>/memory/<slug>.md
+                fm = parse_frontmatter(p.read_text())
+                out.append({"id": "clients/" + rel.as_posix(),
+                            "title": fm.get("title", rel.as_posix()),
+                            "description": fm.get("description", ""),
+                            "regime": fm.get("regime"), "type": fm.get("type", "memory"),
+                            "version": fm.get("version"), "product": fm.get("product"),
+                            "client": parts[0],
+                            "corrects": fm.get("corrects"), "status": fm.get("status")})
     return out
 
 

@@ -25,3 +25,8 @@ def test_settings_have_serving_defaults():
     assert s.transport == "stdio"
     assert s.okf_default_owner
     assert s.identity_header
+
+
+def test_settings_has_clients_dir():
+    from okfserve.config import Settings
+    assert Settings().clients_dir == "../../clients"

@@ -262,3 +262,48 @@ def test_resolve_ignores_superseded_correction(tmp_path):
     res = resolve(tmp_path, ["wms/c"])
     assert res["corrections"] == []
     assert "old" not in res["bundle"].split("concept", 1)[-1] or "wms/corrections/old" not in res["card_ids"]
+
+
+def test_card_path_resolves_concept_and_client_trees(tmp_path):
+    from okfserve.resolver import card_path
+    concepts = tmp_path / "concepts"; clients = tmp_path / "clients"
+    (concepts / "wms").mkdir(parents=True)
+    (concepts / "wms" / "a.md").write_text("---\ntitle: A\n---\n\nbody\n")
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "m.md").write_text("---\ntitle: M\n---\n\nmem\n")
+    assert card_path(concepts, "wms/a", clients).name == "a.md"
+    assert card_path(concepts, "clients/alpha/memory/m", clients).name == "m.md"
+    assert card_path(concepts, "clients/alpha/memory/missing", clients) is None
+    assert card_path(concepts, "../secret", clients) is None            # traversal blocked
+    assert card_path(concepts, "clients/../../etc/passwd", clients) is None
+
+
+def test_load_index_includes_client_memory(tmp_path):
+    from okfserve.resolver import load_index
+    concepts = tmp_path / "concepts"; clients = tmp_path / "clients"
+    (concepts / "wms").mkdir(parents=True)
+    (concepts / "wms" / "a.md").write_text("---\ntitle: A\ndescription: d\nproduct: wms\n---\n\nbody\n")
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "m.md").write_text(
+        "---\ntitle: ALPHA Mem\ndescription: alpha note\ntype: memory\nclient: alpha\nproduct: wms\n---\n\nmem\n")
+    idx = {c["id"]: c for c in load_index(concepts, clients)}
+    assert idx["wms/a"]["client"] is None                       # concept rows carry client=None
+    m = idx["clients/alpha/memory/m"]
+    assert m["type"] == "memory" and m["client"] == "alpha" and m["product"] == "wms"
+
+
+def test_load_index_without_clients_dir_is_unchanged(tmp_path):
+    from okfserve.resolver import load_index
+    (tmp_path / "x.md").write_text("---\ntitle: X\ndescription: d\n---\n\nbody\n")
+    idx = load_index(tmp_path)                                  # no clients_dir
+    assert [c["id"] for c in idx] == ["x"] and idx[0]["client"] is None
+
+
+def test_load_index_skips_client_files_outside_memory_subfolder(tmp_path):
+    from okfserve.resolver import load_index
+    concepts = tmp_path / "concepts"; clients = tmp_path / "clients"
+    concepts.mkdir()
+    (clients / "alpha" / "setup").mkdir(parents=True)
+    (clients / "alpha" / "setup" / "notes.md").write_text("---\ntitle: N\n---\n\nx\n")   # not memory/
+    idx = load_index(concepts, clients)
+    assert idx == []                                            # only <client>/memory/<slug>.md counts
