@@ -16,22 +16,26 @@ def owner_from_ctx(ctx: Context, settings) -> str:
 def build_mcp(settings, conn_factory) -> FastMCP:
     mcp = FastMCP("okf", stateless_http=True, host=settings.host, port=settings.port)
     cdir = settings.concepts_dir
+    cldir = settings.clients_dir
 
     @mcp.tool()
-    def list_concepts() -> list[dict]:
-        """List all OKF concept cards (id, title, description)."""
-        return tools.list_concepts(cdir)
+    def list_concepts(client: str | None = None) -> list[dict]:
+        """List selectable OKF cards (concepts always; a client's memory only when
+        `client` is set)."""
+        return tools.list_concepts(cdir, cldir, client=client)
 
     @mcp.tool()
     def get_card(card_id: str) -> str:
-        """Return the full markdown of one OKF card."""
-        return tools.get_card_text(cdir, card_id)
+        """Return the full markdown of one OKF card (concept or client memory) by id."""
+        return tools.get_card_text(cdir, card_id, cldir)
 
     @mcp.tool()
-    def resolve(ids: list[str], depth: int = 1) -> dict:
-        """Load cards by id plus their cross-linked neighbours (depth hops)."""
-        return tools.resolve_cards(cdir, ids, depth=depth,
-                                   max_cards=settings.max_cards, max_chars=settings.max_chars)
+    def resolve(ids: list[str], depth: int = 1, client: str | None = None) -> dict:
+        """Load cards by id plus cross-linked neighbours; `client` scopes client memory
+        (hard-isolated)."""
+        return tools.resolve_cards(cdir, ids, depth=depth, max_cards=settings.max_cards,
+                                   max_chars=settings.max_chars, clients_dir=cldir,
+                                   client=client)
 
     @mcp.tool()
     def start_objective(mode: str, goal: str, ctx: Context,
