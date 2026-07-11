@@ -26,3 +26,20 @@ def test_memory_qa_wellformed():
     assert any(r.get("client") == "alpha" and r.get("expects_memory") for r in rows)
     assert any(r.get("client") in (None, "") for r in rows)
     assert any(r.get("client") == "acme" for r in rows)
+
+
+def test_memory_qa_ids_resolve():
+    import json
+    from pathlib import Path
+
+    from okfserve.resolver import load_index
+    base = Path(__file__).resolve().parents[1]
+    concepts = (base / ".." / ".." / "concepts").resolve()
+    clients = (base / ".." / ".." / "clients").resolve()
+    idx = {c["id"] for c in load_index(concepts, clients)}
+    rows = [json.loads(x) for x in (base / "data" / "memory_qa.jsonl").read_text().splitlines() if x.strip()]
+    for r in rows:
+        for cid in r["expected_card_ids"]:
+            assert cid in idx, f"{r['id']}: {cid} missing from corpus"
+        if r.get("expects_memory"):
+            assert r["expects_memory"] in idx

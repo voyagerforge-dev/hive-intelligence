@@ -372,3 +372,31 @@ def test_get_card_reads_client_tree(tmp_path):
     concepts, clients = _mk_client_world(tmp_path)
     assert "ALPHA changed allocation." in get_card(concepts, "clients/alpha/memory/alloc-mod", clients)
     assert get_card(concepts, "clients/alpha/memory/nope", clients) is None
+
+
+def test_resolve_scope_from_id_not_frontmatter(tmp_path):
+    from okfserve.resolver import resolve
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "wms").mkdir(parents=True)
+    (concepts / "wms" / "a.md").write_text(
+        "---\ntitle: A\nclient: alpha\nrelated: []\n---\n\nA body.\n")
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "m.md").write_text(
+        "---\ntitle: M\ntype: memory\nrelated: []\n---\n\nM body.\n")
+    assert resolve(concepts, ["wms/a"], clients_dir=clients, client=None)["card_ids"] == ["wms/a"]
+    mid = "clients/alpha/memory/m"
+    assert resolve(concepts, [mid], clients_dir=clients, client=None)["card_ids"] == []
+    assert mid in resolve(concepts, [mid], clients_dir=clients, client="alpha")["card_ids"]
+
+
+def test_load_index_forces_memory_type_in_client_tree(tmp_path):
+    from okfserve.resolver import load_index
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    concepts.mkdir()
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "x.md").write_text(
+        "---\ntitle: X\ntype: correction\ncorrects: wms/a\nclient: alpha\n---\n\nx\n")
+    idx = {c["id"]: c for c in load_index(concepts, clients)}
+    assert idx["clients/alpha/memory/x"]["type"] == "memory"
