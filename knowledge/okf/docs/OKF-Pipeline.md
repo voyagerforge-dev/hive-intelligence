@@ -11,8 +11,9 @@ and render inline on GitHub.*
 > Management (64) = **990 concept cards**, plus a **corrections overlay** (991 total). Cards are
 > namespaced into per-product folders with path-ids (`concepts/<product>/<id>.md`); a post-promote
 > step (facets, conformance, index) sits between card creation and serving; a product-isolation eval
-> gates every deploy; and a corrections layer overlays outdated cards without editing them. Each of
-> these is covered below.
+> gates every deploy; a corrections layer overlays outdated cards without editing them; and a
+> **memory layer** adds per-owner private notes plus hard-isolated **client-scoped memory cards**
+> (`clients/<client>/memory/`). Each of these is covered below.
 
 ---
 
@@ -316,6 +317,7 @@ The card lives at **`concepts/<product>/<id>.md`** and its **concept ID is that 
 | `classify_regime.py` | LLM regime proposer (ops vs. traditional), human-gated, fail-safe - the batch classifier kept for future automation. |
 | `retopic.py` | Re-map/merge concepts across a taxonomy revision (area re-slicing without a full re-distill). |
 | `corrections.py` | The pure `record ⇄ correction-card` serialization seam - feeds both the CLI and the GitHub Action. |
+| `memory.py` | The pure `record ⇄ memory-card` serialization seam - feeds the CLI, the Action, and okf-author. |
 | `run.py` | Gate-aware orchestrator + entrypoint (taxonomy → assign+distill → drafts), area-scoped via `SLICE_AREA`. |
 | `llm.py` | `BifrostChat` (OpenAI-compatible client, bounded retry) + `extract_json` (strips `<think>` reasoning, pulls JSON). |
 | `config.py` | Settings: source (`ATOMIC_DIR` wins, else R2), Bifrost base/key, the three model slots, timeouts. |
@@ -380,6 +382,74 @@ with `type: correction` and `corrects: <path-id>` pointing at the concept it ame
 Design + acceptance: `docs/superpowers/specs/2026-07-09-okf-corrections-layer-design.md`. Shipped in PR #15;
 verified live (a seeded correction on `slotting/data-requirements` co-pulls and overrides at query time).
 
+### The memory layer
+
+Concepts and corrections describe **how the product works**. **Memory** captures **what a practitioner
+has learned** - especially **client-specific operational knowledge** ("at ALPHA, allocation confirm
+requires a second verification scan"). Memory is a third card `type` (alongside `concept` and
+`correction`) and lives in **two tiers**, each in the store that fits it:
+
+- **Personal tier - private, in the work ledger.** An owner jots facts with the `remember` MCP tool;
+  they persist as owner-scoped rows in the SQLite ledger (a `memory` table beside `objective`/`entry`),
+  are recalled with `recall` (deterministic substring/tag/card/client filter - **no model at serve
+  time**), and removed with `forget`. They never enter git and are never visible to another owner.
+- **Global tier - shared, client-scoped, in git.** A promoted memory is a `type: memory` card at
+  **`clients/<client>/memory/<slug>.md`** with a `client` facet. It is **selectable** (unlike a
+  correction) but **hard-isolated**: it surfaces only inside its client's active scope and never bleeds
+  into a core answer or another client's answer.
+
+**The invariant.** Memory is client-specific operational knowledge; it lives in a `clients/<client>/`
+namespace and **structurally cannot touch `concepts/`**. A lesson that belongs in *core* knowledge is a
+correction or a new concept, never a memory - so core product documentation can never be polluted by it.
+
+**Hard isolation (two guards).** The `client` is a query-time scope (the persona determines it, like the
+regime), derived structurally from the card's id path - not from author-supplied frontmatter:
+
+- **Selection filter.** With no client set, memory is excluded entirely (`list_concepts()` and the agent
+  selector see concepts only - core stays pristine). With `client=alpha`, only ALPHA's memory joins the
+  candidate set; another client's memory is never a candidate.
+- **BFS guard.** During `resolve()` graph expansion, a neighbour is admitted only if
+  `neighbour.client ∈ {None, active_client}` - the same shape as the cross-regime guard, so no client
+  memory leaks transitively.
+
+**Promotion - personal → global, sanitize + approve.** `promote(memory_id)` (keyless; okf-serve only
+reads *your* row) prepares a neutral promotion record and flips the row to `promotion_requested`; you
+sanitise it (strip client names / ticket #s / personal specifics) and it is filed as an **`okf-memory`
+Issue** - either through the **`okf-author`** MCP server's `submit_memory_promotion` tool or the GitHub
+**Memory Issue Form** directly. A CODEOWNER approve-label fires the `memory-from-issue` Action, which
+builds the card and opens a PR; merging it makes the memory live on the next `cards_sync` pull. The
+authoring surface mirrors corrections and shares one **pure `record ⇄ card` seam** (`okfgen/memory.py`).
+To capture and promote a memory step by step, see
+[Guide: Remember and promote a memory](runbooks/okf-remember-and-promote.md).
+
+**Conflict is a two-layer gate.** When a promoted memory would collide with another for the *same client*
+on the *same subject*, `memory_lint` (deterministic) enumerates candidate pairs (shared `related`/tag),
+and `memory_conflict_score` (an LLM probability judge, **CI/authoring-side only** - the connector stays
+LLM-free) scores each; a genuine conflict **blocks the PR** until a human resolves it (supersede /
+reconcile / reject), a spurious overlap passes. The scorer is **fail-safe: any LLM error scores as a
+conflict (block)**. Resolution is supersede-don't-delete, and the original author is notified via the
+card's `submitted_by` provenance.
+
+**`okf-author` - the write-only door.** So that okf-serve stays **keyless and read-only**, a separate,
+minimal MCP server holds the only GitHub credential - scoped to **`issues:write` only** (it can file an
+issue, never push, merge, or open a PR - the Action does that after the human approve-label). It exposes
+**two hard-separated tools** that structurally cannot cross: `submit_memory_promotion` (requires a
+`client`, labels `okf-memory`) and `submit_correction` (targets a core concept id, labels
+`okf-correction`). Its issue bodies match the Issue Forms exactly, so the same Action parsers accept them.
+
+| Script / file | Job |
+|---|---|
+| `okf-gen/okfgen/memory.py` | Pure `record_to_memory` / `memory_to_record` seam (shared by CLI + Action + okf-author). |
+| `okf-gen/scripts/new_memory.py` | CLI: scaffold a `status: draft` memory card under `clients/<client>/memory/`. |
+| `okf-gen/scripts/memory_from_issue.py` | Parse a Memory Issue-Form body → record → card (product allowlist + `client` `\A[a-z0-9-]+\Z` path guard). |
+| `okf-gen/scripts/memory_lint.py` | Structural lint (bad client/product, dangling `related`, bad supersedes, status) + same-client conflict candidates. |
+| `okf-gen/scripts/memory_conflict_score.py` | LLM conflict-probability gate over the candidates - fail-safe to block; advisory unless keyed. |
+| `okf-author/` (package `okfauthor`) | Write-only MCP server: `submit_memory_promotion` / `submit_correction` (issues:write only). |
+
+Design + acceptance: `docs/superpowers/specs/2026-07-11-okf-memory-cards-design.md`. Shipped across
+PRs #45-#48 (personal tier → client-scoped serving → authoring/gate → okf-author); okf-serve is live with
+memory tools and client isolation verified end-to-end.
+
 ---
 
 ## 5. Stage 3: Serving (`okf-serve`)
@@ -434,11 +504,15 @@ The universal HTTP face (auto-generated OpenAPI at `/docs`). Read-only in v1.
 
 ### Door 2 - MCP (`mcp_app.py`)
 
-The connector Claude speaks. It exposes **9 tools** and **3 prompts**.
+The connector Claude speaks. It exposes **13 tools** and **3 prompts**.
 
-- **Read tools** (wrap the resolver): `list_concepts`, `get_card`, `resolve`.
+- **Read tools** (wrap the resolver): `list_concepts`, `get_card`, `resolve` - `list_concepts` and
+  `resolve` take an optional `client` scope that gates client memory (hard-isolated; no client → concepts
+  only).
 - **Ledger tools** (the stateful part): `start_objective`, `list_objectives`, `get_objective`,
   `append_entry`, `set_status`, `record_quiz_result`.
+- **Memory tools** (the personal tier): `remember`, `recall`, `forget`, `promote` - owner-scoped private
+  notes; `promote` prepares a note for [promotion to a shared client memory](#the-memory-layer).
 - **Three mode prompts** = the three "agents", each a persona plus the standing rules to
   *ground every claim in a card's `sources:`* and *track the work in the ledger*:
   - **`investigate(symptom)`** - root-cause an issue; log hypotheses, evidence, ruled-out causes → resolution.
@@ -448,8 +522,10 @@ The connector Claude speaks. It exposes **9 tools** and **3 prompts**.
 ### The stateful store - the SQLite objective ledger (`ledger.py`)
 
 The one new piece of infrastructure: a single SQLite file at `OKF_DATA_DIR/objectives.db`
-(WAL mode). It holds **work state**, never knowledge - just the trail of work plus citations back
-to the cards. All three modes share **one** abstraction: an *objective* with a log of *entries*.
+(WAL mode). It holds **per-owner state**, never canonical knowledge - the trail of *work* (objectives +
+entries, citing cards) and the owner's *private memory* notes. Objectives share **one** abstraction:
+an *objective* with a log of *entries*; the `memory` table is the personal tier of [the memory
+layer](#the-memory-layer).
 
 ```mermaid
 erDiagram
@@ -473,6 +549,18 @@ erDiagram
         json   card_ids     "the cards this entry was grounded in"
         text   created_at
     }
+    MEMORY {
+        text   id PK
+        text   owner        "authenticated identity - never client-supplied"
+        text   text         "the remembered fact"
+        text   client       "optional tag; required to promote"
+        json   tags
+        json   card_ids     "concepts it relates to"
+        json   external_ref "nullable - ticket linkage"
+        text   visibility   "private | promotion_requested"
+        text   created_at
+        text   updated_at
+    }
 ```
 
 **Identity & owner-scoping.** The app is auth-agnostic. It reads the caller's identity from a
@@ -480,8 +568,9 @@ erDiagram
 and keys every row on it as `owner`; for stdio (Claude Code, no gate) it falls back to a configured
 `OKF_DEFAULT_OWNER`. `owner` is
 **always** derived server-side, never a tool parameter - one person can never read or write
-another's objectives. The `external_ref` and `visibility` columns are designed-in seams (ticket
-linkage; team-shared objectives) that are present but unused in v1.
+another's objectives **or memory**. The `external_ref` seam (ticket linkage) is present on both tables;
+`visibility` is now the personal-memory promotion flag (`private` → `promotion_requested`), and
+team-shared objectives remain a designed-in seam for a later version.
 
 ### A stateful mode in motion
 
@@ -514,15 +603,15 @@ sequenceDiagram
 
 | File | Job |
 |---|---|
-| `resolver.py` | The pure resolver: `load_index` / `get_card` / `resolve(ids, depth, caps)`. Reads cards live from `CONCEPTS_DIR`. |
-| `tools.py` | Transport-agnostic read tools wrapping the resolver. |
-| `ledger.py` | SQLite objective ledger - `objective` + `entry` CRUD, owner-scoped, enum-validated. **The stateful core.** |
+| `resolver.py` | The pure resolver: `card_path` / `load_index` / `get_card` / `resolve`. Reads concepts live from `CONCEPTS_DIR` **and** client memory from `CLIENTS_DIR`; carries the client seed-filter + BFS guard. |
+| `tools.py` | Transport-agnostic read tools wrapping the resolver (client-scope aware). |
+| `ledger.py` | SQLite ledger - `objective` + `entry` + `memory` CRUD, owner-scoped, enum-validated. **The stateful core** (work state + personal memory). |
 | `identity.py` | Resolve `owner` from the trusted header (case-insensitive), else `OKF_DEFAULT_OWNER`. |
-| `prompts.py` | The three mode-prompt bodies (grounding rule + ledger-tracking rule). |
+| `prompts.py` | The three mode-prompt bodies (grounding + ledger-tracking + client-memory-scope rules). |
 | `app.py` | Door 1 - FastAPI REST router (`/healthz`, `/concepts`, `/card/{id}`, `/resolve`). |
-| `mcp_app.py` | Door 2 - FastMCP server: 9 tools + 3 prompts. Injects `owner` from the request context. |
+| `mcp_app.py` | Door 2 - FastMCP server: 13 tools (read + ledger + memory) + 3 prompts. Injects `owner` from the request context. |
 | `server.py` | Entrypoint: `serve --stdio` \| `--http`; mounts the MCP streamable-HTTP app on FastAPI. |
-| `config.py` | Settings: `concepts_dir`, `okf_data_dir`, host/port/transport, `identity_header`, `okf_default_owner`. |
+| `config.py` | Settings: `concepts_dir`, `clients_dir`, `okf_data_dir`, host/port/transport, `identity_header`, `okf_default_owner`. |
 | `index.py` | (Content tooling) emits `index.md`, the progressive-disclosure entry point over the cards. |
 | `agent.py`, `eval.py`, `run_eval.py` | (Eval tooling) the LLM select/answer harness that *proved* the no-RAG curated tier (14/14 wave/replen Qs). Not on the serving path. |
 
@@ -543,24 +632,27 @@ A simple way to hold the whole system in mind:
 flowchart LR
     subgraph K["Knowledge - git"]
         direction TB
-        k1["concepts/*.md"]
+        k1["concepts/ · corrections/ · clients/…/memory/"]
         k2["read-only at serve time"]
         k3["versioned · curated via PR"]
         k4["portable, zero-infra"]
     end
-    subgraph W["Work state - SQLite"]
+    subgraph W["Per-owner state - SQLite"]
         direction TB
         w1["objectives.db"]
         w2["mutable, per-owner"]
-        w3["objectives + entry log"]
+        w3["objectives + entries + memory"]
         w4["cites cards, never stores them"]
     end
-    K -. "entries reference card ids" .-> W
+    K -. "entries/memory reference card ids" .-> W
 ```
 
-Knowledge is *what is true about WMS*; work state is *what a person is doing about it*. They only
-touch through **citations**: an entry records the `card_ids` it was grounded in. Blow away the
-ledger and you lose work history, not knowledge; the cards are untouched.
+Knowledge is *what is true* (canonical concepts, their corrections, and hard-isolated client memory);
+per-owner state is *what a person is doing and privately knows* (their work trail and private notes).
+They only touch through **citations** - an entry or memory records the `card_ids` it relates to. Blow
+away the ledger and you lose work history and private notes, not knowledge; the git cards are untouched.
+The one bridge from private to shared is **[promotion](#the-memory-layer)**: a sanitised, human-approved
+personal note becomes a client-scoped memory card in git.
 
 ---
 
@@ -605,16 +697,22 @@ Every code file in the pipeline and its one-line job.
 
 ### `tooling/okf-gen/okfgen/` - Stage 2, card creation
 `load.py` · `taxonomy.py` · `assign.py` · `card.py` · `promote.py` · `facets.py` · `classify_regime.py` ·
-`retopic.py` · `corrections.py` · `run.py` · `llm.py` · `config.py` - see the [okfgen file map](#okfgen-file-map).
-Post-promote + authoring scripts live in `tooling/okf-gen/scripts/` (`product_facet_apply.py` ·
-`osci_facet_apply.py` · `version_apply.py` · `regime_apply.py` · `regime_classify.py` ·
-`conformance_pass.py` · `index_generate.py` · `new_correction.py` · `correction_from_issue.py` ·
-`corrections_lint.py` · `run_pipeline.sh`).
+`retopic.py` · `corrections.py` · `memory.py` · `run.py` · `llm.py` · `config.py` - see the
+[okfgen file map](#okfgen-file-map). Post-promote + authoring scripts live in `tooling/okf-gen/scripts/`
+(`product_facet_apply.py` · `osci_facet_apply.py` · `version_apply.py` · `regime_apply.py` ·
+`regime_classify.py` · `conformance_pass.py` · `index_generate.py` · `new_correction.py` ·
+`correction_from_issue.py` · `corrections_lint.py` · `new_memory.py` · `memory_from_issue.py` ·
+`memory_lint.py` · `memory_conflict_score.py` · `run_pipeline.sh`).
 
 ### `tooling/okf-serve/okfserve/` - Stage 3, serving
 `resolver.py` · `tools.py` · `ledger.py` · `identity.py` · `prompts.py` · `app.py` · `mcp_app.py` ·
 `server.py` · `config.py` (+ content/eval tooling `index.py`, `agent.py`, `eval.py`, `run_eval.py`)
 - see the [okf-serve file map](#okf-serve-file-map).
+
+### `tooling/okf-author/okfauthor/` - the write-only authoring door
+`config.py` · `identity.py` · `submissions.py` (issue-body builders + hard-separated `build_*`) ·
+`github_client.py` (injectable `issues:write` client) · `mcp_app.py` (`submit_memory_promotion` /
+`submit_correction`) · `server.py`. Keeps okf-serve keyless; see [The memory layer](#the-memory-layer).
 
 ### Data & config (git-tracked)
 | Path | Role |
@@ -627,6 +725,7 @@ Post-promote + authoring scripts live in `tooling/okf-gen/scripts/` (`product_fa
 | `drafts/*.md` | Distilled cards awaiting approval (Stage 2 Gate 2) - gitignored scratch. |
 | `concepts/<product>/*.md` | **The canonical concept cards** (the knowledge store). |
 | `concepts/<product>/corrections/*.md` | **Correction overlay cards** - co-pulled, never independently listed. |
+| `clients/<client>/memory/*.md` | **Client-scoped memory cards** (`type: memory`) - selectable only in that client's scope, hard-isolated. |
 | `.claude/agents/wms-curator.md` | The curation subagent. |
 | `.claude/commands/wms-prep.md` | The `/wms-prep` orchestration command. |
 | `docs/runbooks/*.md` | Operator runbooks (doc-prep e2e; okf connector one-pager; okf-serve Authentik-alt deploy). Live CF-Access deploy → `infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md`. |
@@ -740,6 +839,10 @@ All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev
 | **Concept card** | A reusable, cross-linked knowledge card distilled from atomic docs. Stage 2 output; the unit of knowledge. |
 | **Taxonomy** | The approved list of concepts (`taxonomy.yaml`) that cards are distilled against. |
 | **Objective / entry** | The stateful work unit in the ledger: an objective (a mode + goal + status) with a log of entries citing cards. |
+| **Memory (personal)** | A private, owner-scoped note in the ledger (`remember`/`recall`/`forget`), never in git, never seen by another owner. |
+| **Memory card (client)** | A promoted, sanitised `type: memory` card at `clients/<client>/memory/`, hard-isolated to its client. |
+| **Promotion** | Turning a personal note into a shared client memory card via a sanitise + human-approve gate (the only private→shared bridge). |
+| **okf-author** | The write-only MCP server (`issues:write` only) that files memory/correction authoring issues, keeping okf-serve keyless. |
 | **Mode** | One of `investigate` / `implementation_advisor` / `guided_learning` - an MCP prompt persona over the ledger. |
 | **Door** | A way in: the REST/OpenAPI API, or the MCP connector for Claude. |
 | **Gate** | A human review/approval checkpoint where the pipeline stops. |
