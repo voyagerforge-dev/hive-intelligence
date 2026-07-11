@@ -18,6 +18,13 @@ _REGIME = (
     "Determine which regime/product applies before answering; if unknown, ask. Never blend cards whose "
     "`regime` (or product/platform) differs."
 )
+_CLIENT = (
+    "Determine the client context before answering. Client-specific MEMORY cards apply ONLY to that "
+    "client — they record how THAT client's system was modified and do NOT describe vanilla product "
+    "behaviour. Never blend a client's memory into core product guidance or another client's answer; "
+    "if no client is set, do not use memory. When you know the client, pass it to `list_concepts`/"
+    "`resolve` so that client's memory is in scope."
+)
 
 
 def investigate(symptom: str = "") -> str:
@@ -26,7 +33,7 @@ def investigate(symptom: str = "") -> str:
         f"{_TRACK} Use mode='investigate'.\n"
         "Log hypotheses, evidence, and ruled-out causes as entries (kind='finding' or "
         "'decision'); set status='resolved' with the resolution when found.\n\n"
-        f"{_GROUNDING}\n\n{_REGIME}"
+        f"{_GROUNDING}\n\n{_REGIME}\n\n{_CLIENT}"
     )
 
 
@@ -36,7 +43,7 @@ def implementation_advisor(task: str = "") -> str:
         f"{_TRACK} Use mode='implement'.\n"
         "Log steps, decisions, and trade-offs as entries (kind='step'/'decision'); capture "
         "open questions as kind='note'; set status='done' when the plan is complete.\n\n"
-        f"{_GROUNDING}\n\n{_REGIME}"
+        f"{_GROUNDING}\n\n{_REGIME}\n\n{_CLIENT}"
     )
 
 
@@ -48,5 +55,5 @@ def guided_learning(topic: str = "") -> str:
         "save it as an entry with kind='plan'. Teach one concept at a time, quiz the learner with "
         "questions grounded in the card, grade the answers, and call `record_quiz_result`. Use "
         "`get_objective` to resume where the learner left off; set status='done' at completion.\n\n"
-        f"{_GROUNDING}\n\n{_REGIME}"
+        f"{_GROUNDING}\n\n{_REGIME}\n\n{_CLIENT}"
     )

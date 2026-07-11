@@ -25,3 +25,10 @@ def test_all_modes_carry_regime_rule():
                  prompts.guided_learning("x")):
         assert "mutually exclusive" in text
         assert "regime" in text
+
+
+def test_personas_carry_client_rule():
+    for body in (prompts.investigate("x"), prompts.implementation_advisor("x"),
+                 prompts.guided_learning("x")):
+        low = body.lower()
+        assert "client" in low and "memory" in low
