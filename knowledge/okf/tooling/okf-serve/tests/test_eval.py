@@ -90,3 +90,17 @@ def test_score_correction():
     assert score_correction(None, []) == {"correction_ok": True}
     assert score_correction("wms/corrections/fix", ["wms/corrections/fix"]) == {"correction_ok": True}
     assert score_correction("wms/corrections/fix", []) == {"correction_ok": False}
+
+
+def test_score_memory_hit_isolation_and_cross_client():
+    from okfserve.eval import score_memory
+    # in-scope hit, no leak
+    assert score_memory("clients/alpha/memory/m", ["clients/alpha/memory/m", "wms/a"],
+                        "alpha", ["alpha", None]) == {"memory_ok": True, "cross_client": 0}
+    # isolation: no expected memory, none surfaced
+    assert score_memory(None, ["wms/a"], None, [None]) == {"memory_ok": True, "cross_client": 0}
+    # cross-client leak: acme scope but a alpha memory surfaced
+    r = score_memory(None, ["clients/alpha/memory/m"], "acme", ["alpha"])
+    assert r["memory_ok"] is False and r["cross_client"] == 1
+    # expected memory missing from bundle -> not ok
+    assert score_memory("clients/alpha/memory/m", ["wms/a"], "alpha", [None])["memory_ok"] is False
