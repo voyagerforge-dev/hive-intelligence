@@ -45,3 +45,35 @@ def gate(candidates, memories, llm, *, block_threshold=0.6, warn_threshold=0.3,
         elif r["probability"] >= warn_threshold:
             review.append((a, b))
     return blocking, review
+
+
+if __name__ == "__main__":  # pragma: no cover
+    import importlib.util
+    import os
+    import sys
+    from pathlib import Path
+
+    clients_dir, concepts_dir = sys.argv[1], sys.argv[2]
+    _ml = importlib.util.spec_from_file_location("memory_lint", Path(__file__).with_name("memory_lint.py"))
+    ml = importlib.util.module_from_spec(_ml)
+    _ml.loader.exec_module(ml)
+    _errors, candidates = ml.lint(clients_dir, concepts_dir)
+    if not candidates:
+        print("memory_conflict_score: 0 candidates")
+        sys.exit(0)
+    mems = ml._memories(clients_dir)
+    key = os.environ.get("BIFROST_API_KEY")
+    base = os.environ.get("BIFROST_BASE")
+    if not key or not base:
+        print(f"memory_conflict_score: {len(candidates)} candidate(s), no LLM key set — ADVISORY only:")
+        for a, b in candidates:
+            print(f"  CANDIDATE {a} <> {b}")
+        sys.exit(0)
+    from okfgen.llm import BifrostChat
+    llm = BifrostChat(base, key, os.environ.get("CONFLICT_MODEL", "minimax-m3"))
+    blocking, review = gate(candidates, mems, llm)
+    for a, b in review:
+        print(f"REVIEW {a} <> {b} — human check")
+    for a, b in blocking:
+        print(f"CONFLICT {a} <> {b} — resolve (supersede/reconcile/reject) before merge")
+    sys.exit(1 if blocking else 0)

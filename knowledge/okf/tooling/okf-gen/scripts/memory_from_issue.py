@@ -1,6 +1,7 @@
 """Parse a Memory Issue Form body into a record and write a client-memory card.
 Called by .github/workflows/memory-from-issue.yml.
 Usage: python scripts/memory_from_issue.py <issue_body_file> <clients_dir>  -> prints card path"""
+import os
 import re
 import sys
 from datetime import date
@@ -66,7 +67,7 @@ if __name__ == "__main__":  # pragma: no cover
     except ValueError as e:
         raise SystemExit(str(e))
     slug = _slug(rec["title"])
-    rec["submitted_by"] = ""
+    rec["submitted_by"] = os.environ.get("ISSUE_AUTHOR", "")
     rec["resource"] = resource_for(rec["client"], slug)
     d = Path(clients) / rec["client"] / "memory"
     d.mkdir(parents=True, exist_ok=True)

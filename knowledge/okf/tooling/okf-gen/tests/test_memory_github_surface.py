@@ -18,4 +18,6 @@ def test_memory_action_fires_on_approved_label():
 
 
 def test_codeowners_covers_memory_dir():
-    assert "clients/" in (ROOT / ".github/CODEOWNERS").read_text()
+    text = (ROOT / "CODEOWNERS").read_text()
+    assert "clients/" in text
+    assert "corrections/" in text  # regression guard: root CODEOWNERS must not be shadowed
