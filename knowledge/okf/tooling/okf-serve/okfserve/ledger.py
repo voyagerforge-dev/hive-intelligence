@@ -175,3 +175,24 @@ def remember(conn, *, owner, text, tags=None, card_ids=None, external_ref=None, 
 def get_memory(conn, *, owner, memory_id) -> dict | None:
     r = conn.execute("SELECT * FROM memory WHERE id=? AND owner=?", (memory_id, owner)).fetchone()
     return _mem_row(r) if r else None
+
+
+def recall(conn, *, owner, query=None, tags=None, card_id=None, client=None, limit=20) -> list[dict]:
+    rows = [_mem_row(r) for r in conn.execute(
+        "SELECT * FROM memory WHERE owner=? ORDER BY updated_at DESC, rowid DESC", (owner,)).fetchall()]
+
+    def match(m) -> bool:
+        if client is not None and m["client"] != client:
+            return False
+        if card_id is not None and card_id not in m["card_ids"]:
+            return False
+        if tags and not set(tags) <= set(m["tags"]):
+            return False
+        if query:
+            q = query.lower()
+            hay = [m["text"].lower(), *(t.lower() for t in m["tags"])]
+            if not any(q in h for h in hay):
+                return False
+        return True
+
+    return [m for m in rows if match(m)][:limit]

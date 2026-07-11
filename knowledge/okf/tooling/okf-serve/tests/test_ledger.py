@@ -71,3 +71,33 @@ def test_memory_defaults_minimal(tmp_path):
     m = ledger.remember(c, owner="alice", text="a bare note")
     assert m["tags"] == [] and m["card_ids"] == [] and m["external_ref"] is None
     assert m["client"] is None and m["visibility"] == "private"
+
+
+def test_memory_recall_filters(tmp_path):
+    c = _conn(tmp_path)
+    ledger.remember(c, owner="alice", text="ALPHA wave replen is nightly",
+                    tags=["alpha", "replen"], card_ids=["wms/replenishment"], client="alpha")
+    ledger.remember(c, owner="alice", text="ACME slotting uses zones",
+                    tags=["acme", "slotting"], card_ids=["slotting/zones"], client="acme")
+    ledger.remember(c, owner="alice", text="generic ops note", tags=["ops"])
+
+    assert {m["text"] for m in ledger.recall(c, owner="alice")} == {
+        "ALPHA wave replen is nightly", "ACME slotting uses zones", "generic ops note"}
+    assert [m["text"] for m in ledger.recall(c, owner="alice", query="replen")] == \
+        ["ALPHA wave replen is nightly"]
+    assert [m["text"] for m in ledger.recall(c, owner="alice", query="alpha")] == \
+        ["ALPHA wave replen is nightly"]  # matches a tag
+    assert [m["text"] for m in ledger.recall(c, owner="alice", client="acme")] == \
+        ["ACME slotting uses zones"]
+    assert [m["text"] for m in ledger.recall(c, owner="alice", card_id="wms/replenishment")] == \
+        ["ALPHA wave replen is nightly"]
+    assert [m["text"] for m in ledger.recall(c, owner="alice", tags=["alpha", "replen"])] == \
+        ["ALPHA wave replen is nightly"]
+    assert ledger.recall(c, owner="alice", tags=["alpha", "missing"]) == []
+    assert len(ledger.recall(c, owner="alice", limit=1)) == 1
+
+
+def test_memory_recall_owner_scoped(tmp_path):
+    c = _conn(tmp_path)
+    ledger.remember(c, owner="alice", text="alice only")
+    assert ledger.recall(c, owner="bob") == []
