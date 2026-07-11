@@ -424,7 +424,7 @@ flowchart TB
 
 Two transports, one codebase (`server.py`): `okfserve serve --stdio` runs the MCP server over
 stdio (the operator's Claude Code); `okfserve serve --http` serves the REST routes **and** a
-mounted MCP streamable-HTTP app from one FastAPI process (the team, behind Authentik).
+mounted MCP streamable-HTTP app from one FastAPI process (the team, behind the Cloudflare Access gate).
 
 ### Door 1 — REST / OpenAPI (`app.py`)
 
@@ -481,8 +481,9 @@ erDiagram
 ```
 
 **Identity & owner-scoping.** The app is auth-agnostic. It reads the caller's identity from a
-**trusted header injected by Authentik** (`identity.py`) and keys every row on it as `owner`; for
-stdio (Claude Code, no Authentik) it falls back to a configured `OKF_DEFAULT_OWNER`. `owner` is
+**trusted header injected by the gate** (live: Cloudflare Access → `Remote-Email`; `identity.py`)
+and keys every row on it as `owner`; for stdio (Claude Code, no gate) it falls back to a configured
+`OKF_DEFAULT_OWNER`. `owner` is
 **always** derived server-side, never a tool parameter — one person can never read or write
 another's objectives. The `external_ref` and `visibility` columns are designed-in seams (ticket
 linkage; team-shared objectives) that are present but unused in v1.
@@ -530,7 +531,11 @@ sequenceDiagram
 | `index.py` | (Content tooling) emits `index.md`, the progressive-disclosure entry point over the cards. |
 | `agent.py`, `eval.py`, `run_eval.py` | (Eval tooling) the LLM select/answer harness that *proved* the no-RAG curated tier (14/14 wave/replen Qs). Not on the serving path. |
 
-Deploy is operator-run behind Authentik — see
+Deploy is operator-run behind an identity gate. The **live** gate is **Cloudflare Access** (keyless
+OAuth → `Remote-Email`) — see
+[`../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md`](../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md)
+and [`tooling/okf-serve/deploy/README.md`](../tooling/okf-serve/deploy/README.md). The self-hosted
+**Authentik** alternative is in
 [`docs/runbooks/okf-serve-authentik.md`](runbooks/okf-serve-authentik.md).
 
 ---
@@ -629,7 +634,7 @@ Post-promote + authoring scripts live in `tooling/okf-gen/scripts/` (`product_fa
 | `concepts/<product>/corrections/*.md` | **Correction overlay cards** (Spec 2) — co-pulled, never independently listed. |
 | `.claude/agents/wms-curator.md` | The curation subagent. |
 | `.claude/commands/wms-prep.md` | The `/wms-prep` orchestration command. |
-| `docs/runbooks/*.md` | Operator runbooks (doc-prep e2e; okf-serve Authentik deploy). |
+| `docs/runbooks/*.md` | Operator runbooks (doc-prep e2e; okf connector one-pager; okf-serve Authentik-alt deploy). Live CF-Access deploy → `infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md`. |
 
 ### Infrastructure (external, sovereign)
 | Thing | Where | Used by |
@@ -637,7 +642,7 @@ Post-promote + authoring scripts live in `tooling/okf-gen/scripts/` (`product_fa
 | **Bifrost** gateway (`VK_OKF`: minimax-m3 + deepseek-v4-flash) | Host-A `:4001` | okfgen (taxonomy/assign/distill) |
 | **Docling** converter | Host-A GPU | okf-prep text tier |
 | **Qwen3.6-27B** VLM (vLLM) | Host-D `llm-host.internal:8000` | okf-prep vision tier |
-| **Authentik** | in front of okf-serve | serving identity/auth |
+| **Cloudflare Access** (live gate; Authentik = self-hosted alt) | in front of okf-serve | serving identity/auth |
 
 ### Deployment topology
 
@@ -721,8 +726,9 @@ python scripts/index_generate.py      ../../concepts     # root + per-product in
 # ── Stage 3: serve the cards to Claude + track work in SQLite ───────────
 cd tooling/okf-serve && uv sync --extra dev
 uv run okfserve serve --stdio     # local: register as an MCP server in Claude Code
-uv run okfserve serve --http      # team: REST + mounted MCP behind Authentik
-#   deploy details → docs/runbooks/okf-serve-authentik.md
+uv run okfserve serve --http      # team: REST + mounted MCP behind the CF Access gate
+#   live deploy → infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md
+#   Authentik alternative → docs/runbooks/okf-serve-authentik.md
 ```
 
 All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev && uv run pytest -q`.
