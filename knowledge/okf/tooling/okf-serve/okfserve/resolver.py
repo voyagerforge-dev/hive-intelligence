@@ -72,23 +72,28 @@ def corrections_by_target(index: list[dict]) -> dict[str, list[str]]:
     return out
 
 
-def get_card(concepts_dir, card_id: str) -> str | None:
-    # Path-ids contain "/", and /card/{card_id:path} accepts arbitrary input — guard against
-    # traversal escaping the bundle (e.g. card_id "../../etc/passwd").
-    base = Path(concepts_dir).resolve()
-    p = (base / f"{card_id}.md").resolve()
-    if base not in p.parents:
-        return None
-    return p.read_text() if p.exists() else None
+def get_card(concepts_dir, card_id: str, clients_dir=None) -> str | None:
+    p = card_path(concepts_dir, card_id, clients_dir)
+    return p.read_text() if p is not None else None
 
 
 def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
-            max_chars: int | None = None,
-            corrections: dict[str, list[str]] | None = None) -> dict:
-    concepts_dir = Path(concepts_dir)
+            max_chars: int | None = None, corrections: dict[str, list[str]] | None = None,
+            clients_dir=None, client=None) -> dict:
+    def cpath(cid):
+        return card_path(concepts_dir, cid, clients_dir)
+
+    def cfm(cid):
+        p = cpath(cid)
+        return parse_frontmatter(p.read_text()) if p is not None else {}
+
+    def in_scope(cid):
+        cl = cfm(cid).get("client")
+        return cl is None or cl == client          # client-scoped cards only in their own scope
+
     selected: list[str] = []
     dropped: list[str] = []
-    frontier = [i for i in ids if (concepts_dir / f"{i}.md").exists()]
+    frontier = [i for i in ids if cpath(i) is not None and in_scope(i)]
     seen = set(frontier)
     level = 0
     while frontier:
@@ -99,27 +104,29 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
                 continue
             selected.append(cid)
             if level < depth:
-                fm = parse_frontmatter((concepts_dir / f"{cid}.md").read_text())
+                fm = cfm(cid)
                 parent_regime = fm.get("regime")
                 for rid in fm.get("related") or []:
                     if rid in seen:
                         continue
-                    if not (concepts_dir / f"{rid}.md").exists():  # tolerate broken links
+                    rp = cpath(rid)
+                    if rp is None:  # tolerate broken links
                         continue
-                    child_regime = parse_frontmatter(
-                        (concepts_dir / f"{rid}.md").read_text()).get("regime")
-                    if parent_regime and child_regime and parent_regime != child_regime:
-                        continue  # cross-regime auto-expansion guard — do NOT mark seen; a
-                        # same-regime parent may still legitimately reach this neighbour
+                    rfm = parse_frontmatter(rp.read_text())
+                    if parent_regime and rfm.get("regime") and parent_regime != rfm.get("regime"):
+                        continue  # cross-regime auto-expansion guard (do NOT mark seen)
+                    rcl = rfm.get("client")
+                    if rcl is not None and rcl != client:
+                        continue  # cross-client / out-of-scope memory guard (do NOT mark seen)
                     seen.add(rid)
                     next_frontier.append(rid)
         frontier = next_frontier
         level += 1
-    if max_chars is not None:  # char budget; always keep at least the first card
+    if max_chars is not None:
         kept: list[str] = []
         used = 0
         for cid in selected:
-            text = (concepts_dir / f"{cid}.md").read_text()
+            text = cpath(cid).read_text()
             if kept and used + len(text) > max_chars:
                 dropped.append(cid)
             else:
@@ -127,14 +134,14 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
                 used += len(text)
         selected = kept
     if corrections is None:
-        corrections = corrections_by_target(load_index(concepts_dir))
+        corrections = corrections_by_target(load_index(concepts_dir, clients_dir))
     correction_ids: list[str] = []
     for cid in selected:
         for corr in corrections.get(cid, []):
             if corr in selected or corr in correction_ids:
                 continue
-            if (concepts_dir / f"{corr}.md").exists():
+            if cpath(corr) is not None:
                 correction_ids.append(corr)
     all_ids = selected + correction_ids
-    bundle = "\n\n---\n\n".join((concepts_dir / f"{c}.md").read_text() for c in all_ids)
+    bundle = "\n\n---\n\n".join(cpath(c).read_text() for c in all_ids)
     return {"card_ids": all_ids, "bundle": bundle, "dropped": dropped, "corrections": correction_ids}

@@ -312,3 +312,63 @@ def test_load_index_skips_client_files_outside_memory_subfolder(tmp_path):
     (clients / "alpha" / "setup" / "notes.md").write_text("---\ntitle: N\n---\n\nx\n")   # not memory/
     idx = load_index(concepts, clients)
     assert idx == []                                            # only <client>/memory/<slug>.md counts
+
+
+def _mk_client_world(tmp_path):
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "wms").mkdir(parents=True)
+    (concepts / "wms" / "alloc.md").write_text(
+        "---\ntitle: Alloc\ndescription: allocation\nproduct: wms\nrelated: []\n---\n\nAlloc body.\n")
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "alloc-mod.md").write_text(
+        "---\ntitle: ALPHA Alloc Mod\ndescription: alpha change\ntype: memory\nclient: alpha\n"
+        "product: wms\nrelated:\n- wms/alloc\n---\n\nALPHA changed allocation.\n")
+    (clients / "acme" / "memory").mkdir(parents=True)
+    (clients / "acme" / "memory" / "a.md").write_text(
+        "---\ntitle: ACME Mem\ndescription: acme\ntype: memory\nclient: acme\nproduct: wms\nrelated: []\n---\n\nACME.\n")
+    return concepts, clients
+
+
+def test_resolve_client_memory_seed_only_in_scope(tmp_path):
+    from okfserve.resolver import resolve
+    concepts, clients = _mk_client_world(tmp_path)
+    mid = "clients/alpha/memory/alloc-mod"
+    # in scope: alpha memory resolvable + pulls its related core concept
+    out = resolve(concepts, [mid], depth=1, clients_dir=clients, client="alpha")
+    assert mid in out["card_ids"] and "wms/alloc" in out["card_ids"]
+    # out of scope (no client): the memory seed is dropped, core stays pristine
+    out2 = resolve(concepts, [mid], depth=1, clients_dir=clients, client=None)
+    assert out2["card_ids"] == []
+    # wrong client: alpha seed dropped under acme scope
+    out3 = resolve(concepts, [mid], depth=1, clients_dir=clients, client="acme")
+    assert out3["card_ids"] == []
+
+
+def test_resolve_bfs_guards_cross_client_neighbour(tmp_path):
+    from okfserve.resolver import resolve
+    concepts, clients = _mk_client_world(tmp_path)
+    # a core concept that (pathologically) links to a alpha memory must not pull it when client!=alpha
+    (concepts / "wms" / "hub.md").write_text(
+        "---\ntitle: Hub\ndescription: hub\nproduct: wms\nrelated:\n- clients/alpha/memory/alloc-mod\n---\n\nHub.\n")
+    out = resolve(concepts, ["wms/hub"], depth=1, clients_dir=clients, client=None)
+    assert out["card_ids"] == ["wms/hub"]                      # alpha memory neighbour guarded out
+    out2 = resolve(concepts, ["wms/hub"], depth=1, clients_dir=clients, client="acme")
+    assert out2["card_ids"] == ["wms/hub"]                     # acme scope still can't reach alpha memory
+    out3 = resolve(concepts, ["wms/hub"], depth=1, clients_dir=clients, client="alpha")
+    assert "clients/alpha/memory/alloc-mod" in out3["card_ids"]  # alpha scope reaches it
+
+
+def test_resolve_concept_only_path_unchanged(tmp_path):
+    from okfserve.resolver import resolve
+    (tmp_path / "a.md").write_text("---\ntitle: A\nrelated:\n- b\n---\n\nA.\n")
+    (tmp_path / "b.md").write_text("---\ntitle: B\nrelated: []\n---\n\nB.\n")
+    out = resolve(tmp_path, ["a"], depth=1)                    # no clients_dir/client
+    assert out["card_ids"] == ["a", "b"]
+
+
+def test_get_card_reads_client_tree(tmp_path):
+    from okfserve.resolver import get_card
+    concepts, clients = _mk_client_world(tmp_path)
+    assert "ALPHA changed allocation." in get_card(concepts, "clients/alpha/memory/alloc-mod", clients)
+    assert get_card(concepts, "clients/alpha/memory/nope", clients) is None
