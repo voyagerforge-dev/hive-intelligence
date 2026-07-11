@@ -315,7 +315,7 @@ The card lives at **`concepts/<product>/<id>.md`** and its **concept ID is that 
 | `facets.py` | Idempotent stamp/read of the `product`/`platform`/`version`/`regime` facets; cross-facet lint. |
 | `classify_regime.py` | LLM regime proposer (ops vs. traditional), human-gated, fail-safe - the batch classifier kept for future automation. |
 | `retopic.py` | Re-map/merge concepts across a taxonomy revision (area re-slicing without a full re-distill). |
-| `corrections.py` | The pure `record ⇄ correction-card` serialization seam (Spec 2) - feeds both the CLI and the GitHub Action. |
+| `corrections.py` | The pure `record ⇄ correction-card` serialization seam - feeds both the CLI and the GitHub Action. |
 | `run.py` | Gate-aware orchestrator + entrypoint (taxonomy → assign+distill → drafts), area-scoped via `SLICE_AREA`. |
 | `llm.py` | `BifrostChat` (OpenAI-compatible client, bounded retry) + `extract_json` (strips `<think>` reasoning, pulls JSON). |
 | `config.py` | Settings: source (`ATOMIC_DIR` wins, else R2), Bifrost base/key, the three model slots, timeouts. |
@@ -346,12 +346,13 @@ script against the spec text.)
 **Isolation eval = the deploy gate.** Before deploy, `okf-serve/run_eval` over `data/<product>_product_qa.jsonl`
 must show **0 cross-product bleed** (plus no regime/version regression). No product ships without it.
 
-### The corrections layer (Spec 2)
+### The corrections layer
 
 A concept card can be **wrong or stale** without anyone wanting to edit the distilled prose (it's a
 reviewed artifact, and edits lose the "what the source said" provenance). The corrections layer fixes this
 with an **overlay**: a *correction* is an ordinary OKF card at `concepts/<product>/corrections/<slug>.md`
-with `type: correction` and `corrects: <path-id>` pointing at the concept it amends.
+with `type: correction` and `corrects: <path-id>` pointing at the concept it amends. To author one, see
+[Guide: Correct a concept card](runbooks/okf-correct-a-card.md).
 
 - **Surface-don't-resolve.** `okf-serve`'s `resolve()` reverse-looks-up the **active** corrections
   (`type: correction` **and** `status: approved`) of every selected concept and **co-pulls** them into the
@@ -625,7 +626,7 @@ Post-promote + authoring scripts live in `tooling/okf-gen/scripts/` (`product_fa
 | `regime-classification.yaml` | The human-reviewed regime labels (WMS), applied by `regime_apply.py`. |
 | `drafts/*.md` | Distilled cards awaiting approval (Stage 2 Gate 2) - gitignored scratch. |
 | `concepts/<product>/*.md` | **The canonical concept cards** (the knowledge store). |
-| `concepts/<product>/corrections/*.md` | **Correction overlay cards** (Spec 2) - co-pulled, never independently listed. |
+| `concepts/<product>/corrections/*.md` | **Correction overlay cards** - co-pulled, never independently listed. |
 | `.claude/agents/wms-curator.md` | The curation subagent. |
 | `.claude/commands/wms-prep.md` | The `/wms-prep` orchestration command. |
 | `docs/runbooks/*.md` | Operator runbooks (doc-prep e2e; okf connector one-pager; okf-serve Authentik-alt deploy). Live CF-Access deploy → `infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md`. |
