@@ -101,3 +101,36 @@ def test_memory_recall_owner_scoped(tmp_path):
     c = _conn(tmp_path)
     ledger.remember(c, owner="alice", text="alice only")
     assert ledger.recall(c, owner="bob") == []
+
+
+def test_memory_recall_tag_branch_isolated(tmp_path):
+    c = _conn(tmp_path)
+    ledger.remember(c, owner="alice", text="nightly batch window is 2am", tags=["cutoff"])
+    ledger.remember(c, owner="alice", text="unrelated note", tags=["misc"])
+    # 'cutoff' is only a tag, never a substring of any text -> only the tag branch can match it
+    assert [m["text"] for m in ledger.recall(c, owner="alice", query="cutoff")] == \
+        ["nightly batch window is 2am"]
+
+
+def test_memory_recall_and_combination_and_subset(tmp_path):
+    c = _conn(tmp_path)
+    ledger.remember(c, owner="alice", text="ALPHA wave replen is nightly",
+                    tags=["replen", "wave"], client="alpha")
+    ledger.remember(c, owner="alice", text="ACME slotting uses zones",
+                    tags=["slotting"], client="acme")
+    # AND: client matches the alpha row but query does not -> empty
+    assert ledger.recall(c, owner="alice", client="alpha", query="acme") == []
+    # AND: both filters match the same row
+    assert [m["text"] for m in ledger.recall(c, owner="alice", client="alpha", query="replen")] == \
+        ["ALPHA wave replen is nightly"]
+    # subset: requesting a proper subset of a row's tags still matches
+    assert [m["text"] for m in ledger.recall(c, owner="alice", tags=["replen"])] == \
+        ["ALPHA wave replen is nightly"]
+
+
+def test_memory_recall_orders_newest_first(tmp_path):
+    c = _conn(tmp_path)
+    ledger.remember(c, owner="alice", text="first")
+    ledger.remember(c, owner="alice", text="second")
+    ledger.remember(c, owner="alice", text="third")
+    assert [m["text"] for m in ledger.recall(c, owner="alice")] == ["third", "second", "first"]
