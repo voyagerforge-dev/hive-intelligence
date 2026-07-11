@@ -134,3 +134,24 @@ def test_memory_recall_orders_newest_first(tmp_path):
     ledger.remember(c, owner="alice", text="second")
     ledger.remember(c, owner="alice", text="third")
     assert [m["text"] for m in ledger.recall(c, owner="alice")] == ["third", "second", "first"]
+
+
+def test_memory_forget_owner_scoped(tmp_path):
+    c = _conn(tmp_path)
+    m = ledger.remember(c, owner="alice", text="x")
+    assert ledger.forget(c, owner="bob", memory_id=m["id"]) is False
+    assert ledger.get_memory(c, owner="alice", memory_id=m["id"]) is not None
+    assert ledger.forget(c, owner="alice", memory_id=m["id"]) is True
+    assert ledger.get_memory(c, owner="alice", memory_id=m["id"]) is None
+
+
+def test_memory_visibility_flip(tmp_path):
+    c = _conn(tmp_path)
+    m = ledger.remember(c, owner="alice", text="x", client="alpha")
+    updated = ledger.set_memory_visibility(c, owner="alice", memory_id=m["id"],
+                                           visibility="promotion_requested")
+    assert updated["visibility"] == "promotion_requested"
+    assert ledger.set_memory_visibility(c, owner="bob", memory_id=m["id"],
+                                        visibility="private") is None
+    with pytest.raises(ValueError):
+        ledger.set_memory_visibility(c, owner="alice", memory_id=m["id"], visibility="bogus")

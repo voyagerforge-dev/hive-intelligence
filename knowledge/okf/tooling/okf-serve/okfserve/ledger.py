@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 MODES = {"investigate", "implement", "learn"}
 STATUSES = {"open", "active", "resolved", "done"}
 KINDS = {"plan", "step", "finding", "decision", "quiz_result", "note"}
+MEM_VISIBILITY = {"private", "promotion_requested"}
 
 
 def _now() -> str:
@@ -196,3 +197,20 @@ def recall(conn, *, owner, query=None, tags=None, card_id=None, client=None, lim
         return True
 
     return [m for m in rows if match(m)][:limit]
+
+
+def forget(conn, *, owner, memory_id) -> bool:
+    cur = conn.execute("DELETE FROM memory WHERE id=? AND owner=?", (memory_id, owner))
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def set_memory_visibility(conn, *, owner, memory_id, visibility) -> dict | None:
+    if visibility not in MEM_VISIBILITY:
+        raise ValueError(f"bad visibility: {visibility}")
+    if get_memory(conn, owner=owner, memory_id=memory_id) is None:
+        return None
+    conn.execute("UPDATE memory SET visibility=?, updated_at=? WHERE id=? AND owner=?",
+                 (visibility, _now(), memory_id, owner))
+    conn.commit()
+    return get_memory(conn, owner=owner, memory_id=memory_id)
