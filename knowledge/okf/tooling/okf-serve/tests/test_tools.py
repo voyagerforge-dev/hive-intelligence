@@ -21,7 +21,7 @@ def test_list_concepts(tmp_path):
     assert idx == [{"id": "wave-replen", "title": "Wave Replen",
                     "description": "how replen feeds waves", "regime": None,
                     "type": "concept", "version": None, "product": None,
-                    "corrects": None, "status": None}]
+                    "client": None, "corrects": None, "status": None}]
 
 
 def test_list_concepts_excludes_corrections(tmp_path):

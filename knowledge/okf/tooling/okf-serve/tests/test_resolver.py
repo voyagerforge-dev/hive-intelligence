@@ -243,7 +243,8 @@ def test_corrections_by_target_active_only():
 
 def test_resolve_copulls_active_correction(tmp_path):
     from okfserve.resolver import resolve
-    (tmp_path / "wms").mkdir(); (tmp_path / "wms" / "corrections").mkdir()
+    (tmp_path / "wms").mkdir()
+    (tmp_path / "wms" / "corrections").mkdir()
     (tmp_path / "wms" / "c.md").write_text("---\ntitle: C\ntype: concept\nrelated: []\n---\n\nconcept body\n")
     (tmp_path / "wms" / "corrections" / "fix.md").write_text(
         "---\ntitle: Fix\ntype: correction\ncorrects: wms/c\nstatus: approved\n---\n\n## Correction\n\nthe fix\n")
@@ -255,7 +256,8 @@ def test_resolve_copulls_active_correction(tmp_path):
 
 def test_resolve_ignores_superseded_correction(tmp_path):
     from okfserve.resolver import resolve
-    (tmp_path / "wms").mkdir(); (tmp_path / "wms" / "corrections").mkdir()
+    (tmp_path / "wms").mkdir()
+    (tmp_path / "wms" / "corrections").mkdir()
     (tmp_path / "wms" / "c.md").write_text("---\ntitle: C\ntype: concept\nrelated: []\n---\n\nbody\n")
     (tmp_path / "wms" / "corrections" / "old.md").write_text(
         "---\ntitle: Old\ntype: correction\ncorrects: wms/c\nstatus: superseded\n---\n\n## Correction\n\nold\n")
@@ -266,7 +268,8 @@ def test_resolve_ignores_superseded_correction(tmp_path):
 
 def test_card_path_resolves_concept_and_client_trees(tmp_path):
     from okfserve.resolver import card_path
-    concepts = tmp_path / "concepts"; clients = tmp_path / "clients"
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
     (concepts / "wms").mkdir(parents=True)
     (concepts / "wms" / "a.md").write_text("---\ntitle: A\n---\n\nbody\n")
     (clients / "alpha" / "memory").mkdir(parents=True)
@@ -280,7 +283,8 @@ def test_card_path_resolves_concept_and_client_trees(tmp_path):
 
 def test_load_index_includes_client_memory(tmp_path):
     from okfserve.resolver import load_index
-    concepts = tmp_path / "concepts"; clients = tmp_path / "clients"
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
     (concepts / "wms").mkdir(parents=True)
     (concepts / "wms" / "a.md").write_text("---\ntitle: A\ndescription: d\nproduct: wms\n---\n\nbody\n")
     (clients / "alpha" / "memory").mkdir(parents=True)
@@ -301,7 +305,8 @@ def test_load_index_without_clients_dir_is_unchanged(tmp_path):
 
 def test_load_index_skips_client_files_outside_memory_subfolder(tmp_path):
     from okfserve.resolver import load_index
-    concepts = tmp_path / "concepts"; clients = tmp_path / "clients"
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
     concepts.mkdir()
     (clients / "alpha" / "setup").mkdir(parents=True)
     (clients / "alpha" / "setup" / "notes.md").write_text("---\ntitle: N\n---\n\nx\n")   # not memory/
