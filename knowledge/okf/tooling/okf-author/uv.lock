@@ -407,7 +407,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.135" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mcp", specifier = "==1.28.1" },
-    { name = "okfgen", marker = "extra == 'dev'", directory = "../okf-gen" },
+    { name = "okfgen", marker = "extra == 'dev'", editable = "../okf-gen" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pydantic-settings", specifier = ">=2.5" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3" },
@@ -419,7 +419,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "okfgen"
 version = "0.1.0"
-source = { directory = "../okf-gen" }
+source = { editable = "../okf-gen" }
 dependencies = [
     { name = "boto3" },
     { name = "httpx" },

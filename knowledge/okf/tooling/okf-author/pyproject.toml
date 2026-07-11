@@ -9,7 +9,7 @@ dependencies = ["pydantic>=2.9", "pydantic-settings>=2.5", "mcp==1.28.1", "fasta
 okfauthor = "okfauthor.server:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3", "ruff>=0.7", "okfgen @ file:///home/user/Documents/github/project-hive-wt-okf-memory-3d/knowledge/okf/tooling/okf-gen"]
+dev = ["pytest>=8.3", "ruff>=0.7", "okfgen"]
 
 [build-system]
 requires = ["hatchling"]
@@ -18,12 +18,15 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["okfauthor"]
 
+# okfgen is a DEV-ONLY dep: the round-trip tests load the okf-gen Issue-Form parsers to
+# prove okf-author's issue bodies parse back losslessly. Portable relative source (mirrors
+# okf-serve) so it survives worktree removal / any checkout — never an absolute path.
+[tool.uv.sources]
+okfgen = { path = "../okf-gen", editable = true }
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [tool.ruff]
 line-length = 100
