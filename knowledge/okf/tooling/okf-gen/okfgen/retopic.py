@@ -6,12 +6,17 @@ controlled guide-topic, rewriting the `topic:` frontmatter in place. Dry-run by 
 Usage: python retopic.py [--apply] [--limit N]
 """
 from __future__ import annotations
-import re, sys, pathlib
-sys.path.insert(0, "/home/user/Documents/github/voyagerforge-knowledge/tooling/okf-gen")
+import pathlib
+import re
+import sys
+# Make `import okfgen.*` work when run directly (python retopic.py): add the
+# okf-gen/ package dir (parent of this okfgen/ dir) to sys.path.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from okfgen.config import get_settings
 from okfgen.llm import BifrostChat, extract_json
 
-DOCS = pathlib.Path("/home/user/Documents/github/voyagerforge-knowledge/sources/wms-atomic/docs")
+# okf bundle root (knowledge/okf/) / sources/wms-atomic/docs — same convention as run.py.
+DOCS = pathlib.Path(__file__).resolve().parents[3] / "sources" / "wms-atomic" / "docs"
 BUCKET = "WMS reference doc"
 
 # Controlled guide-topic vocabulary. Value = what gets written to `topic:` (and becomes an AREAS key).
