@@ -10,7 +10,7 @@ from okfgen.memory import record_to_memory
 
 ALLOWED_PRODUCTS = {"wms", "osci", "slotting", "labour-management"}
 BASE_URL = "https://hive.example.com/card"
-_CLIENT_RE = re.compile(r"^[a-z0-9-]+$")
+_CLIENT_RE = re.compile(r"\A[a-z0-9-]+\Z")  # \A..\Z (not ^..$): reject a trailing newline too
 
 
 def _field(body: str, heading: str) -> str:

@@ -60,7 +60,7 @@ def test_validate_rejects_bad_product():
 
 
 def test_validate_rejects_unsafe_client():
-    for bad in ("..", "../etc", "a/b", "", "ALPHA/x"):
+    for bad in ("..", "../etc", "a/b", "", "ALPHA/x", "alpha\n", "alpha ", " alpha"):
         with pytest.raises(ValueError):
             validate_record({"client": bad, "product": "wms"})
 
