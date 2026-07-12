@@ -1,17 +1,12 @@
 name: FastAPI services CI
 
-# Runs on PRs only (no duplicate run on merge to main). Triggers on any Python change
-# (`**/*.py` covers every layout — src/ AND the OKF package dirs okfgen/, okfserve/, …),
-# plus test fixtures, packaging, and Dockerfiles. Docs-only changes (e.g. the .md concept
-# cards) still don't spin up the matrix.
+# Runs on EVERY PR so the required `ci-ok` check always reports. A path-filtered workflow
+# does NOT report on non-matching PRs, which would wedge docs-only and OKF card (.md) PRs on
+# the required check (they'd wait forever for a run that never happens). The expensive service
+# matrix is instead skipped inside detect-services when the PR changed no CI-relevant files,
+# so card/docs PRs still cost only the ~10s detect + ci-ok jobs.
 on:
   pull_request:
-    paths:
-      - '**/*.py'
-      - '**/tests/**'
-      - '**/pyproject.toml'
-      - '**/Dockerfile'
-      - '.github/workflows/fastapi-svcs.yml'
 
 # A new push to the same PR cancels the in-flight run instead of stacking runners.
 concurrency:
@@ -25,25 +20,35 @@ jobs:
       services: ${{ steps.find.outputs.services }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need the base commit to diff the PR's changed files
       - id: find
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          # Discover services with a pyproject.toml across all service roots:
-          #   infra-repo/hosts/host-a/docker/ (EXAMPLECO svcs), connectors/, knowledge/
-          # Emits the FULL relative directory path (used directly as working-directory).
-          # All input is from repo filesystem; service paths validated against a strict regex
-          # before being emitted to GITHUB_OUTPUT to prevent any pathological directory names
-          # from poisoning downstream matrix interpolation.
-          services=$(
-            find infra-repo/hosts/host-a/docker connectors knowledge automation \
-              -path '*/.venv' -prune -o -name pyproject.toml -printf '%h\n' \
-            | sort -u \
-            | grep -E '^[a-z][a-z0-9/-]{1,127}$' \
-            | jq -R . | jq -sc .
-          )
-          if [ -z "$services" ] || [ "$services" = "[]" ]; then
-            echo "No services with pyproject.toml found."
+          # Run the service matrix only when the PR touches CI-relevant files (service code /
+          # tests / packaging / Dockerfiles / this workflow). Docs- or card-only PRs emit an
+          # empty matrix — which ci-ok treats as success — but the workflow still RAN, so the
+          # required ci-ok check is always reported (no wedge on .md-only PRs).
+          if git diff --name-only "$BASE_SHA"...HEAD \
+             | grep -qE '(\.py$|/tests/|/pyproject\.toml$|(^|/)Dockerfile$|^\.github/workflows/fastapi-svcs\.yml$)'; then
+            # Discover services with a pyproject.toml across all service roots
+            #   (infra-repo/hosts/host-a/docker/, connectors/, knowledge/, automation/).
+            # Emits the FULL relative dir path (used directly as working-directory); each path is
+            # validated against a strict regex before hitting GITHUB_OUTPUT so no pathological
+            # directory name can poison the matrix interpolation.
+            services=$(
+              find infra-repo/hosts/host-a/docker connectors knowledge automation \
+                -path '*/.venv' -prune -o -name pyproject.toml -printf '%h\n' \
+              | sort -u \
+              | grep -E '^[a-z][a-z0-9/-]{1,127}$' \
+              | jq -R . | jq -sc .
+            )
+          else
+            echo "No CI-relevant files changed — skipping the service matrix."
             services="[]"
           fi
+          if [ -z "$services" ]; then services="[]"; fi
           echo "services=$services" >> "$GITHUB_OUTPUT"
           echo "Detected: $services"
 
