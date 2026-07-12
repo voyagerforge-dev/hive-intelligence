@@ -1,21 +1,21 @@
 name: FastAPI services CI
 
+# Runs on PRs only (no duplicate run on merge to main). Paths are scoped to actual
+# service code — src/tests/pyproject and Dockerfiles — so docs-only changes (e.g.
+# knowledge/okf/**/*.md cards) no longer spin up the 10-service matrix.
 on:
-  push:
-    paths:
-      - 'automation/**'
-      - 'infra-repo/templates/fastapi-svc/**'
-      - 'connectors/**'
-      - 'knowledge/**'
-      - '.github/workflows/fastapi-svcs.yml'
   pull_request:
     paths:
-      - 'infra-repo/hosts/host-a/docker/*/pyproject.toml'
-      - 'infra-repo/hosts/host-a/docker/*/src/**'
-      - 'infra-repo/hosts/host-a/docker/*/tests/**'
-      - 'connectors/**'
-      - 'knowledge/**'
-      - 'automation/**'
+      - '**/src/**'
+      - '**/tests/**'
+      - '**/pyproject.toml'
+      - '**/Dockerfile'
+      - '.github/workflows/fastapi-svcs.yml'
+
+# A new push to the same PR cancels the in-flight run instead of stacking runners.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   detect-services:
