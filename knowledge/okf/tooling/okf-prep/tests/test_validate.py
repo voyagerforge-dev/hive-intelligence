@@ -1,6 +1,6 @@
 # tests/test_validate.py
 from pathlib import Path
-from okfprep.validate import validate_atomic_dir, ValidationError
+from okfprep.validate import validate_atomic_dir
 
 FM = """---
 title: "{t}"

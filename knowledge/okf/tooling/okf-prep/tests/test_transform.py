@@ -1,4 +1,3 @@
-from pathlib import Path
 
 import okfprep.transform as tf
 from okfprep.curation_plan import Plan

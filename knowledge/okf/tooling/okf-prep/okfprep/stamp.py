@@ -32,14 +32,14 @@ def stamp_file(path: Path, fields: dict, only_missing: bool = True) -> list[str]
         if key in present and only_missing:
             continue
         # remove any existing line for key (overwrite case)
-        lines = [l for l in lines if not l.startswith(f"{key}:")]
+        lines = [ln for ln in lines if not ln.startswith(f"{key}:")]
         # insert after slug if present, else at top
         newline = f'{key}: {val}'
-        if any(l.startswith("slug:") for l in lines):
+        if any(ln.startswith("slug:") for ln in lines):
             out = []
-            for l in lines:
-                out.append(l)
-                if l.startswith("slug:"):
+            for ln in lines:
+                out.append(ln)
+                if ln.startswith("slug:"):
                     out.append(newline)
             lines = out
         else:

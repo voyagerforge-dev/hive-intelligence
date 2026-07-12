@@ -1,6 +1,5 @@
 # tests/test_normalize.py
 from pathlib import Path
-import shutil
 import pytest
 from okfprep import normalize as nz
 from okfprep.striptrim import StripStats
