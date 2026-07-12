@@ -397,9 +397,9 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
-    { name = "okfgen" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "example-okfgen" },
 ]
 
 [package.metadata]
@@ -407,37 +407,12 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.135" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mcp", specifier = "==1.28.1" },
-    { name = "okfgen", marker = "extra == 'dev'", editable = "../okf-gen" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pydantic-settings", specifier = ">=2.5" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "example-okfgen", marker = "extra == 'dev'", editable = "../okf-gen" },
     { name = "uvicorn", specifier = ">=0.30" },
-]
-provides-extras = ["dev"]
-
-[[package]]
-name = "okfgen"
-version = "0.1.0"
-source = { editable = "../okf-gen" }
-dependencies = [
-    { name = "boto3" },
-    { name = "httpx" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "pyyaml" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "boto3", specifier = ">=1.35" },
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "pydantic", specifier = ">=2.9" },
-    { name = "pydantic-settings", specifier = ">=2.5" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
 ]
 provides-extras = ["dev"]
 
@@ -852,6 +827,31 @@ sdist = { url = "https://files.pythonhosted.org/packages/65/da/4bef7ce7bb989b222
 wheels = [
     { url = "https://files.pythonhosted.org/packages/24/23/e84c64ad0e8bc59cd1b2ef98def848deff0ef3456c542afe74d51e9e8c85/s3transfer-0.19.1-py3-none-any.whl", hash = "sha256:d5fd7005ee39307455ad5f310b5ea67f4b1960d7fed5b3671ee50c249de675de", size = 90072, upload-time = "2026-07-10T19:32:03.673Z" },
 ]
+
+[[package]]
+name = "example-okfgen"
+version = "0.1.0"
+source = { editable = "../okf-gen" }
+dependencies = [
+    { name = "boto3" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "boto3", specifier = ">=1.35" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pydantic", specifier = ">=2.9" },
+    { name = "pydantic-settings", specifier = ">=2.5" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "six"
