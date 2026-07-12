@@ -1,5 +1,4 @@
 # tests/test_stamp.py
-from pathlib import Path
 from okfprep.stamp import stamp_file, stamp_dir
 from okfprep.validate import validate_atomic_dir
 

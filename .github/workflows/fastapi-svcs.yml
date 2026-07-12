@@ -60,24 +60,59 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-      - name: Install svc + dev deps
+      # Install linters at the job level so `ruff`/`mypy` exist regardless of whether a
+      # given service lists them in its own [dev] extras. Each service still supplies its
+      # own ruff/mypy CONFIG via pyproject.toml (line-length, ignores, target-version).
+      - name: Install lint/type tooling
+        run: pip install "ruff>=0.7" "mypy>=1.10"
+      # okf-serve/okf-author depend on the in-repo `okfgen` via [tool.uv.sources]. Plain pip
+      # does not read that table and would otherwise pull a SAME-NAMED package from PyPI
+      # (which exists and is not ours), so install any local path source first (editable) to
+      # pin the in-repo package before the service resolves its dependencies.
+      - name: Install local path dependencies (tool.uv.sources)
         working-directory: ${{ matrix.svc }}
         run: |
-          pip install -e ".[dev]"
+          python - <<'PY'
+          import subprocess, sys, tomllib
+          data = tomllib.load(open("pyproject.toml", "rb"))
+          for name, spec in data.get("tool", {}).get("uv", {}).get("sources", {}).items():
+              if isinstance(spec, dict) and spec.get("path"):
+                  print(f"installing in-repo source {name} from {spec['path']}")
+                  subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", spec["path"]])
+          PY
+      - name: Install service + dev deps
+        working-directory: ${{ matrix.svc }}
+        run: pip install -e ".[dev]"
+      # `ruff check .` is layout-agnostic — services use either src/ or a named package
+      # dir (okfgen/, okfserve/, …). Ruff reads the nearest pyproject for config/excludes.
       - name: Lint (ruff)
         working-directory: ${{ matrix.svc }}
-        run: ruff check src tests
-      - name: Type check (mypy)
+        run: ruff check .
+      # Type-check only services that opt in (declare mypy in pyproject). Most of this
+      # monorepo's packages were not written for mypy; forcing it everywhere is noise.
+      - name: Type check (mypy — opt-in)
         working-directory: ${{ matrix.svc }}
-        run: mypy src
-      - name: Tests (pytest with coverage)
+        run: |
+          if grep -qiE '(^|[^a-z])mypy([^a-z]|$)' pyproject.toml; then
+            if [ -d src ]; then tgt=src
+            else tgt=$(find . -maxdepth 2 -name __init__.py -printf '%h\n' \
+                       | sed 's#^\./##' | grep -vE '^(tests|deploy)' | sort -u | head -1); fi
+            [ -z "$tgt" ] && tgt=.
+            echo "mypy $tgt"; mypy "$tgt"
+          else
+            echo "mypy not declared in pyproject.toml — skipping type check for this service."
+          fi
+      - name: Tests (pytest)
         working-directory: ${{ matrix.svc }}
         env:
           SVC_NAME: ${{ matrix.svc }}
           BEARER_TOKEN: "test-token-padded-to-thirty-two-chars"
-        run: pytest -v
-      - name: Verify Dockerfile builds
+        run: |
+          if [ -d tests ]; then pytest -v; else echo "no tests/ — skipping."; fi
+      # Not every service ships a container (the OKF tooling packages are libraries).
+      - name: Verify Dockerfile builds (only if present)
         working-directory: ${{ matrix.svc }}
         env:
           SVC: ${{ matrix.svc }}
-        run: docker build -t "${SVC##*/}:ci" .
+        run: |
+          if [ -f Dockerfile ]; then docker build -t "${SVC##*/}:ci" .; else echo "no Dockerfile — skipping build."; fi

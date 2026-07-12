@@ -1,4 +1,3 @@
-from pathlib import Path
 from okfprep.dups import sha256_file, group_duplicates
 
 def test_identical_files_group(tmp_path):
