@@ -92,7 +92,9 @@ def start_objective(conn, *, owner, mode, goal, external_ref=None) -> dict:
          json.dumps(external_ref) if external_ref else None, "private", ts, ts),
     )
     conn.commit()
-    return get_objective(conn, owner=owner, objective_id=oid)
+    obj = get_objective(conn, owner=owner, objective_id=oid)
+    assert obj is not None  # just inserted above
+    return obj
 
 
 def list_objectives(conn, *, owner, status=None) -> list[dict]:
@@ -170,7 +172,9 @@ def remember(conn, *, owner, text, tags=None, card_ids=None, external_ref=None, 
          json.dumps(external_ref) if external_ref else None, "private", ts, ts),
     )
     conn.commit()
-    return get_memory(conn, owner=owner, memory_id=mid)
+    mem = get_memory(conn, owner=owner, memory_id=mid)
+    assert mem is not None  # just inserted above
+    return mem
 
 
 def get_memory(conn, *, owner, memory_id) -> dict | None:
