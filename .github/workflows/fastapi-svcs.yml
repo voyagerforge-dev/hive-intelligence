@@ -89,12 +89,14 @@ jobs:
       - name: Lint (ruff)
         working-directory: ${{ matrix.svc }}
         run: ruff check .
-      # Type-check only services that opt in (declare mypy in pyproject). Most of this
-      # monorepo's packages were not written for mypy; forcing it everywhere is noise.
+      # Type-check services that opt in by mentioning mypy in pyproject (a [tool.mypy]
+      # section and/or a mypy dev dep). All services now carry a lenient [tool.mypy]
+      # (ignore_missing_imports), so this runs on every service; a future service without
+      # any mypy mention is simply skipped rather than failing on missing config.
       - name: Type check (mypy — opt-in)
         working-directory: ${{ matrix.svc }}
         run: |
-          if grep -qiE '(^|[^a-z])mypy([^a-z]|$)' pyproject.toml; then
+          if grep -qi 'mypy' pyproject.toml; then
             if [ -d src ]; then tgt=src
             else tgt=$(find . -maxdepth 2 -name __init__.py -printf '%h\n' \
                        | sed 's#^\./##' | grep -vE '^(tests|deploy)' | sort -u | head -1); fi

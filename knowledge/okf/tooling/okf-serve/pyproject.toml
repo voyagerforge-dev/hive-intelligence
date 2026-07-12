@@ -34,3 +34,7 @@ ignore = ["E702"]  # deliberate compact statement style (a; b on one line)
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["E402"]  # tests import modules after fixture/setup blocks
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true

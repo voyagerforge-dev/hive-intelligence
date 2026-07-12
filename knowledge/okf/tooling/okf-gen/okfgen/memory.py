@@ -46,7 +46,8 @@ _FRONTMATTER_RE = re.compile(r"(?s)^---\s*\n(.*?)\n---\s*\n?(.*)$")
 def memory_to_record(card_text: str) -> dict:
     m = _FRONTMATTER_RE.match(card_text)
     if not m:
-        fm, body = {}, ""
+        fm: dict = {}
+        body = ""
     else:
         fm = yaml.safe_load(m.group(1)) or {}
         body = m.group(2)
