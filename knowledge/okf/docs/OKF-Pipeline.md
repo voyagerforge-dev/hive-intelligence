@@ -365,10 +365,12 @@ with `type: correction` and `corrects: <path-id>` pointing at the concept it ame
 - **Supersede, don't delete.** A newer correction can `supersedes:` older ones, flipping them to
   `status: superseded` (kept in git for history). Conflicts (>1 active correction on one concept) are a
   **lint warning** for human resolution, not an auto-merge.
-- **Authoring is GitHub-native.** Two entry points feed one **pure `record ⇄ card` seam**
-  (`okfgen/corrections.py`): a CLI (`scripts/new_correction.py`) and an **Issue Form → Action**
+- **Authoring is GitHub-native.** Three entry points feed one **pure `record ⇄ card` seam**
+  (`okfgen/corrections.py`): a CLI (`scripts/new_correction.py`); an **Issue Form → Action**
   (`.github/ISSUE_TEMPLATE/correction.yml` → `.github/workflows/correction-from-issue.yml`, fires on label
-  `okf-correction-approved` → opens a PR). `CODEOWNERS` routes each product's corrections dir to the owner;
+  `okf-correction-approved` → opens a PR); and **from Claude** via the [`okf-author`](#the-memory-layer)
+  server's `submit_correction` tool (which files the same `okf-correction` issue). `CODEOWNERS` routes
+  each product's corrections dir to the owner;
   `scripts/corrections_lint.py` (+ the `corrections-lint` CI workflow) gates dangling targets, bad
   supersedes, status inconsistency, and conflicts.
 
