@@ -365,12 +365,13 @@ with `type: correction` and `corrects: <path-id>` pointing at the concept it ame
 - **Supersede, don't delete.** A newer correction can `supersedes:` older ones, flipping them to
   `status: superseded` (kept in git for history). Conflicts (>1 active correction on one concept) are a
   **lint warning** for human resolution, not an auto-merge.
-- **Authoring is GitHub-native.** Three entry points feed one **pure `record ⇄ card` seam**
-  (`okfgen/corrections.py`): a CLI (`scripts/new_correction.py`); an **Issue Form → Action**
-  (`.github/ISSUE_TEMPLATE/correction.yml` → `.github/workflows/correction-from-issue.yml`, fires on label
-  `okf-correction-approved` → opens a PR); and **from Claude** via the [`okf-author`](#the-memory-layer)
-  server's `submit_correction` tool (which files the same `okf-correction` issue). `CODEOWNERS` routes
-  each product's corrections dir to the owner;
+- **Authoring: from Claude first, GitHub optional.** The **primary entry is from Claude**, via the
+  [`okf-author`](#the-memory-layer) server's `submit_correction` tool, which files an `okf-correction`
+  issue. The GitHub **Issue Form → Action** (`.github/ISSUE_TEMPLATE/correction.yml` →
+  `.github/workflows/correction-from-issue.yml`, fires on label `okf-correction-approved` → opens a PR)
+  and the `scripts/new_correction.py` CLI are **optional power-user paths** into the *same* pure
+  `record ⇄ card` seam (`okfgen/corrections.py`). `CODEOWNERS` routes each product's corrections dir to
+  the owner;
   `scripts/corrections_lint.py` (+ the `corrections-lint` CI workflow) gates dangling targets, bad
   supersedes, status inconsistency, and conflicts.
 
@@ -417,8 +418,9 @@ regime), derived structurally from the card's id path - not from author-supplied
 **Promotion - personal → global, sanitize + approve.** `promote(memory_id)` (keyless; okf-serve only
 reads *your* row) prepares a neutral promotion record and flips the row to `promotion_requested`; you
 sanitise it (strip client names / ticket #s / personal specifics) and it is filed as an **`okf-memory`
-Issue** - either through the **`okf-author`** MCP server's `submit_memory_promotion` tool or the GitHub
-**Memory Issue Form** directly. A CODEOWNER approve-label fires the `memory-from-issue` Action, which
+Issue** - **primarily from Claude**, through the **`okf-author`** server's `submit_memory_promotion`
+tool (the GitHub **Memory Issue Form** is an optional power-user path). A CODEOWNER approve-label fires
+the `memory-from-issue` Action, which
 builds the card and opens a PR; merging it makes the memory live on the next `cards_sync` pull. The
 authoring surface mirrors corrections and shares one **pure `record ⇄ card` seam** (`okfgen/memory.py`).
 To capture and promote a memory step by step, see
