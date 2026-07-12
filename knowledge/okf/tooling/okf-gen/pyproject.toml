@@ -1,5 +1,8 @@
 [project]
-name = "okfgen"
+# Distribution name is namespaced to avoid a collision with an unrelated PyPI package
+# named "okfgen". The IMPORT package remains `okfgen` (see tool.hatch packages below);
+# consumers still `import okfgen`, but pip resolves the dependency as `example-okfgen`.
+name = "example-okfgen"
 version = "0.1.0"
 description = "Generate OKF concept cards from the WMOS reference corpus"
 requires-python = ">=3.12"
