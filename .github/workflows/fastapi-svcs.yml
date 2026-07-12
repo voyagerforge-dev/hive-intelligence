@@ -1,12 +1,13 @@
 name: FastAPI services CI
 
-# Runs on PRs only (no duplicate run on merge to main). Paths are scoped to actual
-# service code — src/tests/pyproject and Dockerfiles — so docs-only changes (e.g.
-# knowledge/okf/**/*.md cards) no longer spin up the 10-service matrix.
+# Runs on PRs only (no duplicate run on merge to main). Triggers on any Python change
+# (`**/*.py` covers every layout — src/ AND the OKF package dirs okfgen/, okfserve/, …),
+# plus test fixtures, packaging, and Dockerfiles. Docs-only changes (e.g. the .md concept
+# cards) still don't spin up the matrix.
 on:
   pull_request:
     paths:
-      - '**/src/**'
+      - '**/*.py'
       - '**/tests/**'
       - '**/pyproject.toml'
       - '**/Dockerfile'
