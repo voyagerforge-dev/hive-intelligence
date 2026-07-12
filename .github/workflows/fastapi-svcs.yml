@@ -116,3 +116,24 @@ jobs:
           SVC: ${{ matrix.svc }}
         run: |
           if [ -f Dockerfile ]; then docker build -t "${SVC##*/}:ci" .; else echo "no Dockerfile — skipping build."; fi
+
+  # Single aggregate status for branch protection. Requiring this one context — instead of
+  # every dynamic `test (<svc>)` matrix leg — keeps the required-check list stable as services
+  # are added or removed. `always()` so it still reports when a matrix leg fails; a skipped
+  # matrix (detect-services found no services) is treated as OK.
+  ci-ok:
+    needs: [detect-services, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require detect-services + all matrix jobs to have passed
+        run: |
+          echo "detect-services: ${{ needs.detect-services.result }}"
+          echo "test matrix:     ${{ needs.test.result }}"
+          if [ "${{ needs.detect-services.result }}" != "success" ]; then
+            echo "::error::detect-services did not succeed"; exit 1
+          fi
+          case "${{ needs.test.result }}" in
+            success|skipped) echo "matrix OK" ;;
+            *) echo "::error::test matrix did not succeed"; exit 1 ;;
+          esac
