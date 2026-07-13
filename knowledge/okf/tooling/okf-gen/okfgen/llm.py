@@ -37,9 +37,10 @@ def extract_json(text: str) -> dict | None:
 
 class BifrostChat:
     def __init__(self, base: str, api_key: str, model: str, timeout_s: int = 120,
-                 retries: int = 4, backoff_s: float = 2.0) -> None:
+                 retries: int = 4, backoff_s: float = 2.0,
+                 user_agent: str = "okfgen/0.1") -> None:
         self._url = base.rstrip("/") + "/chat/completions"
-        self._headers = {"Authorization": f"Bearer {api_key}"}
+        self._headers = {"Authorization": f"Bearer {api_key}", "User-Agent": user_agent}
         self._model = model
         self._timeout = timeout_s
         self._retries = max(1, retries)
