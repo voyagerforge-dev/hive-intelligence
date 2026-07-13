@@ -7,6 +7,9 @@ import functools
 import time
 
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Histogram, generate_latest
+from prometheus_client.core import GaugeMetricFamily
+
+from okfserve.resolver import load_index
 
 REGISTRY = CollectorRegistry()
 
@@ -93,3 +96,53 @@ class PrometheusHTTPMiddleware:
                 time.perf_counter() - start)
             HTTP_REQUESTS.labels(endpoint=endpoint, method=method,
                                  status=str(status_holder["code"])).inc()
+
+
+def content_samples(concepts_dir, clients_dir, conn_factory) -> dict:
+    cards: dict[tuple, int] = {}
+    for c in load_index(concepts_dir, clients_dir):
+        key = (c.get("product") or "none", c.get("regime") or "none")
+        cards[key] = cards.get(key, 0) + 1
+    with conn_factory() as conn:
+        obj = conn.execute("SELECT COUNT(*) FROM objective").fetchone()[0]
+        mem = conn.execute("SELECT COUNT(*) FROM memory").fetchone()[0]
+    return {"cards": cards, "ledger": {"objective": obj, "memory": mem}}
+
+
+class ContentCollector:
+    """TTL-cached corpus/ledger size gauges. Refreshes sample_fn() at most once per
+    ttl_s so a scrape never recounts the whole corpus."""
+
+    def __init__(self, sample_fn, ttl_s: float = 30.0, clock=time.perf_counter):
+        self._sample_fn = sample_fn
+        self._ttl = ttl_s
+        self._clock = clock
+        self._cache: dict | None = None
+        self._last = 0.0
+
+    def _samples(self) -> dict:
+        now = self._clock()
+        if self._cache is None or (now - self._last) >= self._ttl:
+            self._cache = self._sample_fn()
+            self._last = now
+        return self._cache
+
+    def collect(self):
+        data = self._samples()
+        cards = GaugeMetricFamily(
+            "okf_corpus_cards", "OKF cards on disk by product and regime facet",
+            labels=["product", "regime"])
+        for (product, regime), n in sorted(data["cards"].items()):
+            cards.add_metric([product, str(regime)], n)
+        yield cards
+        rows = GaugeMetricFamily(
+            "okf_ledger_rows", "OKF ledger row counts by table", labels=["table"])
+        for table, n in sorted(data["ledger"].items()):
+            rows.add_metric([table], n)
+        yield rows
+
+
+def register_content_collector(concepts_dir, clients_dir, conn_factory, ttl_s: float = 30.0):
+    REGISTRY.register(
+        ContentCollector(lambda: content_samples(concepts_dir, clients_dir, conn_factory),
+                         ttl_s=ttl_s))

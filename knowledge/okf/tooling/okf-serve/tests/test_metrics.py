@@ -82,3 +82,58 @@ def test_track_tool_preserves_signature():
     def f(a: int, b: str = "x") -> str:
         return b * a
     assert list(inspect.signature(f).parameters) == ["a", "b"]
+
+
+def test_content_collector_caches_within_ttl():
+    calls = {"n": 0}
+    clock = {"t": 0.0}
+
+    def sample():
+        calls["n"] += 1
+        return {"cards": {("wms", "operational"): 3, ("osci", None): 1},
+                "ledger": {"objective": 2, "memory": 5}}
+
+    coll = metrics.ContentCollector(sample, ttl_s=30.0, clock=lambda: clock["t"])
+    list(coll.collect())            # first collect → samples
+    clock["t"] = 10.0
+    list(coll.collect())            # within TTL → cached
+    assert calls["n"] == 1
+    clock["t"] = 45.0
+    list(coll.collect())            # past TTL → resample
+    assert calls["n"] == 2
+
+
+def test_content_collector_emits_gauges():
+    def sample():
+        return {"cards": {("wms", "operational"): 3},
+                "ledger": {"objective": 2, "memory": 5}}
+    coll = metrics.ContentCollector(sample, ttl_s=30.0, clock=lambda: 0.0)
+    families = {m.name: m for m in coll.collect()}
+    assert "okf_corpus_cards" in families
+    assert "okf_ledger_rows" in families
+    card_samples = {(s.labels["product"], s.labels["regime"]): s.value
+                    for s in families["okf_corpus_cards"].samples}
+    assert card_samples[("wms", "operational")] == 3
+    ledger_samples = {s.labels["table"]: s.value
+                      for s in families["okf_ledger_rows"].samples}
+    assert ledger_samples == {"objective": 2, "memory": 5}
+
+
+def test_content_samples_counts_fixture_corpus(tmp_path):
+    from okfserve import ledger
+    concepts = tmp_path / "concepts"; clients = tmp_path / "clients"
+    (concepts / "wms").mkdir(parents=True)
+    (concepts / "wms" / "a.md").write_text(
+        "---\ntitle: A\ndescription: d\nproduct: wms\nregime: operational\n---\nbody\n")
+    (concepts / "wms" / "b.md").write_text(
+        "---\ntitle: B\ndescription: d\nproduct: wms\nregime: operational\n---\nbody\n")
+    db = tmp_path / "obj.db"
+
+    def factory():
+        return ledger.session(db)
+    with factory() as conn:
+        ledger.start_objective(conn, owner="o", mode="investigate", goal="g")
+        ledger.remember(conn, owner="o", text="t")
+    out = metrics.content_samples(str(concepts), str(clients), factory)
+    assert out["cards"][("wms", "operational")] == 2
+    assert out["ledger"] == {"objective": 1, "memory": 1}
