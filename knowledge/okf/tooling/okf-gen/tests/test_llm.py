@@ -1,4 +1,4 @@
-from okfgen.llm import extract_json
+from okfgen.llm import BifrostChat, extract_json
 
 
 def test_extract_json_plain():
@@ -66,3 +66,14 @@ def test_bifrost_returns_none_after_exhausting_retries(monkeypatch):
     monkeypatch.setattr(llm_mod.time, "sleep", lambda *_: None)
     c = llm_mod.BifrostChat("http://bf/v1", "k", "m", retries=2)
     assert c.complete("s", "u") is None
+
+
+def test_default_user_agent_header():
+    c = BifrostChat("http://x/v1", "key", "minimax-m3")
+    assert c._headers["Authorization"] == "Bearer key"
+    assert c._headers["User-Agent"] == "okfgen/0.1"
+
+
+def test_explicit_user_agent_header():
+    c = BifrostChat("http://x/v1", "key", "minimax-m3", user_agent="okf-conflict-gate")
+    assert c._headers["User-Agent"] == "okf-conflict-gate"
