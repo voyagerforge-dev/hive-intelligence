@@ -1,3 +1,5 @@
+import pytest
+
 from okfserve import metrics
 
 
@@ -50,3 +52,33 @@ def test_http_request_increments_counter(tmp_path):
     after = _sample("http_requests_total",
                     {"endpoint": "/healthz", "method": "GET", "status": "200"})
     assert after == before + 1
+
+
+def test_track_tool_counts_ok():
+    @metrics.track_tool("demo_ok")
+    def f(x):
+        return x + 1
+    before = _sample("mcp_tool_calls_total", {"tool": "demo_ok", "outcome": "ok"})
+    assert f(1) == 2
+    after = _sample("mcp_tool_calls_total", {"tool": "demo_ok", "outcome": "ok"})
+    assert after == before + 1
+
+
+def test_track_tool_counts_error_and_reraises():
+    @metrics.track_tool("demo_err")
+    def f():
+        raise ValueError("boom")
+    before = _sample("mcp_tool_calls_total", {"tool": "demo_err", "outcome": "error"})
+    with pytest.raises(ValueError):
+        f()
+    after = _sample("mcp_tool_calls_total", {"tool": "demo_err", "outcome": "error"})
+    assert after == before + 1
+
+
+def test_track_tool_preserves_signature():
+    import inspect
+
+    @metrics.track_tool("demo_sig")
+    def f(a: int, b: str = "x") -> str:
+        return b * a
+    assert list(inspect.signature(f).parameters) == ["a", "b"]

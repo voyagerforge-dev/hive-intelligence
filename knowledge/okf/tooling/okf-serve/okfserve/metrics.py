@@ -3,6 +3,7 @@ HTTP + MCP-tool instrumentation objects; content collector registered at app bui
 No `client` label anywhere (cardinality rule)."""
 from __future__ import annotations
 
+import functools
 import time
 
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Histogram, generate_latest
@@ -26,6 +27,26 @@ TOOL_LATENCY = Histogram(
 
 def render() -> tuple[bytes, str]:
     return generate_latest(REGISTRY), CONTENT_TYPE_LATEST
+
+
+def track_tool(name: str):
+    """Count + time an MCP tool call. outcome='error' on exception (then re-raise).
+    Signature-preserving so FastMCP still builds the tool schema from it."""
+    def deco(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            start = time.perf_counter()
+            outcome = "ok"
+            try:
+                return fn(*args, **kwargs)
+            except Exception:
+                outcome = "error"
+                raise
+            finally:
+                TOOL_LATENCY.labels(tool=name).observe(time.perf_counter() - start)
+                TOOL_CALLS.labels(tool=name, outcome=outcome).inc()
+        return wrapper
+    return deco
 
 
 # Known REST endpoints. Anything else (the /mcp mount, unknowns) is skipped to keep
