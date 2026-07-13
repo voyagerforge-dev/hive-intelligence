@@ -39,6 +39,7 @@ def test_endpoint_label_normalizes_and_skips_mcp():
     assert metrics._endpoint_label("/card/osci/omni-framework") == "/card/{id}"
     assert metrics._endpoint_label("/mcp") is None       # skipped: measured at tool layer
     assert metrics._endpoint_label("/mcp/anything") is None
+    assert metrics._endpoint_label("/metrics") is None   # skipped: self-scrape pollution
 
 
 def test_http_request_increments_counter(tmp_path):
@@ -116,6 +117,43 @@ def test_content_collector_emits_gauges():
     assert card_samples[("wms", "operational")] == 3
     ledger_samples = {s.labels["table"]: s.value
                       for s in families["okf_ledger_rows"].samples}
+    assert ledger_samples == {"objective": 2, "memory": 5}
+
+
+def test_content_collector_survives_sample_failure():
+    clock = {"t": 0.0}
+
+    def failing_sample():
+        raise RuntimeError("corpus read blew up")
+
+    # No prior cache: collector must still yield both families, with zero samples.
+    coll = metrics.ContentCollector(failing_sample, ttl_s=30.0, clock=lambda: clock["t"])
+    families = {m.name: m for m in coll.collect()}
+    assert "okf_corpus_cards" in families
+    assert "okf_ledger_rows" in families
+    assert families["okf_corpus_cards"].samples == []
+    assert families["okf_ledger_rows"].samples == []
+
+    # Last-known-good: prime with one good sample, then fail past the TTL window;
+    # collect() should keep serving the previously-cached values, not raise/blank out.
+    calls = {"n": 0, "fail": False}
+
+    def flaky_sample():
+        calls["n"] += 1
+        if calls["fail"]:
+            raise RuntimeError("transient ledger read error")
+        return {"cards": {("wms", "operational"): 3}, "ledger": {"objective": 2, "memory": 5}}
+
+    coll2 = metrics.ContentCollector(flaky_sample, ttl_s=30.0, clock=lambda: clock["t"])
+    list(coll2.collect())  # primes good cache
+    clock["t"] = 45.0      # past TTL
+    calls["fail"] = True
+    families2 = {m.name: m for m in coll2.collect()}
+    card_samples = {(s.labels["product"], s.labels["regime"]): s.value
+                    for s in families2["okf_corpus_cards"].samples}
+    assert card_samples[("wms", "operational")] == 3
+    ledger_samples = {s.labels["table"]: s.value
+                      for s in families2["okf_ledger_rows"].samples}
     assert ledger_samples == {"objective": 2, "memory": 5}
 
 

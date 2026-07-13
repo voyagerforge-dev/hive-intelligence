@@ -54,7 +54,9 @@ def track_tool(name: str):
 
 # Known REST endpoints. Anything else (the /mcp mount, unknowns) is skipped to keep
 # cardinality bounded and preserve the plane split (MCP usage is a tool-layer metric).
-_STATIC = {"/healthz", "/concepts", "/resolve", "/metrics"}
+# /metrics itself is deliberately excluded: counting Prometheus's own scrape would
+# dilute the 5xx-ratio alert denominator and dominate the per-endpoint rate panel.
+_STATIC = {"/healthz", "/concepts", "/resolve"}
 
 
 def _endpoint_label(path: str) -> str | None:
@@ -123,7 +125,16 @@ class ContentCollector:
     def _samples(self) -> dict:
         now = self._clock()
         if self._cache is None or (now - self._last) >= self._ttl:
-            self._cache = self._sample_fn()
+            try:
+                self._cache = self._sample_fn()
+            except Exception:
+                # A scrape must degrade to stale/empty content gauges, never take
+                # down the whole /metrics endpoint. Fall back to last-known-good,
+                # or an empty-but-valid shape if we have no prior sample at all.
+                if self._cache is None:
+                    self._cache = {"cards": {}, "ledger": {}}
+            # Always advance _last, even on failure, so a hard-failing sample_fn
+            # is retried at most once per TTL window instead of on every scrape.
             self._last = now
         return self._cache
 
