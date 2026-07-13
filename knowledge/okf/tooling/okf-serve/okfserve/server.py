@@ -9,6 +9,7 @@ from okfserve import ledger
 from okfserve.app import build_rest_router
 from okfserve.config import get_settings
 from okfserve.mcp_app import build_mcp
+from okfserve.metrics import PrometheusHTTPMiddleware
 
 
 def _choose_transport(http_flag: bool, stdio_flag: bool, settings) -> str:
@@ -38,7 +39,7 @@ def build_http_app(settings):
     app = FastAPI(title="OKF Serving Layer", lifespan=lifespan)
     app.include_router(build_rest_router(settings))
     app.mount("/", mcp.streamable_http_app())
-    return app
+    return PrometheusHTTPMiddleware(app)
 
 
 def main(argv=None) -> None:
