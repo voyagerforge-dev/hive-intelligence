@@ -33,3 +33,14 @@ def test_http_app_serves_rest_and_mounts_mcp(tmp_path):
         # MCP streamable-HTTP endpoint is mounted at /mcp (transport may answer
         # 400/406 without a session, but it must NOT be 404 / shadowed by REST)
         assert c.get("/mcp").status_code != 404
+
+
+def test_metrics_endpoint_not_shadowed_by_mcp_mount(tmp_path):
+    (tmp_path / "wave-replen.md").write_text(CARD)
+    s = Settings(concepts_dir=str(tmp_path), okf_data_dir=str(tmp_path))
+    app = build_http_app(s)
+    with TestClient(app) as c:
+        r = c.get("/metrics")
+        assert r.status_code == 200
+        assert r.headers["content-type"].startswith("text/plain")
+        assert "http_requests_total" in r.text

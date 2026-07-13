@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-from okfserve import tools
+from okfserve import metrics, tools
 from okfserve.resolver import get_card
 
 
@@ -20,6 +21,11 @@ def build_rest_router(settings) -> APIRouter:
     @router.get("/healthz")
     def healthz() -> dict:
         return {"ok": True}
+
+    @router.get("/metrics")
+    def prometheus_metrics() -> PlainTextResponse:
+        body, content_type = metrics.render()
+        return PlainTextResponse(body, media_type=content_type)
 
     @router.get("/concepts")
     def concepts() -> list[dict]:
