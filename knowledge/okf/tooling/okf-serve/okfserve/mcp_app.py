@@ -1,9 +1,9 @@
-"""MCP door: read + ledger tools and the three mode prompts over one resolver+ledger core."""
+"""MCP door: read + ledger tools over one resolver+ledger core."""
 from __future__ import annotations
 
 from mcp.server.fastmcp import Context, FastMCP
 
-from okfserve import ledger, prompts, tools
+from okfserve import ledger, tools
 from okfserve.identity import resolve_owner
 from okfserve.metrics import track_tool
 
@@ -128,20 +128,5 @@ def build_mcp(settings, conn_factory) -> FastMCP:
         with conn_factory() as conn:
             return ledger.promote_memory(conn, owner=owner_from_ctx(ctx, settings),
                                          memory_id=memory_id)
-
-    @mcp.prompt()
-    def investigate(symptom: str = "") -> str:
-        """Issue Investigator mode."""
-        return prompts.investigate(symptom)
-
-    @mcp.prompt()
-    def implementation_advisor(task: str = "") -> str:
-        """Implementation Advisor mode."""
-        return prompts.implementation_advisor(task)
-
-    @mcp.prompt()
-    def guided_learning(topic: str = "") -> str:
-        """Guided Learning mode."""
-        return prompts.guided_learning(topic)
 
     return mcp
