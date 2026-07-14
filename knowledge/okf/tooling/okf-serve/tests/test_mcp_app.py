@@ -10,16 +10,15 @@ def _factory(tmp_path):
     return lambda: ledger.session(db)
 
 
-def test_tools_and_prompts_registered(tmp_path):
+def test_tools_registered_and_no_prompts(tmp_path):
     s = Settings(concepts_dir=str(tmp_path))
     mcp = build_mcp(s, _factory(tmp_path))
     tool_names = {t.name for t in anyio.run(mcp.list_tools)}
-    prompt_names = {p.name for p in anyio.run(mcp.list_prompts)}
     assert {"list_concepts", "get_card", "resolve", "start_objective",
             "append_entry", "set_status", "record_quiz_result",
             "list_objectives", "get_objective",
             "remember", "recall", "forget", "promote"} <= tool_names
-    assert {"investigate", "implementation_advisor", "guided_learning"} <= prompt_names
+    assert anyio.run(mcp.list_prompts) == []   # personas moved to the Cowork plugin skills
 
 
 def test_tool_dispatch_increments_metric(tmp_path):
