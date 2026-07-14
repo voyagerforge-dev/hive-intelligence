@@ -22,6 +22,20 @@ def test_tools_and_prompts_registered(tmp_path):
     assert {"investigate", "implementation_advisor", "guided_learning"} <= prompt_names
 
 
+def test_tool_dispatch_increments_metric(tmp_path):
+    # End-to-end: dispatching a tool through FastMCP's real call_tool path must run
+    # the @track_tool wrapper (not just the standalone-decorator tests), so the
+    # mcp_tool_calls_total counter moves for the dispatched tool name.
+    from okfserve import metrics
+    s = Settings(concepts_dir=str(tmp_path), clients_dir=str(tmp_path))
+    mcp = build_mcp(s, _factory(tmp_path))
+    labels = {"tool": "list_concepts", "outcome": "ok"}
+    before = metrics.REGISTRY.get_sample_value("mcp_tool_calls_total", labels) or 0.0
+    anyio.run(lambda: mcp.call_tool("list_concepts", {}))
+    after = metrics.REGISTRY.get_sample_value("mcp_tool_calls_total", labels) or 0.0
+    assert after == before + 1
+
+
 def test_owner_from_ctx_defaults_without_request(tmp_path):
     from okfserve.mcp_app import owner_from_ctx
 

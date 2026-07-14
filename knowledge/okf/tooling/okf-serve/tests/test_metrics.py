@@ -22,14 +22,6 @@ def test_metric_objects_have_expected_labels():
     metrics.TOOL_LATENCY.labels(tool="resolve").observe(0.01)
 
 
-from fastapi.testclient import TestClient
-
-from okfserve.config import Settings
-from okfserve.server import build_http_app
-
-CARD = ("---\ntitle: Wave Replen\ndescription: d\nrelated: []\nsources: [wms.md]\n---\nBody.\n")
-
-
 def _sample(name, labels):
     return metrics.REGISTRY.get_sample_value(name, labels) or 0.0
 
@@ -42,14 +34,10 @@ def test_endpoint_label_normalizes_and_skips_mcp():
     assert metrics._endpoint_label("/metrics") is None   # skipped: self-scrape pollution
 
 
-def test_http_request_increments_counter(tmp_path):
-    (tmp_path / "wave-replen.md").write_text(CARD)
-    s = Settings(concepts_dir=str(tmp_path), okf_data_dir=str(tmp_path))
-    app = build_http_app(s)
+def test_http_request_increments_counter(card_client):
     before = _sample("http_requests_total",
                      {"endpoint": "/healthz", "method": "GET", "status": "200"})
-    with TestClient(app) as c:
-        assert c.get("/healthz").status_code == 200
+    assert card_client.get("/healthz").status_code == 200
     after = _sample("http_requests_total",
                     {"endpoint": "/healthz", "method": "GET", "status": "200"})
     assert after == before + 1

@@ -6,7 +6,13 @@ from __future__ import annotations
 import functools
 import time
 
-from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, Histogram, generate_latest
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    CollectorRegistry,
+    Counter,
+    Histogram,
+    generate_latest,
+)
 from prometheus_client.core import GaugeMetricFamily
 
 from okfserve.resolver import load_index
@@ -96,8 +102,9 @@ class PrometheusHTTPMiddleware:
         finally:
             HTTP_LATENCY.labels(endpoint=endpoint, method=method).observe(
                 time.perf_counter() - start)
-            HTTP_REQUESTS.labels(endpoint=endpoint, method=method,
-                                 status=str(status_holder["code"])).inc()
+            HTTP_REQUESTS.labels(
+                endpoint=endpoint, method=method, status=str(status_holder["code"]),
+            ).inc()
 
 
 def content_samples(concepts_dir, clients_dir, conn_factory) -> dict:
@@ -143,8 +150,11 @@ class ContentCollector:
         cards = GaugeMetricFamily(
             "okf_corpus_cards", "OKF cards on disk by product and regime facet",
             labels=["product", "regime"])
-        for (product, regime), n in sorted(data["cards"].items()):
-            cards.add_metric([product, str(regime)], n)
+        # Defensive sort key: content_samples normalizes facets to "none", but a
+        # raw None from any sample_fn would make plain tuple-sort raise (None < str).
+        for (product, regime), n in sorted(data["cards"].items(),
+                                           key=lambda kv: (str(kv[0][0]), str(kv[0][1]))):
+            cards.add_metric([str(product), str(regime)], n)
         yield cards
         rows = GaugeMetricFamily(
             "okf_ledger_rows", "OKF ledger row counts by table", labels=["table"])
