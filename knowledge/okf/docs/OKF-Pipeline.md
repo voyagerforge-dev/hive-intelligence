@@ -5,7 +5,7 @@ grounded answer inside Claude. This is the conceptual reference: the model, the 
 serving layer, and the design decisions behind them. Diagrams are [Mermaid](https://mermaid.js.org/)
 and render inline on GitHub.*
 
-**OKF docs:** [Overview](../README.md) · **Architecture & Concepts** (you are here) · [Guide: Prepare a corpus](runbooks/wms-prep-e2e.md) · [Operations: Deploy](../tooling/okf-serve/deploy/README.md)
+**OKF docs:** [Overview](../README.md) · **Architecture & Concepts** (you are here) · [Guide: Prepare a corpus](runbooks/wms-prep-e2e.md) · [Tooling reference](tooling/README.md) · [Operations: Deploy](../tooling/okf-serve/deploy/README.md)
 
 > **At a glance.** OKF covers four products - WMOS (832), oSCI (60), Slotting (34), and Labour
 > Management (64) = **990 concept cards**, plus a **corrections overlay** (991 total). Cards are
@@ -225,6 +225,8 @@ status: active
 | `stamp.py` | Fills invariant frontmatter (`platform/product/version/doc_type/topic`) from the curation plan. |
 | `validate.py` | Validates the atomic corpus (unique slugs, `doc_type` enum, resolvable links) → derives `relations.yaml`. |
 
+**Deep dive:** [`tooling/okf-prep.md`](tooling/okf-prep.md) - every module's logic, inputs/outputs, and how it's invoked.
+
 **The `wms-curator` agent** ([`.claude/agents/wms-curator.md`](../.claude/agents/wms-curator.md))
 is the one judgment step: it reads the inventory + dups, spot-reads ambiguous files, and writes
 `wms-curation.yaml` (include/exclude + content-derived labels). It never modifies source docs.
@@ -329,6 +331,8 @@ The card lives at **`concepts/<product>/<id>.md`** and its **concept ID is that 
 | `run.py` | Gate-aware orchestrator + entrypoint (taxonomy → assign+distill → drafts), area-scoped via `SLICE_AREA`. |
 | `llm.py` | `BifrostChat` (OpenAI-compatible client, bounded retry) + `extract_json` (strips `<think>` reasoning, pulls JSON). |
 | `config.py` | Settings: source (`ATOMIC_DIR` wins, else R2), Bifrost base/key, the three model slots, timeouts. |
+
+**Deep dive:** [`tooling/okf-gen.md`](tooling/okf-gen.md) - the 13 modules and 16 scripts (`scripts/`) in module-level detail.
 
 ### Post-promote - facets, conformance & index (the "Stage 5" run-order step)
 
@@ -456,7 +460,7 @@ issue, never push, merge, or open a PR - the Action does that after the human ap
 | `okf-gen/scripts/memory_from_issue.py` | Parse a Memory Issue-Form body → record → card (product allowlist + `client` `\A[a-z0-9-]+\Z` path guard). |
 | `okf-gen/scripts/memory_lint.py` | Structural lint (bad client/product, dangling `related`, bad supersedes, status) + same-client conflict candidates. |
 | `okf-gen/scripts/memory_conflict_score.py` | LLM conflict-probability gate over the candidates - fail-safe to block; advisory unless keyed. |
-| `okf-author/` (package `okfauthor`) | Write-only MCP server: `submit_memory_promotion` / `submit_correction` (issues:write only). |
+| `okf-author/` (package `okfauthor`) | Write-only MCP server: `submit_memory_promotion` / `submit_correction` (issues:write only). Module-level detail: [`tooling/okf-author.md`](tooling/okf-author.md). |
 
 Design + acceptance: `docs/superpowers/specs/2026-07-11-okf-memory-cards-design.md`. Shipped across
 PRs #45-#48 (personal tier → client-scoped serving → authoring/gate → okf-author); okf-serve is live with
@@ -472,8 +476,9 @@ DDL - the authoritative source, not prose about it.
 **This is a different mechanism from Stages 1-2.** Concept cards are *distilled by an LLM* from messy prose
 (judgment, paraphrase). Schema is exact and must stay exact, so the db tier is produced by a **deterministic
 parser with no model in the loop** - a one-time ingest whose output is verbatim. The package is
-`tooling/okf-dbparse/` (package `okfdbparse`); its single external dependency is **sqlglot** (a
-dialect-aware SQL parser - a real tokenizer/AST, never regex, so quirky DDL parses correctly).
+`tooling/okf-dbparse/` (package `okfdbparse`); its parsing engine is **sqlglot** (a
+dialect-aware SQL parser - a real tokenizer/AST, never regex, so quirky DDL parses correctly), with
+`PyYAML` for the card frontmatter.
 
 **Source.** The Manhattan WMOS deploy scripts ship the schema twice, once per supported DBMS:
 `ManhDBDeploy/{Oracle,DB2}/DBScripts/Product/*.sql` (one file per functional **module** - `DOM.sql`,
@@ -553,6 +558,8 @@ that tool for schema questions and stays on concept cards for functional ones.
 | `okfdbparse/reconcile.py` | Oracle ⇄ DB2 match-by-name, type/body deltas, package spec+body merge. |
 | `okfdbparse/emit.py` | One card (+ `manifest.jsonl` line) per object; deterministic `card_id`; safe-yaml frontmatter. |
 | `okfdbparse/run.py` | The CLI + **hard verification gate** (count-match, unparsed→fail, dedup+`conflicts.log`); walks both dialect trees. |
+
+**Deep dive:** [`tooling/okf-dbparse.md`](tooling/okf-dbparse.md) - each parser stage in module-level detail.
 
 Design + plan: `docs/superpowers/{specs,plans}/2026-07-15-okf-wmos-dbobjects*`. Shipped in PR #82 (3,027
 cards, gate-verified, 0 unparsed).
@@ -756,6 +763,8 @@ sequenceDiagram
 | `index.py` | (Content tooling) emits `index.md`, the progressive-disclosure entry point over the cards. |
 | `agent.py`, `eval.py`, `run_eval.py` | (Eval tooling) the LLM select/answer harness that *proved* the no-RAG curated tier (14/14 wave/replen Qs). Not on the serving path. |
 
+**Deep dive:** [`tooling/okf-serve.md`](tooling/okf-serve.md) - the core, both doors, the ledger, and the container in module-level detail.
+
 Deploy is operator-run behind an identity gate. The **live** gate is **Cloudflare Access** (keyless
 OAuth → `Cf-Access-Authenticated-User-Email`) - see
 [`../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md`](../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md)
@@ -828,7 +837,10 @@ SQLite memory.
 
 ## 8. Complete file map
 
-Every code file in the pipeline and its one-line job.
+Every code file in the pipeline and its one-line job. For **module-level detail** on any package -
+each module's logic, inputs/outputs, dependencies, and how it's invoked/deployed - see the per-package
+**[tooling reference](tooling/README.md)**: [okf-prep](tooling/okf-prep.md) · [okf-gen](tooling/okf-gen.md) ·
+[okf-serve](tooling/okf-serve.md) · [okf-dbparse](tooling/okf-dbparse.md) · [okf-author](tooling/okf-author.md).
 
 ### `tooling/okf-prep/okfprep/` - Stage 1, doc prep
 `cli.py` · `config.py` · `scanner.py` · `folder_parser.py` · `dups.py` · `curation_plan.py` ·
@@ -967,7 +979,7 @@ python scripts/index_generate.py      ../../concepts     # root + per-product in
 
 # ── (one-off) database-object tier: deploy DDL → schema cards ───────────
 cd tooling/okf-dbparse && uv sync --extra dev
-uv run python -m okfdbparse.run <ManhDBDeploy_root> ../../concepts/wms/db
+uv run python -m okfdbparse.run --src <ManhDBDeploy_root> --out ../../concepts/wms/db
 #   deterministic + LLM-free; the run FAILS on any unparsed construct (no partial corpus).
 #   emits tables/ + plsql/ cards + manifest.jsonl (+ conflicts.log). Re-run only on new DDL.
 
@@ -1011,6 +1023,7 @@ All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev
 ## See also
 
 - [OKF Overview](../README.md) - the documentation map and how the pieces fit together.
+- [Tooling reference](tooling/README.md) - the code-level companion: a module-level technical doc per package (`okf-prep`, `okf-gen`, `okf-serve`, `okf-dbparse`, `okf-author`).
 - [Guide: Prepare a knowledge corpus](runbooks/wms-prep-e2e.md) - Stage 1 as a step-by-step procedure.
 - [Guide: Add OKF as a Claude connector](runbooks/okf-connector-deploy.md) - make Stage 3 available to Claude.
 - [Operations: Deploy okf-serve](../tooling/okf-serve/deploy/README.md) and [the Cloudflare Access gate](../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md) - run the serving layer.
