@@ -103,6 +103,36 @@ def _find_unit_starts(tokens: list[Token]) -> list[tuple[int, str, int]]:
     return starts
 
 
+def _find_unrecognized_units(tokens: list[Token]) -> list[int]:
+    """`create_token_idx` for every top-level `CREATE OR REPLACE` whose
+    following object-kind keyword is NOT a recognized PL/SQL unit kind
+    (`package`/`procedure`/`function`/`trigger`/`view`).
+
+    A `CREATE OR REPLACE` unambiguously introduces a replaceable schema
+    object, so one whose kind keyword `_match_kind` can't classify (a typo'd
+    `PROCEEDURE`, an unsupported object kind, ...) is an *intended unit that
+    parsed to nothing* -- it must be surfaced, never silently dropped. The
+    runner logs these via `parse_plsql`'s warning so its `_capture_warnings`
+    feeds them into `unparsed` and the verification gate fails.
+    """
+    unrecognized: list[int] = []
+    n = len(tokens)
+    i = 0
+    while i < n:
+        if tokens[i].token_type == TokenType.CREATE:
+            j = i + 1
+            if (
+                j + 1 < n
+                and tokens[j].token_type == TokenType.OR
+                and tokens[j + 1].token_type == TokenType.REPLACE
+            ):
+                j += 2
+                if j < n and _match_kind(tokens, j) is None:
+                    unrecognized.append(i)
+        i += 1
+    return unrecognized
+
+
 def _is_standalone_slash(sql: str, slash_start: int) -> bool:
     """True when the `/` at char offset `slash_start` is the SQL*Plus terminator:
     alone on its own line -- only whitespace before it back to the line start
@@ -162,6 +192,12 @@ def parse_plsql(sql: str, dialect: str) -> list[PlsqlObject]:
     tokens = tokenizer.tokenize(sql)
 
     starts = _find_unit_starts(tokens)
+
+    for create_idx in _find_unrecognized_units(tokens):
+        logger.warning(
+            "okfdbparse: unrecognized PL/SQL unit (CREATE OR REPLACE with no known kind): %.80s",
+            sql[tokens[create_idx].start :].strip(),
+        )
 
     objects: list[PlsqlObject] = []
     for i, (start_idx, kind, name_idx) in enumerate(starts):

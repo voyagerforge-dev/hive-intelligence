@@ -14,14 +14,24 @@ card's `sources:` point at its real `PLSQL_Objects/<file>.sql` rather than the
 synthesized-but-wrong `<module>.sql` that `emit` falls back to when
 `source_files` is unset (see `okfdbparse.emit._plsql_sources`).
 
-The **verification gate** is hard: `run()` always finishes the full walk (so
-its `RunError` can report exactly what did and didn't work), then raises if
-any statement/unit failed to parse, or if a kind's emitted-card count doesn't
-match its parsed-object count. Unparsed statements/units are never silently
-dropped: `parse_tables`/`parse_plsql` already log a WARNING with a source
-snippet instead of skipping silently; `_capture_warnings` below captures those
-per-file so the runner can attribute each one to the file it came from and
-fail the gate on it.
+The **verification gate** is hard -- no object may be silently dropped, every
+drop surfaces as `RunError`. `run()` always finishes the full walk (so its
+`RunError` can report exactly what did and didn't work), then raises if:
+
+- any statement/unit failed to parse (`unparsed` non-empty). Never silently
+  dropped: `parse_tables`/`parse_plsql` log a WARNING with a source snippet
+  instead of skipping -- including a `CREATE OR REPLACE` whose object-kind
+  keyword matches no known PL/SQL kind (a typo'd/unsupported unit).
+  `_capture_warnings` below captures those per-file so the runner attributes
+  each to the file it came from.
+- two definitions of the same name appear in the *same* dialect tree
+  (`collisions` non-empty) -- two `CREATE TABLE T` in one dialect, or two
+  same-name PL/SQL units in one dialect that are NOT a package spec/body
+  pair. This is detected before the losing object is overwritten. A
+  cross-dialect Oracle/DB2 merge of the same name, and a package spec+body
+  pair within one dialect, are legitimate merges and are NOT collisions.
+- (kept, though the two gates above are the real protection) a kind's
+  emitted-card count doesn't match its parsed-object count.
 """
 
 from __future__ import annotations
@@ -38,21 +48,24 @@ from okfdbparse.model import PlsqlObject, Table
 from okfdbparse.parse_aux import apply_aux
 from okfdbparse.parse_plsql import parse_plsql
 from okfdbparse.parse_tables import parse_tables
-from okfdbparse.reconcile import reconcile_plsql, reconcile_tables
+from okfdbparse.reconcile import _looks_like_package_body, reconcile_plsql, reconcile_tables
 
 _DIALECTS = ("oracle", "db2")
 _DIALECT_DIR = {"oracle": "Oracle", "db2": "DB2"}
 
 
 class RunError(RuntimeError):
-    """Raised when the verification gate fails: unparsed objects, or a kind's
-    emitted-card count doesn't match its parsed-object count."""
+    """Raised when the verification gate fails: unparsed objects, same-dialect
+    same-name duplicate definitions, or a kind's emitted-card count doesn't
+    match its parsed-object count."""
 
 
 @dataclass
 class RunReport:
-    """Per-kind parsed/emitted counts, plus every unparsed statement/unit
-    (as `"<repo-relative file>: <warning message with snippet>"`)."""
+    """Per-kind parsed/emitted counts, every unparsed statement/unit (as
+    `"<repo-relative file>: <warning message with snippet>"`), and every
+    same-dialect same-name duplicate definition (a genuine collision -- NOT a
+    legit Oracle/DB2 cross-dialect merge or a package spec/body pair)."""
 
     counts: dict[str, dict[str, int]] = field(
         default_factory=lambda: {
@@ -61,6 +74,7 @@ class RunReport:
         }
     )
     unparsed: list[str] = field(default_factory=list)
+    collisions: list[str] = field(default_factory=list)
 
 
 @contextmanager
@@ -112,7 +126,11 @@ def _union_sources(*source_maps: dict[str, list[str]], name: str) -> list[str]:
 
 
 def _parse_dialect_tables(
-    src_root: Path, dialect: str, limit_modules: int | None, unparsed: list[str]
+    src_root: Path,
+    dialect: str,
+    limit_modules: int | None,
+    unparsed: list[str],
+    collisions: list[str],
 ) -> tuple[dict[str, Table], dict[str, list[str]]]:
     product_dir = src_root / _DIALECT_DIR[dialect] / "DBScripts" / "Product"
     tables: dict[str, Table] = {}
@@ -130,8 +148,19 @@ def _parse_dialect_tables(
 
         for name, table in parsed.items():
             table.module = module
+            if name in tables:
+                # Two CREATE TABLE of the same name in the SAME dialect tree:
+                # first-file-wins would silently discard this one. Surface it
+                # (and do NOT record this file as a source, so the surviving
+                # object's sources: lists only files that actually contributed).
+                prior = ", ".join(sources.get(name, [])) or "an earlier file"
+                collisions.append(
+                    f"{_DIALECT_DIR[dialect]} table {name}: duplicate CREATE TABLE in "
+                    f"{rel} (already defined in {prior})"
+                )
+                continue
             _record_source(sources, name, rel)
-            tables.setdefault(name, table)
+            tables[name] = table
 
         texts.append(text)
 
@@ -141,8 +170,46 @@ def _parse_dialect_tables(
     return tables, sources
 
 
+def _is_legit_package_pair(objs: list[PlsqlObject], dialect: str) -> bool:
+    """True when a group of same-name units in one dialect is a legitimate
+    package spec/body pair (`reconcile._merge_package_units` merges these into
+    one object), NOT a genuine collision. That means: every unit is a
+    `package`, and the group holds at most one spec and at most one body --
+    using the exact same spec-vs-body discriminator reconcile uses, so this
+    never diverges from what reconcile will legitimately merge.
+    """
+    if not all(o.kind == "package" for o in objs):
+        return False
+    attr = f"body_{dialect}"
+    bodies = sum(1 for o in objs if _looks_like_package_body(getattr(o, attr)))
+    specs = len(objs) - bodies
+    return bodies <= 1 and specs <= 1
+
+
+def _detect_plsql_collisions(
+    objects: list[PlsqlObject], dialect: str, collisions: list[str]
+) -> None:
+    """Flag same-name PL/SQL units within one dialect that are NOT a package
+    spec/body pair -- two procedures/functions/... of the same name (or a
+    duplicated spec/body) that reconcile's name-keyed union would silently
+    collapse, dropping one object's body."""
+    groups: dict[str, list[PlsqlObject]] = {}
+    for obj in objects:
+        groups.setdefault(obj.name, []).append(obj)
+    for name, objs in groups.items():
+        if len(objs) > 1 and not _is_legit_package_pair(objs, dialect):
+            collisions.append(
+                f"{_DIALECT_DIR[dialect]} plsql {name}: {len(objs)} same-name units in one "
+                f"dialect that are not a package spec/body pair"
+            )
+
+
 def _parse_dialect_plsql(
-    src_root: Path, dialect: str, limit_modules: int | None, unparsed: list[str]
+    src_root: Path,
+    dialect: str,
+    limit_modules: int | None,
+    unparsed: list[str],
+    collisions: list[str],
 ) -> tuple[list[PlsqlObject], dict[str, list[str]]]:
     plsql_dir = src_root / _DIALECT_DIR[dialect] / "DBScripts" / "Product" / "PLSQL_Objects"
     objects: list[PlsqlObject] = []
@@ -162,6 +229,7 @@ def _parse_dialect_plsql(
             _record_source(sources, obj.name, rel)
             objects.append(obj)
 
+    _detect_plsql_collisions(objects, dialect, collisions)
     return objects, sources
 
 
@@ -174,12 +242,13 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
     gate fails -- see module docstring.
     """
     unparsed: list[str] = []
+    collisions: list[str] = []
 
     oracle_tables, oracle_table_sources = _parse_dialect_tables(
-        src_root, "oracle", limit_modules, unparsed
+        src_root, "oracle", limit_modules, unparsed, collisions
     )
     db2_tables, db2_table_sources = _parse_dialect_tables(
-        src_root, "db2", limit_modules, unparsed
+        src_root, "db2", limit_modules, unparsed, collisions
     )
     merged_tables = reconcile_tables(oracle_tables, db2_tables)
     for table in merged_tables:
@@ -188,16 +257,16 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
         )
 
     oracle_plsql, oracle_plsql_sources = _parse_dialect_plsql(
-        src_root, "oracle", limit_modules, unparsed
+        src_root, "oracle", limit_modules, unparsed, collisions
     )
     db2_plsql, db2_plsql_sources = _parse_dialect_plsql(
-        src_root, "db2", limit_modules, unparsed
+        src_root, "db2", limit_modules, unparsed, collisions
     )
     merged_plsql = reconcile_plsql(oracle_plsql, db2_plsql)
     for obj in merged_plsql:
         obj.source_files = _union_sources(oracle_plsql_sources, db2_plsql_sources, name=obj.name)
 
-    report = RunReport(unparsed=unparsed)
+    report = RunReport(unparsed=unparsed, collisions=collisions)
     report.counts["table"]["parsed"] = len(merged_tables)
     report.counts["plsql"]["parsed"] = len(merged_plsql)
 
@@ -227,6 +296,11 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
             f"okfdbparse: {len(report.unparsed)} unparsed statement(s)/unit(s) "
             f"(never silently skipped): {report.unparsed}"
         )
+    if report.collisions:
+        raise RunError(
+            f"okfdbparse: {len(report.collisions)} same-dialect same-name duplicate "
+            f"definition(s) (would silently drop an object): {report.collisions}"
+        )
     for kind, counts in report.counts.items():
         if counts["parsed"] != counts["emitted"]:
             raise RunError(
@@ -252,7 +326,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     report = run(args.src, args.out, limit_modules=args.limit_modules)
-    print(json.dumps({"counts": report.counts, "unparsed": report.unparsed}, indent=2))
+    print(
+        json.dumps(
+            {
+                "counts": report.counts,
+                "unparsed": report.unparsed,
+                "collisions": report.collisions,
+            },
+            indent=2,
+        )
+    )
     return 0
 
 
