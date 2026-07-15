@@ -68,3 +68,42 @@ def test_db2_dialect_is_mapped_and_does_not_raise():
     assert trg.dialects == {"db2"}
     assert "UPDATE order_line SET note = 'inserted; ok'" in trg.body_db2
     assert trg.body_oracle == ""
+
+
+# An arithmetic `/` (division) inside the body tokenizes as a SLASH just like the
+# SQL*Plus terminator; only a `/` ALONE ON ITS OWN LINE terminates the unit, so
+# everything after the division must survive in the captured body.
+DIV = '''CREATE OR REPLACE PROCEDURE calc_avg(p IN NUMBER) AS
+  v_avg NUMBER;
+BEGIN
+  v_avg := total / count;
+  UPDATE t SET x = 1;
+END;
+/
+'''
+
+
+def test_arithmetic_division_slash_is_not_a_terminator():
+    objs = parse_plsql(DIV, "oracle")
+    assert len(objs) == 1
+    body = objs[0].body_oracle
+    # the division `/` must NOT truncate the body -- statements after it survive
+    assert "v_avg := total / count;" in body
+    assert "UPDATE t SET x = 1;" in body
+    assert body.strip().endswith("END;")
+
+
+# Schema-qualified object name: the dotted `schema.proc_name` must be captured
+# whole, not truncated to just the schema.
+QUALIFIED = '''CREATE OR REPLACE PROCEDURE app.calc(p IN NUMBER) AS
+BEGIN
+  NULL;
+END;
+/
+'''
+
+
+def test_schema_qualified_name_is_captured_whole():
+    objs = parse_plsql(QUALIFIED, "oracle")
+    assert len(objs) == 1
+    assert objs[0].name == "app.calc"
