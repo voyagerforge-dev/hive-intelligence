@@ -462,7 +462,7 @@ memory tools and client isolation verified end-to-end.
 
 Concept cards describe **how WMOS works**; they do not describe **the data model itself** - the tables,
 columns, data types, keys, and stored PL/SQL that a WMOS system actually runs on. The database-object
-tier fills that gap with **3,027 precise schema cards** distilled straight from the product's own deploy
+tier fills that gap with **3,027 precise schema cards** parsed straight from the product's own deploy
 DDL - the authoritative source, not prose about it.
 
 **This is a different mechanism from Stages 1-2.** Concept cards are *distilled by an LLM* from messy prose
@@ -514,7 +514,7 @@ procedures, 146 functions, 140 views, 95 packages. Every card is `type: dbobject
 and `related:` edges to referenced tables (from the FKs).
 
 ```yaml
-# a table card (abridged)
+# a table card - abridged frontmatter
 ---
 type: dbobject
 kind: table
@@ -526,13 +526,13 @@ platform: [oracle]
 sources: [Oracle/DBScripts/Product/DOM.sql]
 related: [wms/db/tables/A_ALLOC_FULFILL_PARAM]   # from a foreign key
 ---
-## Columns   → | Column | Oracle type | DB2 type | Null | Key | Description |
-## Primary key · ## Foreign keys · ## Indexes · ## Sequences · ## Triggers
 ```
 
-A PL/SQL card is the same frontmatter over a `## Signature / spec` block and `## Source (Oracle)` /
-`## Source (DB2)` fenced bodies (a DB2 body identical to Oracle's is recorded as *"Identical to Oracle."*
-rather than duplicated).
+The body then renders the schema itself: a `## Columns` table (Column / Oracle type / DB2 type / Null /
+Key / Description), then `## Primary key`, `## Foreign keys`, `## Indexes`, `## Sequences`, and
+`## Triggers`. A **PL/SQL card** carries the same frontmatter over a `## Signature / spec` block and
+`## Source (Oracle)` / `## Source (DB2)` fenced bodies (a DB2 body identical to Oracle's is recorded as
+*"Identical to Oracle."* rather than duplicated).
 
 **On-demand serving, not in the concept index.** This tier is 3× the concept corpus and is schema-level,
 not narrative - putting it in `list_concepts` would drown concept retrieval. So the db cards are
