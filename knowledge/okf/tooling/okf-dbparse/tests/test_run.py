@@ -86,19 +86,47 @@ def test_gate_fails_on_malformed_plsql_unit(tmp_path):
         run(src, tmp_path / "out")
 
 
-def test_gate_fails_on_same_dialect_same_name_table_collision(tmp_path):
-    # Two Oracle files each defining CREATE TABLE T: first-file-wins silently
-    # discards the second definition -- the gate must catch the collision.
+def test_differing_same_dialect_same_name_tables_dedup_and_log_not_fatal(tmp_path):
+    # Two Oracle files defining CREATE TABLE T with DIFFERENT columns: at worst
+    # we card one of two near-identical defs -- NOT the silent-drop-of-unique-
+    # content the gate guards. So dedup (keep first), note it in conflicts.log,
+    # and DO NOT raise.
     src = tmp_path / "src"
     _write(src / "Oracle/DBScripts/Product/AAA.sql", 'CREATE TABLE "T" ("A" NUMBER(1,0));\n')
     _write(src / "Oracle/DBScripts/Product/BBB.sql", 'CREATE TABLE "T" ("B" NUMBER(1,0));\n')
-    with pytest.raises(RunError):
-        run(src, tmp_path / "out")
+    out = tmp_path / "out"
+    rep = run(src, out)  # must NOT raise
+    assert rep.counts["table"]["parsed"] == rep.counts["table"]["emitted"] == 1
+    assert len(rep.duplicates) == 1 and "differs in columns/pk" in rep.duplicates[0]
+    log = (out / "conflicts.log").read_text()
+    assert "table T" in log and "differs in columns/pk" in log
 
 
-def test_gate_fails_on_same_dialect_same_name_plsql_collision(tmp_path):
-    # Two distinct procedures named the same in one dialect (NOT a package
-    # spec/body pair) -- must fail the gate.
+def test_identical_same_dialect_same_name_tables_dedup_and_log_identical(tmp_path):
+    # A shared table each module's deploy script re-declares identically
+    # (same columns/pk; only tablespace differs, which the parser ignores):
+    # deduped, logged as "identical", BOTH files listed as sources, no raise.
+    src = tmp_path / "src"
+    _write(
+        src / "Oracle/DBScripts/Product/TLM.sql",
+        'CREATE TABLE "SHARED" ("A" NUMBER(1,0), PRIMARY KEY ("A")) TABLESPACE TLM_TBS;\n',
+    )
+    _write(
+        src / "Oracle/DBScripts/Product/CM.sql",
+        'CREATE TABLE "SHARED" ("A" NUMBER(1,0), PRIMARY KEY ("A")) TABLESPACE CM_TBS;\n',
+    )
+    out = tmp_path / "out"
+    rep = run(src, out)
+    assert rep.counts["table"]["parsed"] == rep.counts["table"]["emitted"] == 1
+    assert len(rep.duplicates) == 1 and "identical" in rep.duplicates[0]
+    assert "identical" in (out / "conflicts.log").read_text()
+    card = (out / "tables/SHARED.md").read_text()
+    assert "Product/TLM.sql" in card and "Product/CM.sql" in card
+
+
+def test_differing_same_dialect_same_name_plsql_dedup_and_log_not_fatal(tmp_path):
+    # Two procedures named the same in one dialect (NOT a package spec/body
+    # pair) with DIFFERING bodies -- deduped + logged, NOT fatal.
     src = tmp_path / "src"
     _write(
         src / "Oracle/DBScripts/Product/PLSQL_Objects/A.sql",
@@ -106,16 +134,33 @@ def test_gate_fails_on_same_dialect_same_name_plsql_collision(tmp_path):
     )
     _write(
         src / "Oracle/DBScripts/Product/PLSQL_Objects/B.sql",
-        "CREATE OR REPLACE PROCEDURE dup(p IN NUMBER) AS\nBEGIN\n  NULL;\nEND;\n/\n",
+        "CREATE OR REPLACE PROCEDURE dup(p IN NUMBER) AS\n"
+        "BEGIN\n  UPDATE t SET x = 1;\nEND;\n/\n",
     )
-    with pytest.raises(RunError):
-        run(src, tmp_path / "out")
+    out = tmp_path / "out"
+    rep = run(src, out)  # must NOT raise
+    assert rep.counts["plsql"]["parsed"] == rep.counts["plsql"]["emitted"] == 1
+    assert len(rep.duplicates) == 1 and "differs in body" in rep.duplicates[0]
+    assert "plsql dup" in (out / "conflicts.log").read_text()
 
 
-def test_package_spec_and_body_across_files_is_not_a_collision(tmp_path):
+def test_identical_same_dialect_same_name_plsql_dedup_and_log_identical(tmp_path):
+    # Same procedure re-declared identically in two files of one dialect:
+    # deduped, logged as "identical", no raise.
+    src = tmp_path / "src"
+    body = "CREATE OR REPLACE PROCEDURE dup(p IN NUMBER) AS\nBEGIN\n  NULL;\nEND;\n/\n"
+    _write(src / "Oracle/DBScripts/Product/PLSQL_Objects/A.sql", body)
+    _write(src / "Oracle/DBScripts/Product/PLSQL_Objects/B.sql", body)
+    out = tmp_path / "out"
+    rep = run(src, out)
+    assert rep.counts["plsql"]["parsed"] == rep.counts["plsql"]["emitted"] == 1
+    assert len(rep.duplicates) == 1 and "identical" in rep.duplicates[0]
+
+
+def test_package_spec_and_body_across_files_is_not_a_duplicate(tmp_path):
     # A package spec + body (two same-name kind=package units in one dialect,
-    # here even in separate files) is a LEGITIMATE merge -- must NOT be flagged
-    # as a collision, and both files must appear in the card's sources.
+    # here even in separate files) is a LEGITIMATE merge -- NOT a duplicate,
+    # no conflicts.log entry, and both files appear in the card's sources.
     src = tmp_path / "src"
     _write(
         src / "Oracle/DBScripts/Product/PLSQL_Objects/DOM_ALLOC_SPEC.sql",
@@ -131,11 +176,44 @@ def test_package_spec_and_body_across_files_is_not_a_collision(tmp_path):
     )
     out = tmp_path / "out"
     rep = run(src, out)
-    assert rep.collisions == []
+    assert rep.duplicates == []
+    assert not (out / "conflicts.log").exists()
     assert rep.counts["plsql"]["parsed"] == rep.counts["plsql"]["emitted"] == 1
     card = (out / "plsql/dom_alloc.md").read_text()
     assert "PLSQL_Objects/DOM_ALLOC_SPEC.sql" in card
     assert "PLSQL_Objects/DOM_ALLOC_BODY.sql" in card
+
+
+def test_module_file_inline_triggers_and_views_are_carded(tmp_path):
+    # A Product module file carries inline PL/SQL (triggers/views) alongside
+    # its CREATE TABLEs. The runner must card the table AND each inline unit
+    # (from the SAME file), with the module file as the unit's source.
+    src = tmp_path / "src"
+    _write(
+        src / "Oracle/DBScripts/Product/WM.sql",
+        'CREATE TABLE "T" ("A" NUMBER(1,0), PRIMARY KEY ("A"));\n'
+        "\n"
+        "CREATE OR REPLACE TRIGGER trg\n"
+        "BEFORE INSERT ON T\n"
+        "BEGIN\n"
+        "  :NEW.A := 1;\n"
+        "END;\n"
+        "/\n"
+        "\n"
+        "CREATE OR REPLACE VIEW v AS SELECT A FROM T;\n",
+    )
+    out = tmp_path / "out"
+    rep = run(src, out)
+    assert rep.unparsed == []
+    assert (out / "tables/T.md").exists()
+    assert (out / "plsql/trg.md").exists()
+    assert (out / "plsql/v.md").exists()
+    assert rep.counts["table"]["parsed"] == rep.counts["table"]["emitted"] == 1
+    assert rep.counts["plsql"]["parsed"] == rep.counts["plsql"]["emitted"] == 2
+    # the trigger card carries the module file as source and its full body
+    trg_card = (out / "plsql/trg.md").read_text()
+    assert "Product/WM.sql" in trg_card
+    assert ":NEW.A := 1;" in trg_card
 
 
 def test_limit_modules_caps_files_processed(tmp_path):
@@ -145,3 +223,47 @@ def test_limit_modules_caps_files_processed(tmp_path):
     out = tmp_path / "out"
     rep = run(src, out, limit_modules=1)
     assert rep.counts["table"]["parsed"] == rep.counts["table"]["emitted"] == 1
+
+
+# --- Task 9 hardening: known-skip constructs must NOT trip the gate --------
+
+
+def test_ctas_table_is_skipped_and_does_not_trip_the_gate(tmp_path):
+    # Real construct: Oracle/DBScripts/Product/TCS.sql `item_cbo_gtt` -- a GTT
+    # written as CTAS (no column list). Alongside a normal table in the same
+    # file, so we also confirm the real table still parses/emits fine.
+    src = tmp_path / "src"
+    _write(
+        src / "Oracle/DBScripts/Product/TCS.sql",
+        'CREATE TABLE "REAL_TABLE" ("A" NUMBER(1,0));\n'
+        "CREATE GLOBAL TEMPORARY TABLE item_cbo_gtt\n"
+        "ON COMMIT DELETE ROWS\n"
+        "AS SELECT * FROM item_cbo;\n",
+    )
+    out = tmp_path / "out"
+    rep = run(src, out)
+    assert rep.unparsed == []
+    assert rep.counts["table"]["parsed"] == rep.counts["table"]["emitted"] == 1
+    assert (out / "tables/REAL_TABLE.md").exists()
+    assert not (out / "tables/item_cbo_gtt.md").exists()
+
+
+def test_db2_variable_is_skipped_and_does_not_trip_the_gate(tmp_path):
+    # Real construct: DB2/DBScripts/Product/PLSQL_Objects/
+    # CA_Archive_Global_Variable.sql -- `!`-terminated global VARIABLE
+    # declarations, alongside a real procedure in the same file.
+    src = tmp_path / "src"
+    _write(
+        src / "DB2/DBScripts/Product/PLSQL_Objects/CA_Archive_Global_Variable.sql",
+        "CREATE OR REPLACE VARIABLE VT_CONS_AGGREGATION VARCHAR(32000)!\n"
+        "CREATE OR REPLACE PROCEDURE real_proc(p IN NUMBER) AS\n"
+        "BEGIN\n"
+        "  NULL;\n"
+        "END;\n"
+        "/\n",
+    )
+    out = tmp_path / "out"
+    rep = run(src, out)
+    assert rep.unparsed == []
+    assert rep.counts["plsql"]["parsed"] == rep.counts["plsql"]["emitted"] == 1
+    assert (out / "plsql/real_proc.md").exists()

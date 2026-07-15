@@ -104,11 +104,214 @@ def _extract_create_table_fragment(text: str, dialect: str | None) -> str | None
     return text[tokens[0].start : tokens[close_idx].end + 1]
 
 
+# Oracle constraint-state suffixes (appended by the DB export tool after a
+# column's `NOT NULL` or after a table-level constraint's closing `)`) that
+# sqlglot's oracle/generic grammars don't model at all -- e.g.
+# `"X" NUMBER(9,0) NOT NULL ENABLE,` or
+# `CONSTRAINT pk PRIMARY KEY (X) ENABLE`. They carry no information our
+# `Column`/`Table` model captures (nullability already comes from `NOT NULL`
+# itself), so they're pure noise for us and safe to drop.
+_CONSTRAINT_STATE_KEYWORDS = {"ENABLE", "DISABLE", "VALIDATE", "NOVALIDATE"}
+
+# Token types that can legally follow a constraint-state keyword in this
+# corpus: a comma (another column/constraint follows) or the table's own
+# closing paren. A *real* identifier can never be followed directly by one of
+# these (every column needs a type, every constraint needs its clause) --
+# which is what lets this be recognized without any preceding-context check.
+_STATE_FOLLOWER_TYPES = {TokenType.COMMA, TokenType.R_PAREN}
+
+# DB2's bare two-word "special register" default values (`CURRENT TIMESTAMP`/
+# `CURRENT DATE`/`CURRENT TIME`, no underscore, no parens) that sqlglot's
+# generic grammar (used to parse the DB2 logical dialect) only recognizes in
+# their underscored form (`CURRENT_TIMESTAMP`/...). Real example:
+# `LAST_UPDATED_DTTM TIMESTAMP DEFAULT CURRENT TIMESTAMP NOT NULL`.
+_CURRENT_REGISTER_TYPES = {TokenType.TIMESTAMP, TokenType.DATE, TokenType.TIME}
+
+
+def _is_constraint_state_token(tok) -> bool:
+    return tok.token_type == TokenType.VAR and tok.text.upper() in _CONSTRAINT_STATE_KEYWORDS
+
+
+def _strip_constraint_state(text: str, dialect: str | None) -> str:
+    """Remove trailing Oracle constraint-state keywords (`ENABLE`/`DISABLE`/
+    `VALIDATE`/`NOVALIDATE`) from `text`. Token-driven (never regex): a match
+    is a bare `VAR` token whose text is one of the keywords AND whose very
+    next token is a comma, the table's closing paren, or another
+    constraint-state keyword (so a chain like `ENABLE VALIDATE` is fully
+    stripped) -- never just "follows NOT NULL", so this also covers
+    table-level `CONSTRAINT ... PRIMARY KEY (...) ENABLE`.
+    """
+    tokenizer = Dialect.get_or_raise(dialect).tokenizer_class()
+    tokens = tokenizer.tokenize(text)
+
+    drop: list[tuple[int, int]] = []
+    for i, tok in enumerate(tokens):
+        if not _is_constraint_state_token(tok):
+            continue
+        nxt = tokens[i + 1] if i + 1 < len(tokens) else None
+        is_follower = nxt is None or nxt.token_type in _STATE_FOLLOWER_TYPES
+        if is_follower or _is_constraint_state_token(nxt):
+            drop.append((tok.start, tok.end + 1))
+
+    if not drop:
+        return text
+
+    out: list[str] = []
+    cursor = 0
+    for start, end in drop:
+        out.append(text[cursor:start])
+        cursor = end
+    out.append(text[cursor:])
+    return "".join(out)
+
+
+def _strip_using_index_clause(text: str, dialect: str | None) -> str:
+    """Remove Oracle's `USING INDEX [TABLESPACE ...]`/inline index-storage
+    clause that trails a *table-level* constraint definition INSIDE the
+    column-list parens -- e.g.
+    `CONSTRAINT pk PRIMARY KEY (X) USING INDEX TABLESPACE T`. Because it sits
+    inside the parens, the paren-matching fragment fallback can't trim it, so
+    sqlglot rejects the whole statement.
+
+    Token-driven: for each `USING` token immediately followed by `INDEX`, drop
+    the run from `USING` up to (but not including) the next `,` or `)` at the
+    same-or-shallower paren depth as the `USING` token -- so an inline index
+    spec that itself contains parens/commas is skipped whole, and the
+    constraint's own list stays intact.
+    """
+    tokenizer = Dialect.get_or_raise(dialect).tokenizer_class()
+    tokens = tokenizer.tokenize(text)
+
+    drop: list[tuple[int, int]] = []
+    n = len(tokens)
+    for i, tok in enumerate(tokens):
+        if not (
+            tok.token_type == TokenType.USING
+            and i + 1 < n
+            and tokens[i + 1].token_type == TokenType.INDEX
+        ):
+            continue
+        depth = 0
+        end = tokens[-1].end + 1  # default: to end of text (clause runs to the close)
+        for j in range(i + 1, n):
+            tt = tokens[j].token_type
+            if tt == TokenType.L_PAREN:
+                depth += 1
+            elif tt == TokenType.R_PAREN:
+                if depth == 0:
+                    end = tokens[j].start
+                    break
+                depth -= 1
+            elif tt == TokenType.COMMA and depth == 0:
+                end = tokens[j].start
+                break
+        drop.append((tok.start, end))
+
+    if not drop:
+        return text
+
+    out: list[str] = []
+    cursor = 0
+    for start, end in drop:
+        out.append(text[cursor:start])
+        cursor = end
+    out.append(text[cursor:])
+    return "".join(out)
+
+
+def _normalize_current_registers(text: str, dialect: str | None) -> str:
+    """Rewrite DB2's bare `CURRENT TIMESTAMP`/`CURRENT DATE`/`CURRENT TIME`
+    special registers into their underscored form (`CURRENT_TIMESTAMP`/...)
+    that sqlglot's generic grammar accepts. Token-driven: matches a bare `VAR`
+    token whose text is `CURRENT` immediately followed by one of the
+    TIMESTAMP/DATE/TIME keyword tokens, and splices the whitespace between
+    them into a single `_` (a quoted `"CURRENT"` identifier tokenizes as
+    `IDENTIFIER`, not `VAR`, so a genuinely-named column is never touched).
+    """
+    tokenizer = Dialect.get_or_raise(dialect).tokenizer_class()
+    tokens = tokenizer.tokenize(text)
+
+    splices: list[tuple[int, int]] = []  # (gap_start, gap_end) to replace with "_"
+    for i, tok in enumerate(tokens):
+        if not (tok.token_type == TokenType.VAR and tok.text.upper() == "CURRENT"):
+            continue
+        if i + 1 >= len(tokens):
+            continue
+        nxt = tokens[i + 1]
+        if nxt.token_type in _CURRENT_REGISTER_TYPES:
+            splices.append((tok.end + 1, nxt.start))
+
+    if not splices:
+        return text
+
+    out: list[str] = []
+    cursor = 0
+    for gap_start, gap_end in splices:
+        out.append(text[cursor:gap_start])
+        out.append("_")
+        cursor = gap_end
+    out.append(text[cursor:])
+    return "".join(out)
+
+
+_TABLE_MODIFIER_VARS = {"GLOBAL", "PRIVATE", "SHARED"}
+
+
+def _looks_like_create_table(stmt_text: str, dialect: str | None) -> bool:
+    """True when `stmt_text` is a genuine (if unparseable) `CREATE TABLE`
+    attempt -- used only to decide whether a parse failure deserves a WARNING
+    (a real CREATE TABLE we choked on) vs. silence (some other `CREATE`
+    statement -- SEQUENCE, TYPE, MATERIALIZED VIEW, ... -- that was never a
+    table and mustn't be flagged just because the substring "TABLE" appears
+    later in the text, e.g. inside `TABLESPACE` or Oracle's `AS TABLE OF`
+    nested-table TYPE syntax).
+
+    Token-driven: the first token must be `CREATE`, and the first
+    non-modifier token after it (skipping `GLOBAL`/`PRIVATE`/`SHARED`/
+    `TEMPORARY` -- Oracle's temporary-table modifiers) must be the literal
+    `TABLE` keyword token.
+    """
+    tokenizer = Dialect.get_or_raise(dialect).tokenizer_class()
+    tokens = tokenizer.tokenize(stmt_text)
+    if not tokens or tokens[0].token_type != TokenType.CREATE:
+        return False
+
+    i = 1
+    n = len(tokens)
+    while i < n and (
+        tokens[i].token_type == TokenType.TEMPORARY
+        or (
+            tokens[i].token_type == TokenType.VAR
+            and tokens[i].text.upper() in _TABLE_MODIFIER_VARS
+        )
+    ):
+        i += 1
+    return i < n and tokens[i].token_type == TokenType.TABLE
+
+
 def _find_create_table(expr: exp.Expr) -> exp.Create | None:
     for create in expr.find_all(exp.Create):
         if create.args.get("kind") == "TABLE" and isinstance(create.this, exp.Schema):
             return create
     return None
+
+
+def _is_ctas(expr: exp.Expr) -> bool:
+    """True when `expr` holds a `CREATE TABLE ... AS SELECT` (any dialect
+    variant, including `CREATE GLOBAL TEMPORARY TABLE ... AS SELECT`): kind
+    `TABLE`, but `this` is a bare `exp.Table` (no column list -- sqlglot only
+    builds an `exp.Schema` when an explicit column list is present) with a
+    query `expression`. A CTAS has no column list to card -- see module
+    docstring's known-skip class.
+    """
+    for create in expr.find_all(exp.Create):
+        if (
+            create.args.get("kind") == "TABLE"
+            and isinstance(create.this, exp.Table)
+            and create.args.get("expression") is not None
+        ):
+            return True
+    return False
 
 
 def _build_table(create: exp.Create, dialect: str, sqlglot_dialect: str | None) -> Table:
@@ -161,17 +364,27 @@ def parse_tables(sql: str, dialect: str) -> dict[str, Table]:
 
     for stmt_text in _split_statements(sql, sqlglot_dialect):
         create: exp.Create | None = None
+        ctas = False
+
+        # Clean up real-corpus noise the AST grammars don't model *before*
+        # any parse attempt -- both the direct attempt below and the
+        # fragment-fallback text derived from it benefit.
+        cleaned_text = _strip_constraint_state(stmt_text, sqlglot_dialect)
+        cleaned_text = _strip_using_index_clause(cleaned_text, sqlglot_dialect)
+        cleaned_text = _normalize_current_registers(cleaned_text, sqlglot_dialect)
 
         try:
-            parsed = sqlglot.parse_one(stmt_text, read=sqlglot_dialect)
+            parsed = sqlglot.parse_one(cleaned_text, read=sqlglot_dialect)
         except Exception:  # noqa: BLE001 -- fall through to the fragment fallback below
             parsed = None
 
         if parsed is not None:
             create = _find_create_table(parsed)
+            if create is None and _is_ctas(parsed):
+                ctas = True
 
-        if create is None:
-            fragment = _extract_create_table_fragment(stmt_text, sqlglot_dialect)
+        if create is None and not ctas:
+            fragment = _extract_create_table_fragment(cleaned_text, sqlglot_dialect)
             if fragment is not None:
                 try:
                     parsed = sqlglot.parse_one(fragment, read=sqlglot_dialect)
@@ -179,10 +392,20 @@ def parse_tables(sql: str, dialect: str) -> dict[str, Table]:
                     parsed = None
                 if parsed is not None:
                     create = _find_create_table(parsed)
+                    if create is None and _is_ctas(parsed):
+                        ctas = True
+
+        if ctas:
+            # Known skip (class 3): a CTAS has no column list to card.
+            logger.info(
+                "okfdbparse: skipping CTAS (CREATE TABLE ... AS SELECT, no column "
+                "list to card): %.80s",
+                stmt_text.strip(),
+            )
+            continue
 
         if create is None:
-            head = stmt_text.strip().upper()
-            if head.startswith("CREATE") and "TABLE" in head[:40]:
+            if _looks_like_create_table(stmt_text, sqlglot_dialect):
                 logger.warning(
                     "okfdbparse: could not parse CREATE TABLE statement: %.80s", stmt_text.strip()
                 )

@@ -39,6 +39,48 @@ _KIND_TOKENS: dict[TokenType, str] = {
 # encountered after the unit's name closes the signature.
 _SIGNATURE_TERMINATORS = {TokenType.ALIAS, TokenType.IS, TokenType.BEGIN}
 
+# Optional Oracle view modifiers that can appear between `CREATE OR REPLACE`
+# and the `VIEW` keyword (`FORCE`, `NO FORCE`, `EDITIONABLE`,
+# `NONEDITIONABLE`, in any combination/order Oracle allows) -- none of them
+# are sqlglot keywords in the oracle/generic tokenizers, so they tokenize as
+# plain `VAR` and must be skipped (case-insensitive) before the kind check,
+# or the real kind keyword right after them is never found.
+_OPTIONAL_VIEW_MODIFIERS = {"FORCE", "NO", "EDITIONABLE", "NONEDITIONABLE"}
+
+# PL/SQL "kinds" that are recognized (so a real object isn't misreported as
+# an unrecognized unit) but are deliberately NOT carded: known non-object
+# constructs.
+#   `variable`  = DB2's `CREATE OR REPLACE VARIABLE <name> <type>` global
+#                 variable declaration.
+#   `type`/`type body` = user-defined collection/array/object TYPEs (Oracle
+#                 `AS TABLE OF ...`/`AS OBJECT (...)`, DB2 `AS <t> ARRAY[]`)
+#                 -- helper types, not documented schema objects. All corpus
+#                 occurrences are such helpers.
+#   `sequence`  = DB2's `CREATE OR REPLACE SEQUENCE <name> ...`. Sequences are
+#                 a table-side concern already handled by `parse_aux` (which
+#                 attaches them to their owning table); DB2 just spells them
+#                 with `OR REPLACE`, so `_match_kind` must recognize them here
+#                 to keep them off the unrecognized-unit gate. Not carded on
+#                 the PL/SQL side.
+#   `synonym`   = `CREATE OR REPLACE SYNONYM x FOR y[@dblink]` -- an alias, not
+#                 a documented schema object.
+# None of these are schema objects the OKF cards document.
+SKIP_KINDS = {"variable", "type", "type body", "sequence", "synonym"}
+
+
+def _skip_optional_view_modifiers(tokens: list[Token], i: int) -> int:
+    """Advance `i` past any run of optional view modifier tokens (see
+    `_OPTIONAL_VIEW_MODIFIERS`) so `_match_kind` sees the real kind keyword.
+    """
+    n = len(tokens)
+    while (
+        i < n
+        and tokens[i].token_type == TokenType.VAR
+        and tokens[i].text.upper() in _OPTIONAL_VIEW_MODIFIERS
+    ):
+        i += 1
+    return i
+
 
 def _match_kind(tokens: list[Token], i: int) -> tuple[str, int] | None:
     """If `tokens[i]` starts a recognized PL/SQL kind, return `(kind, name_idx)`.
@@ -48,10 +90,24 @@ def _match_kind(tokens: list[Token], i: int) -> tuple[str, int] | None:
     """
     if i >= len(tokens):
         return None
+
+    i = _skip_optional_view_modifiers(tokens, i)
+    if i >= len(tokens):
+        return None
     tok = tokens[i]
 
     if tok.token_type in _KIND_TOKENS:
         return _KIND_TOKENS[tok.token_type], i + 1
+
+    # `SEQUENCE` has its own token type; recognized only so it's cleanly
+    # skipped (SKIP_KINDS), never carded here -- see `parse_aux` for the real
+    # table-side handling.
+    if tok.token_type == TokenType.SEQUENCE:
+        return "sequence", i + 1
+
+    # `SYNONYM` is not a sqlglot keyword -- it tokenizes as a plain `VAR`.
+    if tok.token_type == TokenType.VAR and tok.text.upper() == "SYNONYM":
+        return "synonym", i + 1
 
     if tok.token_type == TokenType.VAR and tok.text.upper() == "PACKAGE":
         j = i + 1
@@ -63,6 +119,20 @@ def _match_kind(tokens: list[Token], i: int) -> tuple[str, int] | None:
         if is_body:
             return "package", j + 1
         return "package", j
+
+    if tok.token_type == TokenType.VAR and tok.text.upper() == "VARIABLE":
+        return "variable", i + 1
+
+    if tok.token_type == TokenType.VAR and tok.text.upper() == "TYPE":
+        j = i + 1
+        is_body = (
+            j < len(tokens)
+            and tokens[j].token_type == TokenType.VAR
+            and tokens[j].text.upper() == "BODY"
+        )
+        if is_body:
+            return "type body", j + 1
+        return "type", j
 
     return None
 
@@ -80,13 +150,22 @@ def _dotted_name_end(tokens: list[Token], name_idx: int) -> int:
 
 
 def _find_unit_starts(tokens: list[Token]) -> list[tuple[int, str, int]]:
-    """Find every top-level unit start: `(create_token_idx, kind, name_token_idx)`."""
+    """Find every top-level unit start: `(create_token_idx, kind, name_token_idx)`.
+
+    Matches both `CREATE OR REPLACE <kind> ...` and bare `CREATE <kind> ...`
+    (the `OR REPLACE` is optional) -- inline triggers/views in the Product
+    module files are frequently plain `CREATE TRIGGER`/`CREATE VIEW`/
+    `CREATE FORCE VIEW`. The kind is decided entirely by `_match_kind`, which
+    only recognizes the PL/SQL unit keywords (package/procedure/function/
+    trigger/view/type[ body]/variable) -- so `CREATE TABLE`/`CREATE INDEX`/
+    `CREATE SEQUENCE`/`CREATE GLOBAL TEMPORARY TABLE` never match here and stay
+    with the table path.
+    """
     starts: list[tuple[int, str, int]] = []
     n = len(tokens)
     i = 0
     while i < n:
-        tok = tokens[i]
-        if tok.token_type == TokenType.CREATE:
+        if tokens[i].token_type == TokenType.CREATE:
             j = i + 1
             if (
                 j + 1 < n
@@ -94,11 +173,11 @@ def _find_unit_starts(tokens: list[Token]) -> list[tuple[int, str, int]]:
                 and tokens[j + 1].token_type == TokenType.REPLACE
             ):
                 j += 2
-                match = _match_kind(tokens, j)
-                if match is not None:
-                    kind, name_idx = match
-                    if name_idx < n:
-                        starts.append((i, kind, name_idx))
+            match = _match_kind(tokens, j)
+            if match is not None:
+                kind, name_idx = match
+                if name_idx < n:
+                    starts.append((i, kind, name_idx))
         i += 1
     return starts
 
@@ -178,7 +257,9 @@ def _signature_end_char(tokens: list[Token], name_idx: int, unit_end_char: int) 
 
 def parse_plsql(sql: str, dialect: str) -> list[PlsqlObject]:
     """Split `sql` into top-level PL/SQL units (`PACKAGE[ BODY]`, `PROCEDURE`,
-    `FUNCTION`, `TRIGGER`, `VIEW`) declared via `CREATE OR REPLACE`.
+    `FUNCTION`, `TRIGGER`, `VIEW`) declared via `CREATE [OR REPLACE] ...` (the
+    `OR REPLACE` is optional -- inline module-file triggers/views are often a
+    bare `CREATE TRIGGER`/`CREATE VIEW`).
 
     `dialect` is the logical `"oracle"`/`"db2"` label (mapped to a sqlglot
     dialect via the shared `_sqlglot_dialect` helper for tokenizing only --
@@ -201,6 +282,17 @@ def parse_plsql(sql: str, dialect: str) -> list[PlsqlObject]:
 
     objects: list[PlsqlObject] = []
     for i, (start_idx, kind, name_idx) in enumerate(starts):
+        if kind in SKIP_KINDS:
+            # Known non-object construct (class 3): recognized so it's never
+            # misreported as an unrecognized unit, but not carded -- e.g. a
+            # DB2 `CREATE OR REPLACE VARIABLE` global variable.
+            logger.info(
+                "okfdbparse: skipping known non-object PL/SQL construct (%s): %.80s",
+                kind,
+                sql[tokens[start_idx].start :].strip(),
+            )
+            continue
+
         start_char = tokens[start_idx].start
         boundary_char = tokens[starts[i + 1][0]].start if i + 1 < len(starts) else len(sql)
         end_char = _unit_end_char(tokens, start_idx, boundary_char, sql)
