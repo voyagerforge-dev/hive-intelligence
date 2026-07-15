@@ -18,8 +18,29 @@ from okfdbparse.model import Column, Table
 
 logger = logging.getLogger(__name__)
 
+# Map our *logical* dialect labels ("oracle"/"db2") to a sqlglot dialect that
+# actually exists. sqlglot 30.x has NO native "db2" dialect, so we parse DB2 DDL
+# with the generic (ANSI) dialect (`None`) -- DB2's `CREATE TABLE` grammar is close
+# to ANSI, and the token-based fragment fallback below covers the DB2-specific tail
+# clauses (e.g. `IN <tablespace>`) that the AST can't model. The logical label is
+# kept for tagging (`type_db2`, `Table.dialects`) regardless of the parse dialect.
+_SQLGLOT_DIALECT: dict[str, str | None] = {
+    "oracle": "oracle",
+    "db2": None,
+}
 
-def _split_statements(sql: str, dialect: str) -> list[str]:
+
+def _sqlglot_dialect(dialect: str) -> str | None:
+    """Resolve a logical dialect label to a sqlglot dialect sqlglot supports."""
+    try:
+        return _SQLGLOT_DIALECT[dialect]
+    except KeyError:
+        raise ValueError(
+            f"okfdbparse: unsupported logical dialect {dialect!r} (expected 'oracle' or 'db2')"
+        ) from None
+
+
+def _split_statements(sql: str, dialect: str | None) -> list[str]:
     """Split `sql` into raw per-statement text slices on top-level semicolons.
 
     Uses the dialect's own tokenizer (comment/string aware -- a `;` inside a
@@ -44,7 +65,7 @@ def _split_statements(sql: str, dialect: str) -> list[str]:
     return statements
 
 
-def _extract_create_table_fragment(text: str, dialect: str) -> str | None:
+def _extract_create_table_fragment(text: str, dialect: str | None) -> str | None:
     """Isolate a bare `CREATE TABLE name (...)` fragment from `text`.
 
     Real Oracle/DB2 DDL often trails the column-list with dialect-specific
@@ -61,7 +82,9 @@ def _extract_create_table_fragment(text: str, dialect: str) -> str | None:
     if len(tokens) < 3 or tokens[0].token_type != TokenType.CREATE:
         return None
 
-    open_idx = next((i for i, tok in enumerate(tokens) if tok.token_type == TokenType.L_PAREN), None)
+    open_idx = next(
+        (i for i, tok in enumerate(tokens) if tok.token_type == TokenType.L_PAREN), None
+    )
     if open_idx is None:
         return None
 
@@ -88,7 +111,7 @@ def _find_create_table(expr: exp.Expr) -> exp.Create | None:
     return None
 
 
-def _build_table(create: exp.Create, dialect: str) -> Table:
+def _build_table(create: exp.Create, dialect: str, sqlglot_dialect: str | None) -> Table:
     schema = create.this
     name = schema.this.name
 
@@ -100,7 +123,7 @@ def _build_table(create: exp.Create, dialect: str) -> Table:
             for constraint in col_def.constraints
         )
         col_type = col_def.args.get("kind")
-        type_sql = col_type.sql(dialect=dialect) if col_type is not None else None
+        type_sql = col_type.sql(dialect=sqlglot_dialect) if col_type is not None else None
 
         column = Column(name=col_def.name, not_null=not_null)
         if dialect == "db2":
@@ -128,14 +151,19 @@ def parse_tables(sql: str, dialect: str) -> dict[str, Table]:
     `dialect` is `"oracle"` or `"db2"`. Sets `Table.dialects = {dialect}` and
     the per-dialect column type (`type_oracle`/`type_db2`). `Table.module` is
     left `""` -- the runner sets it from the source filename.
+
+    `dialect` is the *logical* label used for tagging; sqlglot parses with the
+    dialect `_sqlglot_dialect` maps it to (DB2 -> generic, since sqlglot has no
+    native db2 dialect).
     """
+    sqlglot_dialect = _sqlglot_dialect(dialect)
     tables: dict[str, Table] = {}
 
-    for stmt_text in _split_statements(sql, dialect):
+    for stmt_text in _split_statements(sql, sqlglot_dialect):
         create: exp.Create | None = None
 
         try:
-            parsed = sqlglot.parse_one(stmt_text, read=dialect)
+            parsed = sqlglot.parse_one(stmt_text, read=sqlglot_dialect)
         except Exception:  # noqa: BLE001 -- fall through to the fragment fallback below
             parsed = None
 
@@ -143,10 +171,10 @@ def parse_tables(sql: str, dialect: str) -> dict[str, Table]:
             create = _find_create_table(parsed)
 
         if create is None:
-            fragment = _extract_create_table_fragment(stmt_text, dialect)
+            fragment = _extract_create_table_fragment(stmt_text, sqlglot_dialect)
             if fragment is not None:
                 try:
-                    parsed = sqlglot.parse_one(fragment, read=dialect)
+                    parsed = sqlglot.parse_one(fragment, read=sqlglot_dialect)
                 except Exception:  # noqa: BLE001
                     parsed = None
                 if parsed is not None:
@@ -160,7 +188,7 @@ def parse_tables(sql: str, dialect: str) -> dict[str, Table]:
                 )
             continue
 
-        table = _build_table(create, dialect)
+        table = _build_table(create, dialect, sqlglot_dialect)
         tables[table.name] = table
 
     return tables
