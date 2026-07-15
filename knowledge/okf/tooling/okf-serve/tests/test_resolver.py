@@ -400,3 +400,17 @@ def test_load_index_forces_memory_type_in_client_tree(tmp_path):
         "---\ntitle: X\ntype: correction\ncorrects: wms/a\nclient: alpha\n---\n\nx\n")
     idx = {c["id"]: c for c in load_index(concepts, clients)}
     assert idx["clients/alpha/memory/x"]["type"] == "memory"
+
+
+def test_load_index_excludes_db_tier(tmp_path):
+    from okfserve.resolver import load_index, get_card
+    (tmp_path / "wms").mkdir()
+    (tmp_path / "wms" / "replenishment.md").write_text(
+        "---\ntitle: Replen\ndescription: d\nproduct: wms\n---\nbody\n")
+    dbdir = tmp_path / "wms" / "db" / "tables"; dbdir.mkdir(parents=True)
+    (dbdir / "T.md").write_text(
+        "---\ntype: dbobject\nkind: table\ntitle: T\ndescription: d\nproduct: wms\n---\nbody\n")
+    ids = {c["id"] for c in load_index(tmp_path)}
+    assert "wms/replenishment" in ids
+    assert "wms/db/tables/T" not in ids                     # excluded from the concept index
+    assert get_card(tmp_path, "wms/db/tables/T") is not None  # but fetchable by id

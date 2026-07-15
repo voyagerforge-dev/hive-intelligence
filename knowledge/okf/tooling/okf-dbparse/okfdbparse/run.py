@@ -1,0 +1,429 @@
+"""End-to-end runner: WMOS Oracle/DB2 DDL tree -> OKF `dbobject` cards + manifest.
+
+Walks exactly two locations per dialect -- `DBScripts/Product/*.sql` (tables)
+and `DBScripts/Product/PLSQL_Objects/*.sql` (PL/SQL units) -- so `Seed/`,
+`Archive/`, `Upgrade/` and `CreateSchema/` (siblings of `PLSQL_Objects/` under
+`Product/`) are skipped simply by never being walked: a non-recursive
+`Path.glob("*.sql")` on `Product/` only ever sees files directly in it, never
+files one directory down.
+
+Each object's `module` is set from its source filename stem (`DOM.sql` ->
+`DOM`). Each object's `source_files` is set to the actual repo-relative
+path(s) it was read from (Oracle and/or DB2) -- this is what makes a PL/SQL
+card's `sources:` point at its real `PLSQL_Objects/<file>.sql` rather than the
+synthesized-but-wrong `<module>.sql` that `emit` falls back to when
+`source_files` is unset (see `okfdbparse.emit._plsql_sources`).
+
+The **verification gate** is hard on exactly ONE thing -- *unparsed* objects,
+the only case that silently drops unique content. `run()` always finishes the
+full walk (so its `RunError` can report exactly what did and didn't work),
+then raises if any statement/unit failed to parse (`unparsed` non-empty):
+`parse_tables`/`parse_plsql` log a WARNING with a source snippet instead of
+skipping -- including a `CREATE OR REPLACE` whose object-kind keyword matches
+no known PL/SQL kind (a typo'd/unsupported unit). `_capture_warnings` below
+captures those per-file so the runner attributes each to the file it came from.
+
+**Same-dialect same-name duplicates do NOT fail the run.** A duplicate is at
+worst "we card one of two near-identical definitions" -- not the drop-of-
+unique-content the gate guards against. So each duplicate is deduped (the
+first-seen object is kept), BOTH source files are recorded in the surviving
+object's `source_files`, and a line describing it (object, files, and whether
+`identical` or `differs in <columns|body>`) is appended to `conflicts.log` in
+the output dir -- fully visible, never silent, but never fatal. `RunReport`
+exposes the deduped-`duplicates` list for visibility. NOT logged as
+duplicates (they are legitimate merges): a cross-dialect Oracle/DB2 merge of
+the same name, and a package spec+body pair within one dialect.
+
+The kept count-match check (emitted == parsed per kind) is a cheap
+consistency assertion, not the primary protection.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from okfdbparse.emit import manifest_line, plsql_card, table_card
+from okfdbparse.model import PlsqlObject, Table
+from okfdbparse.parse_aux import apply_aux
+from okfdbparse.parse_plsql import parse_plsql
+from okfdbparse.parse_tables import parse_tables
+from okfdbparse.reconcile import (
+    _looks_like_package_body,
+    _normalize_ws,
+    reconcile_plsql,
+    reconcile_tables,
+)
+
+logger = logging.getLogger(__name__)
+
+_DIALECTS = ("oracle", "db2")
+_DIALECT_DIR = {"oracle": "Oracle", "db2": "DB2"}
+
+
+class RunError(RuntimeError):
+    """Raised when the verification gate fails: unparsed objects (the only
+    silent-drop-of-unique-content case), or a kind's emitted-card count
+    doesn't match its parsed-object count."""
+
+
+@dataclass
+class RunReport:
+    """Per-kind parsed/emitted counts, every unparsed statement/unit (as
+    `"<repo-relative file>: <warning message with snippet>"`), and every
+    same-dialect same-name duplicate that was deduped (`duplicates` -- visible
+    but non-fatal; also written to `conflicts.log`). A legit Oracle/DB2
+    cross-dialect merge or a package spec/body pair is NOT a duplicate."""
+
+    counts: dict[str, dict[str, int]] = field(
+        default_factory=lambda: {
+            "table": {"parsed": 0, "emitted": 0},
+            "plsql": {"parsed": 0, "emitted": 0},
+        }
+    )
+    unparsed: list[str] = field(default_factory=list)
+    duplicates: list[str] = field(default_factory=list)
+
+
+@contextmanager
+def _capture_warnings(logger_name: str):
+    """Capture WARNING+ messages logged by `logger_name` for the duration of
+    the `with` block. `parse_tables`/`parse_plsql` log one WARNING (with a
+    source snippet) per statement/unit they couldn't parse instead of
+    swallowing it; this lets the runner see those without changing either
+    module's return type (which existing Task 1-3 tests depend on)."""
+    messages: list[str] = []
+
+    class _Handler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            messages.append(record.getMessage())
+
+    handler = _Handler(level=logging.WARNING)
+    target = logging.getLogger(logger_name)
+    target.addHandler(handler)
+    try:
+        yield messages
+    finally:
+        target.removeHandler(handler)
+
+
+def _sql_files(directory: Path, limit_modules: int | None) -> list[Path]:
+    """Sorted, non-recursive `*.sql` files directly in `directory` (empty
+    list if it doesn't exist), capped to `limit_modules` when given."""
+    if not directory.is_dir():
+        return []
+    files = sorted(directory.glob("*.sql"))
+    return files[:limit_modules] if limit_modules is not None else files
+
+
+def _record_source(sources: dict[str, list[str]], name: str, path: str) -> None:
+    paths = sources.setdefault(name, [])
+    if path not in paths:
+        paths.append(path)
+
+
+def _union_sources(*source_maps: dict[str, list[str]], name: str) -> list[str]:
+    """Every repo-relative path recorded for `name` across dialects, Oracle
+    first (dict iteration/insertion order), deduped."""
+    merged: list[str] = []
+    for source_map in source_maps:
+        for path in source_map.get(name, []):
+            if path not in merged:
+                merged.append(path)
+    return merged
+
+
+def _table_structure_key(t: Table) -> tuple:
+    """A hashable, order-insensitive fingerprint of a table's *structure* --
+    its column set (name + both dialect types + not_null) and its primary-key
+    set. Two same-name tables with an equal key produce an identical card, so
+    a duplicate definition of one is benign (a shared table re-declared).
+    Tablespace/storage isn't captured by the parser, so it never affects this.
+    """
+    columns = frozenset(
+        (c.name, c.type_oracle, c.type_db2, c.not_null) for c in t.columns
+    )
+    return columns, frozenset(t.pk)
+
+
+def _tables_same_structure(a: Table, b: Table) -> bool:
+    return _table_structure_key(a) == _table_structure_key(b)
+
+
+def _parse_dialect_tables(
+    src_root: Path,
+    dialect: str,
+    limit_modules: int | None,
+    unparsed: list[str],
+    duplicates: list[str],
+    plsql_objects: list[PlsqlObject],
+    plsql_sources: dict[str, list[str]],
+) -> tuple[dict[str, Table], dict[str, list[str]]]:
+    """Parse every `Product/*.sql` module file for a dialect. Each file yields
+    BOTH tables (via `parse_tables` + `apply_aux`) AND any inline PL/SQL units
+    it declares (triggers/views/procedures/... via `parse_plsql` on the same
+    text). Inline units are appended to the shared `plsql_objects`/
+    `plsql_sources` accumulators (the runner also fills these from
+    `PLSQL_Objects/`), with `module` from the filename stem and the module
+    file recorded as the unit's source -- so a module-file trigger is carded
+    with an accurate `sources:`, and any object appearing both inline and in
+    `PLSQL_Objects` is handled by the shared reconcile/dedup path.
+    """
+    product_dir = src_root / _DIALECT_DIR[dialect] / "DBScripts" / "Product"
+    tables: dict[str, Table] = {}
+    sources: dict[str, list[str]] = {}
+    texts: list[str] = []
+
+    for sql_file in _sql_files(product_dir, limit_modules):
+        module = sql_file.stem
+        text = sql_file.read_text()
+        rel = f"{_DIALECT_DIR[dialect]}/DBScripts/Product/{sql_file.name}"
+
+        with _capture_warnings("okfdbparse.parse_tables") as warnings:
+            parsed = parse_tables(text, dialect)
+        unparsed.extend(f"{rel}: {w}" for w in warnings)
+
+        for name, table in parsed.items():
+            table.module = module
+            existing = tables.get(name)
+            if existing is not None:
+                # Two CREATE TABLE of the same name in the SAME dialect tree.
+                # Never fatal: keep the first object (both cards are at worst
+                # near-identical), record BOTH files as sources, and note the
+                # duplicate (identical structure, or differing columns/pk) for
+                # conflicts.log -- visible, never silent, never a hard fail.
+                prior = ", ".join(sources.get(name, [])) or "an earlier file"
+                verdict = (
+                    "identical"
+                    if _tables_same_structure(existing, table)
+                    else "differs in columns/pk"
+                )
+                duplicates.append(
+                    f"{_DIALECT_DIR[dialect]} table {name}: duplicate in {rel} "
+                    f"(vs {prior}) -- {verdict}; kept first, deduped"
+                )
+                _record_source(sources, name, rel)
+                continue
+            _record_source(sources, name, rel)
+            tables[name] = table
+
+        # Inline PL/SQL declared in the SAME module file (triggers/views/
+        # procedures/packages/functions). parse_plsql warnings flow into the
+        # unparsed gate, so an inline unit is never silently dropped.
+        with _capture_warnings("okfdbparse.parse_plsql") as pl_warnings:
+            units = parse_plsql(text, dialect)
+        unparsed.extend(f"{rel}: {w}" for w in pl_warnings)
+        for obj in units:
+            obj.module = module
+            _record_source(plsql_sources, obj.name, rel)
+            plsql_objects.append(obj)
+
+        texts.append(text)
+
+    if texts:
+        apply_aux(tables, "\n".join(texts), dialect)
+
+    return tables, sources
+
+
+def _is_legit_package_pair(objs: list[PlsqlObject], dialect: str) -> bool:
+    """True when a group of same-name units in one dialect is a legitimate
+    package spec/body pair (`reconcile._merge_package_units` merges these into
+    one object), NOT a genuine collision. That means: every unit is a
+    `package`, and the group holds at most one spec and at most one body --
+    using the exact same spec-vs-body discriminator reconcile uses, so this
+    never diverges from what reconcile will legitimately merge.
+    """
+    if not all(o.kind == "package" for o in objs):
+        return False
+    attr = f"body_{dialect}"
+    bodies = sum(1 for o in objs if _looks_like_package_body(getattr(o, attr)))
+    specs = len(objs) - bodies
+    return bodies <= 1 and specs <= 1
+
+
+def _detect_plsql_duplicates(
+    objects: list[PlsqlObject], dialect: str, duplicates: list[str]
+) -> None:
+    """Note same-name PL/SQL units within one dialect that reconcile's
+    name-keyed union collapses to one (keeping the first) -- visible via
+    `conflicts.log`, never fatal. NOT noted (legitimate merges): a package
+    spec/body pair (`_is_legit_package_pair`). For everything else, the note
+    records whether the bodies are `identical` (a shared unit re-declared) or
+    `differs in body` (near-identical multi-definitions across modules).
+    """
+    attr = f"body_{dialect}"
+    groups: dict[str, list[PlsqlObject]] = {}
+    for obj in objects:
+        groups.setdefault(obj.name, []).append(obj)
+    for name, objs in groups.items():
+        if len(objs) <= 1 or _is_legit_package_pair(objs, dialect):
+            continue
+        identical = len({_normalize_ws(getattr(o, attr)) for o in objs}) == 1
+        verdict = "identical" if identical else "differs in body"
+        duplicates.append(
+            f"{_DIALECT_DIR[dialect]} plsql {name}: {len(objs)} same-name units in one "
+            f"dialect -- {verdict}; kept first, deduped"
+        )
+
+
+def _parse_dialect_plsql(
+    src_root: Path,
+    dialect: str,
+    limit_modules: int | None,
+    unparsed: list[str],
+    plsql_objects: list[PlsqlObject],
+    plsql_sources: dict[str, list[str]],
+) -> None:
+    """Parse the dedicated `PLSQL_Objects/*.sql` files for a dialect, appending
+    each unit to the shared `plsql_objects`/`plsql_sources` accumulators (which
+    already hold the inline units found in the Product module files). Duplicate
+    detection runs once, in `run()`, over the combined collection.
+    """
+    plsql_dir = src_root / _DIALECT_DIR[dialect] / "DBScripts" / "Product" / "PLSQL_Objects"
+
+    for sql_file in _sql_files(plsql_dir, limit_modules):
+        module = sql_file.stem
+        text = sql_file.read_text()
+        rel = f"{_DIALECT_DIR[dialect]}/DBScripts/Product/PLSQL_Objects/{sql_file.name}"
+
+        with _capture_warnings("okfdbparse.parse_plsql") as warnings:
+            parsed = parse_plsql(text, dialect)
+        unparsed.extend(f"{rel}: {w}" for w in warnings)
+
+        for obj in parsed:
+            obj.module = module
+            _record_source(plsql_sources, obj.name, rel)
+            plsql_objects.append(obj)
+
+
+def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> RunReport:
+    """Parse+reconcile every WMOS table/PL/SQL object under `src_root`, emit
+    one card per object under `out_dir/{tables,plsql}/` plus
+    `out_dir/manifest.jsonl`, and return the `RunReport`.
+
+    Raises `RunError` (after completing the full run) if the verification
+    gate fails -- see module docstring.
+    """
+    unparsed: list[str] = []
+    duplicates: list[str] = []
+
+    # PL/SQL is collected from TWO places per dialect: inline units in the
+    # Product module files (filled by _parse_dialect_tables) and the dedicated
+    # PLSQL_Objects/ files (filled by _parse_dialect_plsql). Both append into
+    # these shared per-dialect accumulators; duplicate detection runs once on
+    # the combined result below.
+    oracle_plsql: list[PlsqlObject] = []
+    oracle_plsql_sources: dict[str, list[str]] = {}
+    db2_plsql: list[PlsqlObject] = []
+    db2_plsql_sources: dict[str, list[str]] = {}
+
+    oracle_tables, oracle_table_sources = _parse_dialect_tables(
+        src_root, "oracle", limit_modules, unparsed, duplicates,
+        oracle_plsql, oracle_plsql_sources,
+    )
+    db2_tables, db2_table_sources = _parse_dialect_tables(
+        src_root, "db2", limit_modules, unparsed, duplicates,
+        db2_plsql, db2_plsql_sources,
+    )
+    merged_tables = reconcile_tables(oracle_tables, db2_tables)
+    for table in merged_tables:
+        table.source_files = _union_sources(
+            oracle_table_sources, db2_table_sources, name=table.name
+        )
+
+    _parse_dialect_plsql(
+        src_root, "oracle", limit_modules, unparsed, oracle_plsql, oracle_plsql_sources
+    )
+    _parse_dialect_plsql(
+        src_root, "db2", limit_modules, unparsed, db2_plsql, db2_plsql_sources
+    )
+    _detect_plsql_duplicates(oracle_plsql, "oracle", duplicates)
+    _detect_plsql_duplicates(db2_plsql, "db2", duplicates)
+
+    merged_plsql = reconcile_plsql(oracle_plsql, db2_plsql)
+    for obj in merged_plsql:
+        obj.source_files = _union_sources(oracle_plsql_sources, db2_plsql_sources, name=obj.name)
+
+    report = RunReport(unparsed=unparsed, duplicates=duplicates)
+    report.counts["table"]["parsed"] = len(merged_tables)
+    report.counts["plsql"]["parsed"] = len(merged_plsql)
+
+    tables_dir = out_dir / "tables"
+    plsql_dir = out_dir / "plsql"
+    tables_dir.mkdir(parents=True, exist_ok=True)
+    plsql_dir.mkdir(parents=True, exist_ok=True)
+
+    manifest_lines: list[dict] = []
+
+    for table in merged_tables:
+        (tables_dir / f"{table.name}.md").write_text(table_card(table))
+        manifest_lines.append(manifest_line(table))
+        report.counts["table"]["emitted"] += 1
+
+    for obj in merged_plsql:
+        (plsql_dir / f"{obj.name}.md").write_text(plsql_card(obj))
+        manifest_lines.append(manifest_line(obj))
+        report.counts["plsql"]["emitted"] += 1
+
+    with (out_dir / "manifest.jsonl").open("w") as fh:
+        for line in manifest_lines:
+            fh.write(json.dumps(line) + "\n")
+
+    # Deduped same-dialect same-name duplicates are visible but non-fatal:
+    # record them in conflicts.log (written whenever any exist) so nothing is
+    # silent, then let the run succeed.
+    if report.duplicates:
+        with (out_dir / "conflicts.log").open("w") as fh:
+            for line in report.duplicates:
+                fh.write(line + "\n")
+
+    if report.unparsed:
+        raise RunError(
+            f"okfdbparse: {len(report.unparsed)} unparsed statement(s)/unit(s) "
+            f"(never silently skipped): {report.unparsed}"
+        )
+    for kind, counts in report.counts.items():
+        if counts["parsed"] != counts["emitted"]:
+            raise RunError(
+                f"okfdbparse: emitted count != parsed count for {kind!r}: {counts}"
+            )
+
+    return report
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="okfdbparse",
+        description="Parse WMOS Oracle/DB2 DDL into OKF dbobject cards + manifest.",
+    )
+    parser.add_argument("--src", required=True, type=Path, help="DDL tree root")
+    parser.add_argument("--out", required=True, type=Path, help="cards + manifest output dir")
+    parser.add_argument(
+        "--limit-modules",
+        type=int,
+        default=None,
+        help="cap the number of source files processed per dialect/kind (for smoke runs)",
+    )
+    args = parser.parse_args(argv)
+
+    report = run(args.src, args.out, limit_modules=args.limit_modules)
+    print(
+        json.dumps(
+            {
+                "counts": report.counts,
+                "unparsed": report.unparsed,
+                "duplicates": report.duplicates,
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

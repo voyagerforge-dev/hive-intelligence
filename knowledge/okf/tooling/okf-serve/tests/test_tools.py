@@ -110,3 +110,23 @@ def test_get_card_text_client_tree(tmp_path):
     from okfserve import tools
     concepts, clients = _client_world(tmp_path)
     assert "mem" in tools.get_card_text(concepts, "clients/alpha/memory/m", clients)
+
+
+def test_list_concepts_excludes_db_tier(tmp_path):
+    (tmp_path / "wave-replen.md").write_text(CARD)
+    dbdir = tmp_path / "db" / "tables"
+    dbdir.mkdir(parents=True)
+    dbdir.joinpath("T.md").write_text("""---
+type: dbobject
+kind: table
+title: T
+description: d
+product: wms
+---
+body
+""")
+    idx = tools.list_concepts(tmp_path)
+    ids = [c["id"] for c in idx]
+    assert "wave-replen" in ids
+    assert "db/tables/T" not in ids
+    assert "No card" not in tools.get_card_text(tmp_path, "db/tables/T")

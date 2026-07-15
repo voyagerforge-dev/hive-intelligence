@@ -14,7 +14,7 @@ def test_tools_registered_and_no_prompts(tmp_path):
     s = Settings(concepts_dir=str(tmp_path))
     mcp = build_mcp(s, _factory(tmp_path))
     tool_names = {t.name for t in anyio.run(mcp.list_tools)}
-    assert {"list_concepts", "get_card", "resolve", "start_objective",
+    assert {"list_concepts", "get_card", "resolve", "find_db_objects", "start_objective",
             "append_entry", "set_status", "record_quiz_result",
             "list_objectives", "get_objective",
             "remember", "recall", "forget", "promote"} <= tool_names
