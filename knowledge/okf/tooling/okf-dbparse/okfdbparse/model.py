@@ -24,6 +24,10 @@ class Table:
     sequences: list[str] = field(default_factory=list)
     triggers: list[str] = field(default_factory=list)
     dialects: set[str] = field(default_factory=set)  # {"oracle","db2"}
+    # Repo-relative path(s) this object was actually read from (set by the
+    # runner, which knows the real file -- see okfdbparse.run). Empty by
+    # default so `emit` can fall back to its module-synthesized path.
+    source_files: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -36,3 +40,4 @@ class PlsqlObject:
     body_db2: str = ""
     comment: str = ""
     dialects: set[str] = field(default_factory=set)
+    source_files: list[str] = field(default_factory=list)

@@ -8,6 +8,9 @@ dependencies = ["sqlglot>=25", "PyYAML>=6.0"]
 [project.optional-dependencies]
 dev = ["pytest>=8.3", "ruff>=0.7"]
 
+[project.scripts]
+okfdbparse = "okfdbparse.run:main"
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

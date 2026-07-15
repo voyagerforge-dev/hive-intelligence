@@ -64,6 +64,12 @@ def _table_tags(t: Table) -> list[str]:
 
 
 def _table_sources(t: Table) -> list[str]:
+    """The real file(s) `t` was read from, when the runner set them; else a
+    synthesized `<module>.sql` path (correct for tables, since a module's
+    `.sql` file *is* named after the module -- see `_plsql_sources` for why
+    PL/SQL cards can't use the same synthesis)."""
+    if t.source_files:
+        return list(t.source_files)
     return [
         f"{_DIALECT_DIR[d]}/DBScripts/Product/{t.module}.sql"
         for d in _DIALECT_ORDER
@@ -204,6 +210,14 @@ def _plsql_tags(o: PlsqlObject) -> list[str]:
 
 
 def _plsql_sources(o: PlsqlObject) -> list[str]:
+    """The real file(s) `o` was read from, when the runner set them. A
+    PL/SQL unit's real file lives at `PLSQL_Objects/<file>.sql`, named per
+    *file* (not necessarily per object) -- unlike a table's module file, this
+    can't be reliably synthesized from `o.name`/`o.module` alone, so the
+    fallback below is a best-effort guess only used when `source_files` is
+    unset (e.g. in unit tests that build a `PlsqlObject` directly)."""
+    if o.source_files:
+        return list(o.source_files)
     return [
         f"{_DIALECT_DIR[d]}/DBScripts/Product/PLSQL_Objects/{o.name}.sql"
         for d in _DIALECT_ORDER
