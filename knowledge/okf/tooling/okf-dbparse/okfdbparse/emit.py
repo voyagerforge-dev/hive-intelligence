@@ -191,18 +191,21 @@ def table_card(t: Table) -> str:
 
 
 def _plsql_header_text(o: PlsqlObject) -> str:
-    """Header comment if present, else a one-line summary taken verbatim from
-    the object's own captured signature (never a fabricated description).
+    """The unit's header comment verbatim, or `""` when it has none.
+
+    Never falls back to the raw signature/CREATE text: `title`/`description`
+    are `find_db_objects` search fields, so the DDL statement text would be
+    noise there (the full signature and body already live in the card body).
     """
-    if o.comment:
-        return o.comment
-    first_line = o.signature.strip().splitlines()[0].strip() if o.signature.strip() else ""
-    return first_line
+    return o.comment
 
 
 def _plsql_title(o: PlsqlObject) -> str:
-    header = _plsql_header_text(o)
-    return f"{o.name} — {header}" if header else o.name
+    """`NAME — <comment>` when a header comment exists, else `NAME (<kind>)`.
+    Never embeds the raw signature/DDL text (search-field hygiene)."""
+    if o.comment:
+        return f"{o.name} — {o.comment}"
+    return f"{o.name} ({o.kind})"
 
 
 def _plsql_tags(o: PlsqlObject) -> list[str]:

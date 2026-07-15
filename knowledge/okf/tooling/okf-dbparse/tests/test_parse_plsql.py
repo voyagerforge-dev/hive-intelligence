@@ -371,3 +371,28 @@ def test_sequence_and_synonym_are_skipped_not_unrecognized(caplog):
     assert objs == []
     # crucially: no WARNING -- so the runner never adds these to `unparsed`
     assert [r for r in caplog.records if r.name == "okfdbparse.parse_plsql"] == []
+
+
+# A quoted identifier must yield a CLEAN name (no surrounding double-quotes),
+# so downstream card_id/filename/title never carry `"..."`. parse_tables
+# already strips quotes; parse_plsql must too.
+QUOTED_VIEW = 'CREATE OR REPLACE VIEW "FOO_VW" AS SELECT 1 FROM DUAL\n/\n'
+QUOTED_DOTTED_PROC = '''CREATE OR REPLACE PROCEDURE SCHEMA."FOO"(p IN NUMBER) AS
+BEGIN
+  NULL;
+END;
+/
+'''
+
+
+def test_quoted_unit_name_is_stripped_of_double_quotes():
+    objs = parse_plsql(QUOTED_VIEW, "oracle")
+    assert len(objs) == 1
+    assert objs[0].name == "FOO_VW"  # not '"FOO_VW"'
+    assert objs[0].kind == "view"
+
+
+def test_quoted_dotted_name_strips_quotes_per_component():
+    objs = parse_plsql(QUOTED_DOTTED_PROC, "oracle")
+    assert len(objs) == 1
+    assert objs[0].name == "SCHEMA.FOO"  # not 'SCHEMA."FOO"'

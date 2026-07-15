@@ -299,7 +299,13 @@ def parse_plsql(sql: str, dialect: str) -> list[PlsqlObject]:
         sig_end_char = _signature_end_char(tokens, name_idx, end_char)
 
         name_end_idx = _dotted_name_end(tokens, name_idx)
-        name = sql[tokens[name_idx].start : tokens[name_end_idx - 1].end + 1]
+        # Build the name from token *text* (not a raw source slice) so a quoted
+        # identifier like "IMPORT_COMB_LANE_DTL" yields a clean, unquoted name
+        # -- the tokenizer already strips the surrounding double-quotes from an
+        # IDENTIFIER's text, and a DOT token's text is ".", so a dotted
+        # SCHEMA."FOO" reassembles as SCHEMA.FOO (quotes stripped per
+        # component). This mirrors how parse_tables yields unquoted names.
+        name = "".join(tok.text for tok in tokens[name_idx:name_end_idx])
 
         obj = PlsqlObject(
             name=name,

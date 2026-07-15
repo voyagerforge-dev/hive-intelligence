@@ -199,6 +199,41 @@ def test_plsql_card_includes_db2_body_when_present():
     assert "Identical to Oracle." not in md
 
 
+def test_plsql_comment_less_title_is_clean_and_description_empty():
+    # No header comment: title must be just NAME (kind) -- NOT the raw
+    # signature/CREATE text -- and description must be empty (search-field
+    # hygiene). The full signature still lives in the card body.
+    o = PlsqlObject(
+        "LANE_DETAIL_VIEW",
+        "DOM",
+        kind="view",
+        signature="CREATE OR REPLACE VIEW LANE_DETAIL_VIEW AS SELECT ...",
+        body_oracle="CREATE OR REPLACE VIEW LANE_DETAIL_VIEW AS SELECT ...",
+        dialects={"oracle"},
+    )
+    fm = _frontmatter_dict(plsql_card(o))
+    assert fm["title"] == "LANE_DETAIL_VIEW (view)"
+    assert fm["description"] == ""
+    assert "CREATE OR REPLACE VIEW" not in fm["title"]
+    ml = manifest_line(o)
+    assert ml["title"] == "LANE_DETAIL_VIEW (view)"
+    assert ml["description"] == ""
+
+
+def test_plsql_with_comment_title_uses_comment():
+    o = PlsqlObject(
+        "DOM_ALLOC",
+        "DOM",
+        kind="package",
+        comment="Allocation engine",
+        signature="CREATE OR REPLACE PACKAGE dom_alloc AS ...",
+        dialects={"oracle"},
+    )
+    fm = _frontmatter_dict(plsql_card(o))
+    assert fm["title"] == "DOM_ALLOC — Allocation engine"
+    assert fm["description"] == "Allocation engine"
+
+
 def test_manifest_line_shape_for_table_and_plsql():
     t = Table("T", "DOM", comment="purpose", columns=[Column("A")], dialects={"oracle"})
     o = PlsqlObject("P", "DOM", kind="procedure", comment="does a thing", dialects={"oracle"})
