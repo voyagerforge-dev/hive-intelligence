@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from mcp.server.fastmcp import Context, FastMCP
 
-from okfserve import ledger, tools
+from okfserve import dbobjects, ledger, tools
 from okfserve.identity import resolve_owner
 from okfserve.metrics import track_tool
 
@@ -40,6 +40,15 @@ def build_mcp(settings, conn_factory) -> FastMCP:
         return tools.resolve_cards(cdir, ids, depth=depth, max_cards=settings.max_cards,
                                    max_chars=settings.max_chars, clients_dir=cldir,
                                    client=client)
+
+    @mcp.tool()
+    @track_tool("find_db_objects")
+    def find_db_objects(query: str, kind: str | None = None, module: str | None = None,
+                        limit: int = 20) -> list[dict]:
+        """Search WMOS database objects (tables, packages, procedures, …) by name or by what
+        they mean. Use for schema-level questions (specific tables/columns/keys/logic); then
+        load the returned ids with `resolve`/`get_card`."""
+        return dbobjects.search(cdir, query, kind=kind, module=module, limit=limit)
 
     @mcp.tool()
     @track_tool("start_objective")
