@@ -120,6 +120,10 @@ single-topic file per source document, labeled with metadata - that Stage 2 can 
 the [`/wms-prep`](../.claude/commands/wms-prep.md) command; the operational runbook is
 [`docs/runbooks/wms-prep-e2e.md`](runbooks/wms-prep-e2e.md).
 
+**The pipeline, short form:** `scan → dups → wms-curator → validate-plan → ⟨gate 1⟩ → dedup →
+normalize → route → ⟨gate 2⟩ → transform → stamp → validate-atomic`. That's what "end-to-end" (e2e)
+means - the [flow diagram](#the-flow) and the [runbook](runbooks/wms-prep-e2e.md) walk each step in detail.
+
 ### The flow
 
 The governing idea: **put the intelligence up front in one reviewable file, then let
