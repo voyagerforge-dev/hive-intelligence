@@ -13,7 +13,11 @@ and render inline on GitHub.*
 > step (facets, conformance, index) sits between card creation and serving; a product-isolation eval
 > gates every deploy; a corrections layer overlays outdated cards without editing them; and a
 > **memory layer** adds per-owner private notes plus hard-isolated **client-scoped memory cards**
-> (`clients/<client>/memory/`). Each of these is covered below.
+> (`clients/<client>/memory/`). Alongside the narrative cards, a **database-object tier** - 3,027 WMOS
+> schema cards (tables + PL/SQL) parsed **deterministically** from the Manhattan deploy scripts - is
+> served **on-demand** behind a dedicated `find_db_objects` tool, deliberately kept out of the concept
+> index. Claude reaches all of this through a **Cowork plugin** whose skills (base OKF grounding +
+> Diagnose / Plan / Learn) replaced the old MCP mode-prompts. Each of these is covered below.
 
 ---
 
@@ -454,6 +458,101 @@ Design + acceptance: `docs/superpowers/specs/2026-07-11-okf-memory-cards-design.
 PRs #45-#48 (personal tier → client-scoped serving → authoring/gate → okf-author); okf-serve is live with
 memory tools and client isolation verified end-to-end.
 
+### The database-object tier (`okf-dbparse`)
+
+Concept cards describe **how WMOS works**; they do not describe **the data model itself** - the tables,
+columns, data types, keys, and stored PL/SQL that a WMOS system actually runs on. The database-object
+tier fills that gap with **3,027 precise schema cards** distilled straight from the product's own deploy
+DDL - the authoritative source, not prose about it.
+
+**This is a different mechanism from Stages 1-2.** Concept cards are *distilled by an LLM* from messy prose
+(judgment, paraphrase). Schema is exact and must stay exact, so the db tier is produced by a **deterministic
+parser with no model in the loop** - a one-time ingest whose output is verbatim. The package is
+`tooling/okf-dbparse/` (package `okfdbparse`); its single external dependency is **sqlglot** (a
+dialect-aware SQL parser - a real tokenizer/AST, never regex, so quirky DDL parses correctly).
+
+**Source.** The Manhattan WMOS deploy scripts ship the schema twice, once per supported DBMS:
+`ManhDBDeploy/{Oracle,DB2}/DBScripts/Product/*.sql` (one file per functional **module** - `DOM.sql`,
+`CM.sql`, …). The parser reads both dialects and reconciles them per object.
+
+```mermaid
+flowchart TD
+    ddl[("Manhattan deploy DDL<br/>Oracle/*.sql · DB2/*.sql<br/>(per module)")]
+    ddl --> pt["parse_tables<br/><i>CREATE TABLE → columns/types/PK</i>"]
+    pt --> aux["parse_aux<br/><i>COMMENT ON · FK · INDEX · SEQUENCE</i>"]
+    aux --> pl["parse_plsql<br/><i>package/proc/func/trigger/view<br/>signature + verbatim body</i>"]
+    pl --> rec["reconcile<br/><i>Oracle ⇄ DB2 by name; type deltas;<br/>merge package spec+body</i>"]
+    rec --> gate{{"HARD GATE<br/>cards == parsed objects<br/>unparsed → fail · dupes → dedup+log"}}
+    gate --> emit["emit<br/><i>one card per object</i>"]
+    emit --> out[("concepts/wms/db/{tables,plsql}/*.md<br/>+ manifest.jsonl + conflicts.log")]
+```
+
+- **`parse_tables`** turns each `CREATE TABLE` into columns (name, Oracle type, DB2 type, nullability),
+  the primary key, and inline constraints - degrading gracefully where sqlglot bails on Oracle storage
+  clauses (`TABLESPACE`, `USING INDEX`) via a token-level fragment fallback.
+- **`parse_aux`** overlays the out-of-line facts: `COMMENT ON TABLE/COLUMN` (kept **verbatim** as the
+  human description), foreign keys (`ALTER TABLE … ADD CONSTRAINT … REFERENCES`), indexes, and sequences.
+- **`parse_plsql`** captures every programmatic unit - packages, procedures, functions, triggers, views -
+  with its **signature/spec and its full body copied verbatim** as a character slice (so nothing is
+  paraphrased or normalised). Unit boundaries come from the tokenizer, not line heuristics: a `/` only
+  terminates a unit when it stands alone on its line, so a `total / count` division inside a body can't
+  truncate it. PL/SQL is captured from **both** the dedicated `PLSQL_Objects/` files **and** inline in the
+  module files (most triggers/views live inline - missing them would drop ~1,000 objects).
+- **`reconcile`** matches Oracle and DB2 definitions of the same object by name, records per-column/per-body
+  **type or body deltas** between dialects, and merges a package spec with its body into one unit.
+
+**The hard verification gate is the point.** `okfdbparse/run.py` refuses to emit a partial corpus: the
+card count must equal the parsed-object count, **any unparsed construct fails the run** (this is what
+surfaced every real-corpus DDL quirk - `NOT NULL ENABLE`, `GLOBAL TEMPORARY`, `GENERATED … IDENTITY`,
+`FORCE` views, DB2 `VARIABLE`/`SEQUENCE`/`SYNONYM`, `CTAS` - until each was handled), and same-name
+collisions are deduped when structurally identical and otherwise **logged to `conflicts.log`**, never
+silently overwritten. The output is a folder of cards plus a `manifest.jsonl` index the serving layer reads.
+
+**Corpus.** `concepts/wms/db/{tables,plsql}/*.md` = **3,027 cards**: 892 tables, 913 triggers, 841
+procedures, 146 functions, 140 views, 95 packages. Every card is `type: dbobject`, carries its `module`
+(the source functional area), its `platform` dialects (`oracle`/`db2`), `sources:` (the exact DDL file),
+and `related:` edges to referenced tables (from the FKs).
+
+```yaml
+# a table card (abridged)
+---
+type: dbobject
+kind: table
+title: A_ALLOC_RULE_SEGEMENT — Table to store the segments selected in an allocation rule.
+description: Table to store the segments selected in an allocation rule.   # verbatim COMMENT ON
+product: wms
+module: DOM
+platform: [oracle]
+sources: [Oracle/DBScripts/Product/DOM.sql]
+related: [wms/db/tables/A_ALLOC_FULFILL_PARAM]   # from a foreign key
+---
+## Columns   → | Column | Oracle type | DB2 type | Null | Key | Description |
+## Primary key · ## Foreign keys · ## Indexes · ## Sequences · ## Triggers
+```
+
+A PL/SQL card is the same frontmatter over a `## Signature / spec` block and `## Source (Oracle)` /
+`## Source (DB2)` fenced bodies (a DB2 body identical to Oracle's is recorded as *"Identical to Oracle."*
+rather than duplicated).
+
+**On-demand serving, not in the concept index.** This tier is 3× the concept corpus and is schema-level,
+not narrative - putting it in `list_concepts` would drown concept retrieval. So the db cards are
+**excluded from the selectable index** and reached **only** through the `find_db_objects` tool
+(see [§Stage 3 - the database-object door](#the-database-object-door)); the base skill nudges Claude into
+that tool for schema questions and stays on concept cards for functional ones.
+
+| File | Job |
+|---|---|
+| `okfdbparse/model.py` | The dataclasses: `Table` (columns/PK/FK/index/seq/trigger), `Column`, `PlsqlObject` (signature + Oracle/DB2 bodies). |
+| `okfdbparse/parse_tables.py` | `CREATE TABLE` → columns/types/PK/inline constraints; token-level fallback for Oracle storage clauses; db2→generic dialect map (**sqlglot has no `db2` dialect**). |
+| `okfdbparse/parse_aux.py` | Overlays `COMMENT ON` (verbatim), foreign keys, indexes, sequences. |
+| `okfdbparse/parse_plsql.py` | Package/proc/func/trigger/view boundary detection + **verbatim body** slice; standalone-`/` terminator; captures inline + `PLSQL_Objects/` units. |
+| `okfdbparse/reconcile.py` | Oracle ⇄ DB2 match-by-name, type/body deltas, package spec+body merge. |
+| `okfdbparse/emit.py` | One card (+ `manifest.jsonl` line) per object; deterministic `card_id`; safe-yaml frontmatter. |
+| `okfdbparse/run.py` | The CLI + **hard verification gate** (count-match, unparsed→fail, dedup+`conflicts.log`); walks both dialect trees. |
+
+Design + plan: `docs/superpowers/{specs,plans}/2026-07-15-okf-wmos-dbobjects*`. Shipped in PR #82 (3,027
+cards, gate-verified, 0 unparsed).
+
 ---
 
 ## 5. Stage 3: Serving (`okf-serve`)
@@ -479,7 +578,7 @@ flowchart TB
 
     subgraph doors["Two doors"]
         rest["Door 1 - REST / OpenAPI<br/>(app.py, FastAPI)"]
-        mcp["Door 2 - MCP<br/>(mcp_app.py - tools + 3 prompts)"]
+        mcp["Door 2 - MCP<br/>(mcp_app.py - 14 tools)"]
     end
 
     git --- resolver
@@ -508,20 +607,53 @@ The universal HTTP face (auto-generated OpenAPI at `/docs`). Read-only in v1.
 
 ### Door 2 - MCP (`mcp_app.py`)
 
-The connector Claude speaks. It exposes **13 tools** and **3 prompts**.
+The connector Claude speaks. It exposes **14 tools** and **no prompts** - the three persona prompts
+that used to live here were **retired in PR #81**; the personas now ship as
+[Cowork plugin skills](#the-personas-a-cowork-plugin). A connector should offer *capabilities* (tools);
+*behaviour* (when to investigate vs. plan vs. teach) belongs in skills that travel with the client.
 
 - **Read tools** (wrap the resolver): `list_concepts`, `get_card`, `resolve` - `list_concepts` and
   `resolve` take an optional `client` scope that gates client memory (hard-isolated; no client → concepts
   only).
+- **The database-object door**: `find_db_objects` - the only path to the on-demand
+  [database-object tier](#the-database-object-tier-okf-dbparse). See below.
 - **Ledger tools** (the stateful part): `start_objective`, `list_objectives`, `get_objective`,
   `append_entry`, `set_status`, `record_quiz_result`.
 - **Memory tools** (the personal tier): `remember`, `recall`, `forget`, `promote` - owner-scoped private
   notes; `promote` prepares a note for [promotion to a shared client memory](#the-memory-layer).
-- **Three mode prompts** = the three "agents", each a persona plus the standing rules to
-  *ground every claim in a card's `sources:`* and *track the work in the ledger*:
-  - **`investigate(symptom)`** - root-cause an issue; log hypotheses, evidence, ruled-out causes → resolution.
-  - **`implementation_advisor(task)`** - advise on an implementation; log steps, decisions, trade-offs → plan/done.
-  - **`guided_learning(topic)`** - build a curriculum from the card graph, teach one concept at a time, quiz, record scores, resume from progress.
+
+<a id="the-database-object-door"></a>
+**`find_db_objects(query, kind?, module?, limit?)` - the database-object door.** The
+[database-object cards](#the-database-object-tier-okf-dbparse) are kept out of `list_concepts` (they'd
+swamp concept retrieval), so this tool is the way in. It is **LLM-free** - the same shape as memory
+`recall`: case-insensitive token/substring matching over each product's `concepts/<product>/db/manifest.jsonl`
+(the parser's index of `{id, kind, module, title, description, tags}`), ranked by hits, optionally filtered
+by `kind` (table/package/procedure/function/trigger/view) or `module`. It returns lightweight rows
+`{id, kind, module, product, title, description}`; Claude then loads the ones it wants with `resolve`/`get_card`
+like any card. Find an object **by name** (`ALLOCATION`) or **by what it means** (the object's verbatim
+`COMMENT ON` text - e.g. `"staging inbound"`), then read the exact schema.
+
+<a id="the-personas-a-cowork-plugin"></a>
+**The personas - now a Cowork plugin (skills).** The `investigate` / `implementation_advisor` /
+`guided_learning` mode-prompts were removed from the connector and reborn as **skills** in a Cowork plugin
+(`example-org/voyagerforge-plugins`, plugin `okf`). A skill is auto-selected by Claude from the
+user's intent - no slash-command needed - and carries the standing rules the prompts used to
+(*ground every claim in a card's `sources:`*, *respect regime/product/client isolation*, *track work in the
+ledger*). The plugin also **bundles the connector** (`.mcp.json` → `https://hive.example.com/mcp`), so
+one install gives a user both the tools and the behaviour:
+
+| Skill | Auto-engages on | What it does |
+|---|---|---|
+| **`okf`** (base, always-on) | any WMOS/SCALE question, and general Q&A | Grounds every answer in cards, cites `sources:`, reaches for the tools proactively, honours isolation. Also nudges into `find_db_objects` for schema questions. |
+| **Diagnose an Issue** | a live/production ticket or "why did X fail/not allocate" | Client cards **first** (via `resolve` with the client) → baseline product cards → prior issues; separates client-modified vs. vanilla behaviour. |
+| **Plan an Implementation** | "help me set up / redesign / configure X", "write a test plan" | Grounds a build/change in concept + client cards; offers a test-plan / spec artifact; can turn a known root cause into a fix plan. |
+| **Learn a Topic** | *only* an explicit "I want to learn / train me on X" | A tracked, quiz-based curriculum over the card graph that **resumes** across sessions via the ledger. A one-off "explain X" stays on base OKF - no learning plan. |
+
+Diagnose/Plan/Learn optionally open a ledger objective (`start_objective`) for multi-session work; a plain
+explanation does not. Full skill bodies, the manifest set (`marketplace.json` / `plugin.json` / `.mcp.json`),
+install steps, and a six-scenario behavioural eval live in the plugin repo's
+[`plugins/okf/README.md`](https://github.com/example-org/voyagerforge-plugins); design +
+acceptance: `docs/superpowers/specs/2026-07-15-okf-cowork-plugin-design.md` (PR #81).
 
 ### The stateful store - the SQLite objective ledger (`ledger.py`)
 
@@ -578,7 +710,8 @@ team-shared objectives remain a designed-in seam for a later version.
 
 ### A stateful mode in motion
 
-How `investigate` actually runs - Claude Desktop is the loop; the layer just retrieves and records:
+How a diagnosis actually runs - the **Diagnose** skill sets the behaviour, Claude is the loop, and the
+layer just retrieves and records (the skill opens a ledger objective only for multi-session work):
 
 ```mermaid
 sequenceDiagram
@@ -588,7 +721,7 @@ sequenceDiagram
     participant G as git cards
     participant L as SQLite ledger
 
-    U->>C: /investigate "waves running slow"
+    U->>C: "waves running slow at <client>" (Diagnose skill engages)
     C->>M: start_objective(mode=investigate, goal=…)
     M->>L: INSERT objective (owner=alice)
     C->>M: list_concepts() ; resolve(["wave-replen"], depth=1)
@@ -607,13 +740,13 @@ sequenceDiagram
 
 | File | Job |
 |---|---|
-| `resolver.py` | The pure resolver: `card_path` / `load_index` / `get_card` / `resolve`. Reads concepts live from `CONCEPTS_DIR` **and** client memory from `CLIENTS_DIR`; carries the client seed-filter + BFS guard. |
+| `resolver.py` | The pure resolver: `card_path` / `load_index` / `get_card` / `resolve`. Reads concepts live from `CONCEPTS_DIR` **and** client memory from `CLIENTS_DIR`; carries the client seed-filter + BFS guard. **Excludes the `concepts/<product>/db/` tier from the concept index** (that's the on-demand db-object tier). |
 | `tools.py` | Transport-agnostic read tools wrapping the resolver (client-scope aware). |
+| `dbobjects.py` | LLM-free keyword search over the db-object manifests (`*/db/manifest.jsonl`) - backs the `find_db_objects` tool. Token/substring match, no network. |
 | `ledger.py` | SQLite ledger - `objective` + `entry` + `memory` CRUD, owner-scoped, enum-validated. **The stateful core** (work state + personal memory). |
 | `identity.py` | Resolve `owner` from the trusted header (case-insensitive), else `OKF_DEFAULT_OWNER`. |
-| `prompts.py` | The three mode-prompt bodies (grounding + ledger-tracking + client-memory-scope rules). |
 | `app.py` | Door 1 - FastAPI REST router (`/healthz`, `/concepts`, `/card/{id}`, `/resolve`). |
-| `mcp_app.py` | Door 2 - FastMCP server: 13 tools (read + ledger + memory) + 3 prompts. Injects `owner` from the request context. |
+| `mcp_app.py` | Door 2 - FastMCP server: 14 tools (read + `find_db_objects` + ledger + memory), no prompts (personas moved to the Cowork plugin skills). Injects `owner` from the request context. |
 | `server.py` | Entrypoint: `serve --stdio` \| `--http`; mounts the MCP streamable-HTTP app on FastAPI. |
 | `config.py` | Settings: `concepts_dir`, `clients_dir`, `okf_data_dir`, host/port/transport, `identity_header`, `okf_default_owner`. |
 | `index.py` | (Content tooling) emits `index.md`, the progressive-disclosure entry point over the cards. |
@@ -708,8 +841,14 @@ Every code file in the pipeline and its one-line job.
 `correction_from_issue.py` · `corrections_lint.py` · `new_memory.py` · `memory_from_issue.py` ·
 `memory_lint.py` · `memory_conflict_score.py` · `run_pipeline.sh`).
 
+### `tooling/okf-dbparse/okfdbparse/` - the deterministic database-object parser
+`model.py` · `parse_tables.py` · `parse_aux.py` · `parse_plsql.py` · `reconcile.py` · `emit.py` ·
+`run.py` - a one-time, **LLM-free** ingest (dep: `sqlglot`) that turns the Manhattan WMOS deploy DDL
+(Oracle + DB2) into the `concepts/wms/db/` schema-card tier behind a hard verification gate. See
+[The database-object tier](#the-database-object-tier-okf-dbparse).
+
 ### `tooling/okf-serve/okfserve/` - Stage 3, serving
-`resolver.py` · `tools.py` · `ledger.py` · `identity.py` · `prompts.py` · `app.py` · `mcp_app.py` ·
+`resolver.py` · `tools.py` · `dbobjects.py` · `ledger.py` · `identity.py` · `app.py` · `mcp_app.py` ·
 `server.py` · `config.py` (+ content/eval tooling `index.py`, `agent.py`, `eval.py`, `run_eval.py`)
 - see the [okf-serve file map](#okf-serve-file-map).
 
@@ -729,6 +868,7 @@ Every code file in the pipeline and its one-line job.
 | `drafts/*.md` | Distilled cards awaiting approval (Stage 2 Gate 2) - gitignored scratch. |
 | `concepts/<product>/*.md` | **The canonical concept cards** (the knowledge store). |
 | `concepts/<product>/corrections/*.md` | **Correction overlay cards** - co-pulled, never independently listed. |
+| `concepts/<product>/db/{tables,plsql}/*.md` + `db/manifest.jsonl` | **Database-object cards** (`type: dbobject`) - the deterministic schema tier; excluded from the concept index, reached only via `find_db_objects`. |
 | `clients/<client>/memory/*.md` | **Client-scoped memory cards** (`type: memory`) - selectable only in that client's scope, hard-isolated. |
 | `.claude/agents/wms-curator.md` | The curation subagent. |
 | `.claude/commands/wms-prep.md` | The `/wms-prep` orchestration command. |
@@ -821,6 +961,12 @@ python scripts/conformance_pass.py    ../../concepts     # resource-URI, timesta
 python scripts/index_generate.py      ../../concepts     # root + per-product index.md
 #   then: isolation eval must pass 0-bleed before deploy (okf-serve/run_eval)
 
+# ── (one-off) database-object tier: deploy DDL → schema cards ───────────
+cd tooling/okf-dbparse && uv sync --extra dev
+uv run python -m okfdbparse.run <ManhDBDeploy_root> ../../concepts/wms/db
+#   deterministic + LLM-free; the run FAILS on any unparsed construct (no partial corpus).
+#   emits tables/ + plsql/ cards + manifest.jsonl (+ conflicts.log). Re-run only on new DDL.
+
 # ── Stage 3: serve the cards to Claude + track work in SQLite ───────────
 cd tooling/okf-serve && uv sync --extra dev
 uv run okfserve serve --stdio     # local: register as an MCP server in Claude Code
@@ -847,7 +993,10 @@ All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev
 | **Memory card (client)** | A promoted, sanitised `type: memory` card at `clients/<client>/memory/`, hard-isolated to its client. |
 | **Promotion** | Turning a personal note into a shared client memory card via a sanitise + human-approve gate (the only private→shared bridge). |
 | **okf-author** | The write-only MCP server (`issues:write` only) that files memory/correction authoring issues, keeping okf-serve keyless. |
-| **Mode** | One of `investigate` / `implementation_advisor` / `guided_learning` - an MCP prompt persona over the ledger. |
+| **Database-object card (`dbobject`)** | An exact schema card (a table or a PL/SQL unit) parsed deterministically from the deploy DDL; served on-demand via `find_db_objects`, kept out of the concept index. |
+| **`find_db_objects`** | The LLM-free MCP tool that searches the db-object manifests by name or comment - the only door to the schema tier. |
+| **Skill / Cowork plugin** | A behaviour that auto-engages from user intent. The `okf` plugin bundles the connector + four skills (base OKF + Diagnose / Plan / Learn); the skills replaced the retired MCP mode-prompts. |
+| **Mode** | The ledger dimension an objective is opened under: `investigate` / `implement` / `learn` - set by the corresponding skill. |
 | **Door** | A way in: the REST/OpenAPI API, or the MCP connector for Claude. |
 | **Gate** | A human review/approval checkpoint where the pipeline stops. |
 | **Bifrost / `VK_OKF`** | The firm's LLM gateway and the virtual key scoped to OKF's models. |
