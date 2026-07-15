@@ -44,7 +44,10 @@ def load_index(concepts_dir, clients_dir=None) -> list[dict]:
     for p in sorted(concepts_dir.rglob("*.md")):
         if p.name in ("index.md", "log.md"):
             continue
-        cid = p.relative_to(concepts_dir).with_suffix("").as_posix()
+        rel = p.relative_to(concepts_dir)
+        if "db" in rel.parts[:-1]:   # concepts/<product>/db/** is the on-demand db-object tier
+            continue
+        cid = rel.with_suffix("").as_posix()
         fm = parse_frontmatter(p.read_text())
         out.append({"id": cid, "title": fm.get("title", cid),
                     "description": fm.get("description", ""),
