@@ -138,10 +138,18 @@ def _strip_sequence_affixes(name: str) -> str:
 def _sequence_owner(tables: dict[str, Table], seq_name: str) -> Table | None:
     """Find the table that owns `seq_name` by a name-prefix heuristic.
 
-    Strips common sequence affixes (`_SEQ`, `SEQ_`, ...) from the sequence
-    name, then picks the table whose name is the longest exact/prefix match
-    against the remaining stem. Returns `None` (an orphan sequence) when no
-    table matches.
+    Strips common sequence affixes (`_SEQ`, `SEQ_`, ...) from the sequence name,
+    then resolves the owner in strict precedence:
+
+    1. An **exact** table match (`table == stem`) is the unambiguous owner and
+       wins outright. This is the important part: a bare `longest match` let an
+       exact owner lose to any longer table that merely *starts* with the stem
+       (e.g. `ROUTE_SEQ` was grabbed by `ROUTE_PLAN_LEG_SET` instead of the
+       `ROUTE` table).
+    2. Otherwise, the longest table that is a prefix of the stem, or that the
+       stem is a prefix of -- a weak plural/abbreviation fallback.
+
+    Returns `None` (an orphan sequence) when no table matches.
     """
     stem = _strip_sequence_affixes(seq_name)
     if not stem:
@@ -151,8 +159,9 @@ def _sequence_owner(tables: dict[str, Table], seq_name: str) -> Table | None:
     best_len = -1
     for table_name, table in tables.items():
         upper = table_name.upper()
-        matches = stem == upper or stem.startswith(upper + "_") or upper.startswith(stem)
-        if matches and len(upper) > best_len:
+        if upper == stem:
+            return table  # exact match -> unambiguous owner, beats any prefix match
+        if (stem.startswith(upper + "_") or upper.startswith(stem)) and len(upper) > best_len:
             best_table = table
             best_len = len(upper)
     return best_table
