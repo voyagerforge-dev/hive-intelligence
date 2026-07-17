@@ -203,3 +203,37 @@ def test_db2_alter_foreign_key_enforcement_is_not_gated(caplog):
             "db2",
         )
     assert not any(r.name == "okfdbparse.parse_aux" for r in caplog.records)
+
+
+def test_sequence_exact_name_match_beats_a_longer_sibling_table():
+    # Flag 2: `_sequence_owner` used longest-match, so an exact-name owner lost
+    # to any longer table that merely starts with the stem -- ROUTE_SEQ landed
+    # on ROUTE_PLAN_LEG_SET instead of ROUTE. Exact match must win outright.
+    from okfdbparse.model import Column, Table
+    tabs = {
+        "ROUTE": Table(name="ROUTE", module="X", columns=[Column("ROUTE_ID")]),
+        "ROUTE_PLAN_LEG_SET": Table(
+            name="ROUTE_PLAN_LEG_SET", module="X", columns=[Column("ID")]
+        ),
+    }
+    apply_aux(tabs, "CREATE SEQUENCE ROUTE_SEQ START WITH 1;", "oracle")
+    assert tabs["ROUTE"].sequences == ["ROUTE_SEQ"]
+    assert tabs["ROUTE_PLAN_LEG_SET"].sequences == []
+
+
+def test_sequence_exact_match_is_case_insensitive():
+    from okfdbparse.model import Column, Table
+    tabs = {
+        "job_hist": Table(name="job_hist", module="X", columns=[Column("ID")]),
+        "JOB_HIST_ARCHIVE": Table(name="JOB_HIST_ARCHIVE", module="X", columns=[Column("ID")]),
+    }
+    apply_aux(tabs, "CREATE SEQUENCE JOB_HIST_SEQ START WITH 1;", "oracle")
+    assert tabs["job_hist"].sequences == ["JOB_HIST_SEQ"]
+
+
+def test_sequence_prefix_fallback_still_works_without_exact_match():
+    # No exact table for the stem -> longest table that is a prefix of the stem.
+    from okfdbparse.model import Column, Table
+    tabs = {"ORDER_LINE": Table(name="ORDER_LINE", module="X", columns=[Column("ID")])}
+    apply_aux(tabs, "CREATE SEQUENCE ORDER_LINE_STATUS_SEQ START WITH 1;", "oracle")
+    assert tabs["ORDER_LINE"].sequences == ["ORDER_LINE_STATUS_SEQ"]
