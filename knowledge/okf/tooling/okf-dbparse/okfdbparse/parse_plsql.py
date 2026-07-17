@@ -64,8 +64,12 @@ _OPTIONAL_VIEW_MODIFIERS = {"FORCE", "NO", "EDITIONABLE", "NONEDITIONABLE"}
 #                 the PL/SQL side.
 #   `synonym`   = `CREATE OR REPLACE SYNONYM x FOR y[@dblink]` -- an alias, not
 #                 a documented schema object.
+#   `alias`/`nickname` = DB2's `CREATE OR REPLACE ALIAS x FOR TABLE y` and
+#                 `CREATE OR REPLACE NICKNAME x FOR y` -- the DB2 spellings of a
+#                 synonym/remote-table reference; an alias to another object,
+#                 not a documented schema object of its own.
 # None of these are schema objects the OKF cards document.
-SKIP_KINDS = {"variable", "type", "type body", "sequence", "synonym"}
+SKIP_KINDS = {"variable", "type", "type body", "sequence", "synonym", "alias", "nickname"}
 
 
 def _skip_optional_view_modifiers(tokens: list[Token], i: int) -> int:
@@ -105,9 +109,12 @@ def _match_kind(tokens: list[Token], i: int) -> tuple[str, int] | None:
     if tok.token_type == TokenType.SEQUENCE:
         return "sequence", i + 1
 
-    # `SYNONYM` is not a sqlglot keyword -- it tokenizes as a plain `VAR`.
-    if tok.token_type == TokenType.VAR and tok.text.upper() == "SYNONYM":
-        return "synonym", i + 1
+    # `SYNONYM`/`ALIAS`/`NICKNAME` are not sqlglot keywords -- each tokenizes as
+    # a plain `VAR`. All three are name-aliases for another object (Oracle
+    # `SYNONYM`, DB2 `ALIAS`/`NICKNAME`), recognized only so they're cleanly
+    # skipped (SKIP_KINDS) rather than flagged as unrecognized units.
+    if tok.token_type == TokenType.VAR and tok.text.upper() in {"SYNONYM", "ALIAS", "NICKNAME"}:
+        return tok.text.lower(), i + 1
 
     if tok.token_type == TokenType.VAR and tok.text.upper() == "PACKAGE":
         j = i + 1

@@ -88,6 +88,11 @@ def _merge_package_units(objs: list[PlsqlObject], dialect: str) -> list[PlsqlObj
 
     for obj in objs:
         if obj.kind != "package":
+            # Same-name units in one dialect collapse LAST-wins. The runner
+            # feeds units lowest-precedence-first (Seed re-declarations, then
+            # Product-inline, then the dedicated PLSQL_Objects/ file), so the
+            # highest-precedence definition is the one that survives -- see
+            # `run._ordered_plsql`.
             if obj.name not in merged:
                 order.append(obj.name)
             merged[obj.name] = replace(obj, dialects=set(obj.dialects))

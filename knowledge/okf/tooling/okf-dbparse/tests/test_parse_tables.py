@@ -388,3 +388,26 @@ def test_db2_dialect_parses_without_crash():
     assert cols["EVENT_SEQ"].not_null is False
     assert t.pk == ["EVENT_ID"]
     assert t.dialects == {"db2"}
+
+
+def test_generated_always_as_identity_column_stripped():
+    sql = (
+        "CREATE TABLE ID_T\n"
+        " ( ID NUMBER GENERATED ALWAYS AS IDENTITY MINVALUE 1 MAXVALUE 9999999999 "
+        "INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER  NOCYCLE  NOT NULL ENABLE,\n"
+        "   A NUMBER(9,0),\n"
+        "   CONSTRAINT PK_ID PRIMARY KEY (ID) );"
+    )
+    r = parse_tables(sql, "oracle")
+    assert "ID_T" in r
+    cols = {c.name: c.type_oracle for c in r["ID_T"].columns}
+    assert cols["ID"] == "NUMBER"
+    assert cols["A"] == "NUMBER(9, 0)"
+
+
+def test_legacy_long_and_long_raw_types_mapped():
+    sql = "CREATE TABLE LR_T ( H NUMBER(9,0), REC LONG RAW, NOTES LONG );"
+    r = parse_tables(sql, "oracle")
+    cols = {c.name: c.type_oracle for c in r["LR_T"].columns}
+    assert cols["REC"] == "BLOB"
+    assert cols["NOTES"] == "CLOB"
