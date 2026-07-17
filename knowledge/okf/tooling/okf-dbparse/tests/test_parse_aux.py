@@ -138,3 +138,68 @@ def test_apply_aux_skips_non_aux_statements_without_warning(caplog):
         apply_aux(tabs, sql, "oracle")
     assert tabs["MASTER_STAGING_DATA"].comment == "kept"
     assert not any("could not parse aux" in r.getMessage() for r in caplog.records)
+
+
+def test_create_index_with_storage_tail_is_attached():
+    # Real Oracle DDL trails CREATE INDEX with storage clauses; sqlglot degrades
+    # the whole statement to Command, which used to silently drop the index
+    # (~12k index statements in the corpus -> only 77 tables had any).
+    tabs = _t()
+    apply_aux(
+        tabs,
+        "CREATE INDEX IDX_MSD_EVENT ON MASTER_STAGING_DATA (EVENT_ID) "
+        "TABLESPACE TS_IDX PCTFREE 10 INITRANS 2 MAXTRANS 255;",
+        "oracle",
+    )
+    assert [(n, c) for n, c, _u in tabs["MASTER_STAGING_DATA"].indexes] == [
+        ("IDX_MSD_EVENT", ["EVENT_ID"])
+    ]
+
+
+def test_unknown_target_warns_on_the_soft_logger_not_the_gate(caplog):
+    import logging
+    tabs = _t()
+    with caplog.at_level(logging.WARNING):
+        apply_aux(tabs, "comment on table NOT_CARDED is 'x';", "oracle")
+    names = {r.name for r in caplog.records}
+    assert "okfdbparse.aux_unattached" in names      # reported
+    assert "okfdbparse.parse_aux" not in names       # NOT gated
+
+
+def test_alter_table_foreign_key_with_trailing_state_is_attached():
+    tabs = _t()
+    tabs["OTHER"] = Table(name="OTHER", module="DOM", columns=[Column("OID")])
+    apply_aux(
+        tabs,
+        "ALTER TABLE MASTER_STAGING_DATA ADD CONSTRAINT FK1 FOREIGN KEY (EVENT_ID) "
+        "REFERENCES OTHER (OID) ENABLE NOVALIDATE;",
+        "oracle",
+    )
+    assert ("EVENT_ID", "OTHER", "OID") in tabs["MASTER_STAGING_DATA"].fks
+
+
+def test_schema_qualified_index_name_is_attached():
+    tabs = _t()
+    apply_aux(
+        tabs,
+        "CREATE UNIQUE INDEX session.msd_idx1 ON session.MASTER_STAGING_DATA(EVENT_ID) "
+        "TABLESPACE TS PCTFREE 10;",
+        "oracle",
+    )
+    assert [(n, c) for n, c, _u in tabs["MASTER_STAGING_DATA"].indexes] == [
+        ("msd_idx1", ["EVENT_ID"])
+    ]
+
+
+def test_db2_alter_foreign_key_enforcement_is_not_gated(caplog):
+    import logging
+    # DB2 `ALTER TABLE t ALTER FOREIGN KEY fk NOT ENFORCED` toggles enforcement;
+    # it carries no FK definition, so it is neither attached nor a gate failure.
+    tabs = _t()
+    with caplog.at_level(logging.WARNING):
+        apply_aux(
+            tabs,
+            "ALTER TABLE MASTER_STAGING_DATA ALTER FOREIGN KEY FK_X NOT ENFORCED;",
+            "db2",
+        )
+    assert not any(r.name == "okfdbparse.parse_aux" for r in caplog.records)

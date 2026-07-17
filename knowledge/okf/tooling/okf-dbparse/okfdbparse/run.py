@@ -93,6 +93,11 @@ class RunReport:
     )
     unparsed: list[str] = field(default_factory=list)
     duplicates: list[str] = field(default_factory=list)
+    # Aux statements that parsed fine but had nowhere to attach: a
+    # comment/FK/index on a table outside the carded corpus, or a sequence whose
+    # owning table couldn't be resolved. A SCOPE consequence, not a parser gap --
+    # reported (`unattached.log`) and non-fatal, unlike `unparsed`.
+    unattached: list[str] = field(default_factory=list)
 
 
 @contextmanager
@@ -212,6 +217,7 @@ def _parse_dialect_tables(
     limit_modules: int | None,
     unparsed: list[str],
     duplicates: list[str],
+    unattached: list[str],
     plsql_objects: list[PlsqlObject],
     plsql_sources: dict[str, list[str]],
     seed_plsql_objects: list[PlsqlObject],
@@ -284,7 +290,20 @@ def _parse_dialect_tables(
         texts.append(text)
 
     if texts:
-        apply_aux(tables, "\n".join(texts), dialect)
+        # apply_aux warns on two SIBLING loggers and they mean different things:
+        #   okfdbparse.parse_aux      -- attachable DDL we couldn't parse. A real
+        #                                silent drop (a lost index/sequence/FK/
+        #                                comment) -> routed into the hard gate.
+        #   okfdbparse.aux_unattached -- parsed fine, but its target isn't carded
+        #                                (or a sequence has no resolvable owner).
+        #                                A scope consequence -> reported, non-fatal.
+        # Capturing them separately is why they must not be parent/child loggers.
+        with _capture_warnings("okfdbparse.parse_aux") as aux_failures:
+            with _capture_warnings("okfdbparse.aux_unattached") as aux_unattached:
+                apply_aux(tables, "\n".join(texts), dialect)
+        prefix = f"{_DIALECT_DIR[dialect]} aux"
+        unparsed.extend(f"{prefix}: {w}" for w in aux_failures)
+        unattached.extend(f"{prefix}: {w}" for w in aux_unattached)
 
     return tables, sources
 
@@ -401,6 +420,7 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
     """
     unparsed: list[str] = []
     duplicates: list[str] = []
+    unattached: list[str] = []
 
     # PL/SQL is collected from THREE places per dialect: inline units in the
     # Product module files and inline units in the Seed/Product catalogs (both
@@ -417,11 +437,11 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
     db2_plsql_sources: dict[str, list[str]] = {}
 
     oracle_tables, oracle_table_sources = _parse_dialect_tables(
-        src_root, "oracle", limit_modules, unparsed, duplicates,
+        src_root, "oracle", limit_modules, unparsed, duplicates, unattached,
         oracle_plsql, oracle_plsql_sources, oracle_seed_plsql,
     )
     db2_tables, db2_table_sources = _parse_dialect_tables(
-        src_root, "db2", limit_modules, unparsed, duplicates,
+        src_root, "db2", limit_modules, unparsed, duplicates, unattached,
         db2_plsql, db2_plsql_sources, db2_seed_plsql,
     )
     merged_tables = reconcile_tables(oracle_tables, db2_tables)
@@ -447,7 +467,7 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
     for obj in merged_plsql:
         obj.source_files = _union_sources(oracle_plsql_sources, db2_plsql_sources, name=obj.name)
 
-    report = RunReport(unparsed=unparsed, duplicates=duplicates)
+    report = RunReport(unparsed=unparsed, duplicates=duplicates, unattached=unattached)
     report.counts["table"]["parsed"] = len(merged_tables)
     report.counts["plsql"]["parsed"] = len(merged_plsql)
 
@@ -478,6 +498,15 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
     if report.duplicates:
         with (out_dir / "conflicts.log").open("w") as fh:
             for line in report.duplicates:
+                fh.write(line + "\n")
+
+    # Aux statements that parsed but had nowhere to attach (target table not in
+    # the carded corpus, or an orphan sequence). A scope consequence rather than
+    # a parser gap, so -- like conflicts.log -- fully visible, never silent, but
+    # never fatal.
+    if report.unattached:
+        with (out_dir / "unattached.log").open("w") as fh:
+            for line in report.unattached:
                 fh.write(line + "\n")
 
     if report.unparsed:
@@ -524,6 +553,7 @@ def main(argv: list[str] | None = None) -> int:
                 "counts": report.counts,
                 "unparsed": report.unparsed,
                 "duplicates": report.duplicates,
+                "unattached": len(report.unattached),
             },
             indent=2,
         )
