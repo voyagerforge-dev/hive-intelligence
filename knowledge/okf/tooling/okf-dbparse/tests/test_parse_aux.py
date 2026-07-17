@@ -1,5 +1,5 @@
 from okfdbparse.model import Column, Table
-from okfdbparse.parse_aux import apply_aux
+from okfdbparse.parse_aux import apply_aux, attach_sequences
 
 
 def _t():
@@ -63,13 +63,13 @@ def test_multi_column_foreign_key_and_non_unique_index():
 
 def test_sequence_attached_to_owning_table_by_name_prefix():
     tabs = _t()
-    apply_aux(tabs, "CREATE SEQUENCE MASTER_STAGING_DATA_SEQ START WITH 1;", "oracle")
+    attach_sequences(tabs, "CREATE SEQUENCE MASTER_STAGING_DATA_SEQ START WITH 1;")
     assert "MASTER_STAGING_DATA_SEQ" in tabs["MASTER_STAGING_DATA"].sequences
 
 
 def test_orphan_sequence_is_not_attached_and_does_not_crash():
     tabs = _t()
-    apply_aux(tabs, "CREATE SEQUENCE COMPLETELY_UNRELATED_SEQ START WITH 1;", "oracle")
+    attach_sequences(tabs, "CREATE SEQUENCE COMPLETELY_UNRELATED_SEQ START WITH 1;")
     assert tabs["MASTER_STAGING_DATA"].sequences == []
 
 
@@ -216,7 +216,7 @@ def test_sequence_exact_name_match_beats_a_longer_sibling_table():
             name="ROUTE_PLAN_LEG_SET", module="X", columns=[Column("ID")]
         ),
     }
-    apply_aux(tabs, "CREATE SEQUENCE ROUTE_SEQ START WITH 1;", "oracle")
+    attach_sequences(tabs, "CREATE SEQUENCE ROUTE_SEQ START WITH 1;")
     assert tabs["ROUTE"].sequences == ["ROUTE_SEQ"]
     assert tabs["ROUTE_PLAN_LEG_SET"].sequences == []
 
@@ -227,7 +227,7 @@ def test_sequence_exact_match_is_case_insensitive():
         "job_hist": Table(name="job_hist", module="X", columns=[Column("ID")]),
         "JOB_HIST_ARCHIVE": Table(name="JOB_HIST_ARCHIVE", module="X", columns=[Column("ID")]),
     }
-    apply_aux(tabs, "CREATE SEQUENCE JOB_HIST_SEQ START WITH 1;", "oracle")
+    attach_sequences(tabs, "CREATE SEQUENCE JOB_HIST_SEQ START WITH 1;")
     assert tabs["job_hist"].sequences == ["JOB_HIST_SEQ"]
 
 
@@ -235,5 +235,30 @@ def test_sequence_prefix_fallback_still_works_without_exact_match():
     # No exact table for the stem -> longest table that is a prefix of the stem.
     from okfdbparse.model import Column, Table
     tabs = {"ORDER_LINE": Table(name="ORDER_LINE", module="X", columns=[Column("ID")])}
-    apply_aux(tabs, "CREATE SEQUENCE ORDER_LINE_STATUS_SEQ START WITH 1;", "oracle")
+    attach_sequences(tabs, "CREATE SEQUENCE ORDER_LINE_STATUS_SEQ START WITH 1;")
     assert tabs["ORDER_LINE"].sequences == ["ORDER_LINE_STATUS_SEQ"]
+
+
+def test_db2_create_or_replace_sequence_attaches_by_name():
+    # DB2 spells sequences `CREATE OR REPLACE SEQUENCE x ... NO ORDER!` -- these
+    # degrade to Command in sqlglot, so they're attached by name extraction, not
+    # by parsing. ACCESSORIAL_ID_SEQ -> ACCESSORIAL (via the prefix fallback).
+    from okfdbparse.model import Column, Table
+    tabs = {"ACCESSORIAL": Table(name="ACCESSORIAL", module="X", columns=[Column("ID")])}
+    attach_sequences(
+        tabs,
+        "create or replace sequence ACCESSORIAL_ID_SEQ start with 23 no order!")
+    assert "ACCESSORIAL_ID_SEQ" in tabs["ACCESSORIAL"].sequences
+
+
+def test_db2_bang_sequence_file_blob_attaches_all():
+    from okfdbparse.model import Column, Table
+    tabs = {
+        "ACTION_TYPE": Table(name="ACTION_TYPE", module="X", columns=[Column("ID")]),
+        "AI_MASTER": Table(name="AI_MASTER", module="X", columns=[Column("ID")]),
+    }
+    blob = ("create or replace sequence ACTION_TYPE_ID_SEQ start with 3 no order!\n"
+            "create or replace sequence AI_MASTER_ID_SEQ start with 3 no order!\n")
+    attach_sequences(tabs, blob)
+    assert "ACTION_TYPE_ID_SEQ" in tabs["ACTION_TYPE"].sequences
+    assert "AI_MASTER_ID_SEQ" in tabs["AI_MASTER"].sequences

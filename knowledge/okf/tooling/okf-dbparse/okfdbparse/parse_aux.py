@@ -47,8 +47,19 @@ unattached_logger = logging.getLogger("okfdbparse.aux_unattached")
 # hundreds of thousands of PL/SQL-body fragments would otherwise each be parsed.
 _AUX_HEAD = re.compile(
     r"\s*(?:--[^\n]*\n\s*|/\*.*?\*/\s*)*"
-    r"(COMMENT\b|ALTER\s+TABLE\b|CREATE\s+(?:UNIQUE\s+|BITMAP\s+)?INDEX\b|CREATE\s+SEQUENCE\b)",
+    r"(COMMENT\b|ALTER\s+TABLE\b|CREATE\s+(?:UNIQUE\s+|BITMAP\s+)?INDEX\b)",
     re.IGNORECASE | re.DOTALL,
+)
+
+# Every `CREATE [OR REPLACE] SEQUENCE <name>` in the text, with its name.
+# Sequences are attached by name (owner lookup), never parsed or split into
+# statements: Oracle `CREATE SEQUENCE` parses fine, but DB2 `CREATE OR REPLACE
+# SEQUENCE x ... NO ORDER!` degrades to `Command`, and its files use `!`
+# terminators that must NOT be split on (see `_split_statements`). Scanning the
+# whole text with `findall` sidesteps both -- a sequence carries no columns/keys
+# we model, so the name is all `_sequence_owner` needs.
+_SEQUENCE_DECL = re.compile(
+    r"\bCREATE\s+(?:OR\s+REPLACE\s+)?SEQUENCE\s+\"?([A-Za-z0-9_$]+)\"?", re.IGNORECASE
 )
 # Only an ADD of a foreign key carries columns + references we attach. DB2's
 # `ALTER TABLE t ALTER FOREIGN KEY fk NOT ENFORCED` merely toggles an existing
@@ -248,13 +259,33 @@ def _apply_create_index(tables: dict[str, Table], node: exp.Create) -> None:
     table.indexes.append((index_name, columns, unique))
 
 
-def _apply_create_sequence(tables: dict[str, Table], node: exp.Create) -> None:
-    seq_name = node.this.name
+def _attach_sequence(tables: dict[str, Table], seq_name: str) -> None:
+    """Attach one sequence to its owning table by name (see `_sequence_owner`).
+    Sequences are resolved by name, not by parsing -- so this works for a DB2
+    `CREATE OR REPLACE SEQUENCE` that sqlglot can only degrade to `Command`."""
     owner = _sequence_owner(tables, seq_name)
     if owner is None:
-        unattached_logger.warning("okfdbparse: CREATE SEQUENCE %s has no clear owning table", seq_name)
+        unattached_logger.warning(
+            "okfdbparse: CREATE SEQUENCE %s has no clear owning table", seq_name
+        )
         return
-    owner.sequences.append(seq_name)
+    if seq_name not in owner.sequences:
+        owner.sequences.append(seq_name)
+
+
+def attach_sequences(tables: dict[str, Table], sql: str) -> None:
+    """Attach every `CREATE [OR REPLACE] SEQUENCE` in `sql` to its owning table.
+
+    Run by the runner AFTER reconcile, against the MERGED table set -- not
+    per-dialect inside `apply_aux`. A sequence's owner is found by name, and DB2
+    sequence owners exist only in the merged set: the DB2 dialect barely parses
+    (its files use `!` terminators sqlglot can't split on, so `db2_tables` is
+    nearly empty), while the merged set carries every table name from the Oracle
+    side. Scanning the whole text with `_SEQUENCE_DECL` also handles DB2 sequence
+    files that never split into statements.
+    """
+    for seq_name in _SEQUENCE_DECL.findall(sql):
+        _attach_sequence(tables, seq_name)
 
 
 def _apply_node(tables: dict[str, Table], node: exp.Expression) -> None:
@@ -263,11 +294,10 @@ def _apply_node(tables: dict[str, Table], node: exp.Expression) -> None:
     elif isinstance(node, exp.Alter):
         _apply_alter_table(tables, node)
     elif isinstance(node, exp.Create):
-        kind = (node.args.get("kind") or "").upper()
-        if kind == "INDEX":
+        # SEQUENCEs are handled before parsing (by name) in `apply_aux`, so a
+        # Create reaching here is only ever an INDEX.
+        if (node.args.get("kind") or "").upper() == "INDEX":
             _apply_create_index(tables, node)
-        elif kind == "SEQUENCE":
-            _apply_create_sequence(tables, node)
     elif isinstance(node, exp.Command):
         logger.warning("okfdbparse: aux statement degraded to Command, skipping: %.80s", node.sql())
     # else: statement type we don't attach (e.g. GRANT, CREATE TABLE) -- ignore
@@ -285,6 +315,10 @@ def apply_aux(tables: dict[str, Table], sql: str, dialect: str) -> None:
     """
     sqlglot_dialect = _sqlglot_dialect(dialect)
 
+    # NB: sequences are NOT handled here -- they're attached post-reconcile
+    # against the merged table set (see `attach_sequences`), because a DB2
+    # sequence's owning table exists only in the merged set. This loop handles
+    # comments, FKs and indexes, which attach to the dialect's own tables.
     for stmt_text in _split_statements(sql, sqlglot_dialect):
         if not _is_aux_statement(stmt_text):
             continue
