@@ -11,6 +11,7 @@ skipped and logged -- never allowed to crash the run.
 from __future__ import annotations
 
 import logging
+import re
 
 import sqlglot
 from sqlglot import exp
@@ -19,6 +20,24 @@ from okfdbparse.model import Table
 from okfdbparse.parse_tables import _sqlglot_dialect, _split_statements
 
 logger = logging.getLogger(__name__)
+
+# The only statement kinds `_apply_node` attaches: COMMENT ON, ALTER TABLE ...,
+# CREATE [UNIQUE|BITMAP] INDEX, CREATE SEQUENCE. A statement whose first
+# keyword (past leading whitespace/`--`/`/*...*/` noise) isn't one of these is
+# skipped without a parse attempt -- crucial over the Seed catalogs, whose
+# hundreds of thousands of PL/SQL-body fragments would otherwise each be
+# parsed and warned about, dominating the run. Attachment is unchanged:
+# `_apply_node` ignored those nodes anyway.
+_AUX_STMT = re.compile(
+    r"\s*(?:--[^\n]*\n\s*|/\*.*?\*/\s*)*"
+    r"(?:COMMENT\b|ALTER\s+TABLE\b|CREATE\s+(?:UNIQUE\s+|BITMAP\s+)?INDEX\b|CREATE\s+SEQUENCE\b)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _is_aux_statement(stmt_text: str) -> bool:
+    """True only for statements `_apply_node` can attach (see `_AUX_STMT`)."""
+    return _AUX_STMT.match(stmt_text) is not None
 
 # Suffixes/prefixes DDL authors commonly hang off a sequence name that derives
 # from its owning table's name (e.g. `ORDER_LINE_SEQ`, `SEQ_ORDER_LINE`).
@@ -179,6 +198,8 @@ def apply_aux(tables: dict[str, Table], sql: str, dialect: str) -> None:
     sqlglot_dialect = _sqlglot_dialect(dialect)
 
     for stmt_text in _split_statements(sql, sqlglot_dialect):
+        if not _is_aux_statement(stmt_text):
+            continue
         try:
             node = sqlglot.parse_one(stmt_text, read=sqlglot_dialect)
         except Exception:  # noqa: BLE001 -- skip unparseable aux statements, never crash

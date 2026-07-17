@@ -1,11 +1,17 @@
 """End-to-end runner: WMOS Oracle/DB2 DDL tree -> OKF `dbobject` cards + manifest.
 
-Walks exactly two locations per dialect -- `DBScripts/Product/*.sql` (tables)
-and `DBScripts/Product/PLSQL_Objects/*.sql` (PL/SQL units) -- so `Seed/`,
-`Archive/`, `Upgrade/` and `CreateSchema/` (siblings of `PLSQL_Objects/` under
-`Product/`) are skipped simply by never being walked: a non-recursive
-`Path.glob("*.sql")` on `Product/` only ever sees files directly in it, never
-files one directory down.
+Walks three locations per dialect: `DBScripts/Product/*.sql` (module files,
+non-recursive), the `DBScripts/Seed/Product/<module>/` base-schema catalogs
+(`WMLM`/`CA`/`SLOT` -- the `*_Tables_PKs.sql` bundles where the classic WM
+tables like `PROD_TRKG_TRAN`/`ACCESSORIAL` are declared, disjoint from the
+module files; see `_dialect_table_files`), and `DBScripts/Product/PLSQL_Objects/*.sql`
+(PL/SQL units). Under `Seed/Product`, per-table INSERT seed-data files (no
+object DDL) are skipped by content (`_has_ddl`). The subdirectories *under*
+`Product/` (`Product/Seed/`, `Product/Archive/`, `Product/Upgrade/`,
+`Product/CreateSchema/`) and the non-`Product` `Seed/` subtrees
+(`Seed/Archive/`, `Seed/Merges/`, `Seed/Shared/`) are still never walked -- the
+`Product/*.sql` glob is non-recursive and the Seed walk is scoped to
+`Seed/Product/`.
 
 Each object's `module` is set from its source filename stem (`DOM.sql` ->
 `DOM`). Each object's `source_files` is set to the actual repo-relative
@@ -154,6 +160,52 @@ def _tables_same_structure(a: Table, b: Table) -> bool:
     return _table_structure_key(a) == _table_structure_key(b)
 
 
+def _has_ddl(text: str) -> bool:
+    """True if `text` declares an object we card (a `CREATE TABLE` or a
+    `CREATE [OR REPLACE]` PL/SQL unit). Used to skip the thousands of per-table
+    INSERT seed-data files under `Seed/Product/` -- they carry no object DDL,
+    so parsing them would be pure waste (and bloat the `apply_aux` scan)."""
+    upper = text.upper()
+    return "CREATE TABLE" in upper or "CREATE OR REPLACE" in upper
+
+
+def _dialect_table_files(
+    src_root: Path, dialect: str, limit_modules: int | None
+) -> list[tuple[Path, str, str, bool]]:
+    """Every DDL source file feeding table parsing for a dialect, as
+    `(path, module, rel, is_seed)`.
+
+    The `Product/*.sql` module files come FIRST (`module` = filename stem),
+    then the `Seed/Product/<module>/` base-schema catalogs (`module` = the
+    module folder: `WMLM`/`CA`/`SLOT`). The classic WM/base tables (e.g.
+    `PROD_TRKG_TRAN`, `ACCESSORIAL`, `ALLOC_PARM`) are declared only in those
+    `Seed/Product/<module>/*_Tables_PKs.sql` catalogs, disjoint from the
+    module files -- so they must be walked too. Product-first ordering makes
+    the Product module definition win the keep-first dedup on the tables
+    defined in both trees. (`Seed/Product` also holds per-table INSERT
+    seed-data files with no DDL; `_parse_dialect_tables` skips those via
+    `_has_ddl` after reading.)
+    """
+    ddir = _DIALECT_DIR[dialect]
+    items: list[tuple[Path, str, str, bool]] = []
+    product_dir = src_root / ddir / "DBScripts" / "Product"
+    for f in _sql_files(product_dir, limit_modules):
+        items.append((f, f.stem, f"{ddir}/DBScripts/Product/{f.name}", False))
+
+    seed_root = src_root / ddir / "DBScripts" / "Seed" / "Product"
+    if seed_root.is_dir():
+        seed_files = sorted(seed_root.rglob("*.sql"))
+        if limit_modules is not None:
+            seed_files = seed_files[:limit_modules]
+        for f in seed_files:
+            rel_parts = f.relative_to(seed_root)
+            module = rel_parts.parts[0]
+            items.append(
+                (f, module, f"{ddir}/DBScripts/Seed/Product/{rel_parts.as_posix()}", True)
+            )
+    return items
+
+
 def _parse_dialect_tables(
     src_root: Path,
     dialect: str,
@@ -162,26 +214,30 @@ def _parse_dialect_tables(
     duplicates: list[str],
     plsql_objects: list[PlsqlObject],
     plsql_sources: dict[str, list[str]],
+    seed_plsql_objects: list[PlsqlObject],
 ) -> tuple[dict[str, Table], dict[str, list[str]]]:
-    """Parse every `Product/*.sql` module file for a dialect. Each file yields
-    BOTH tables (via `parse_tables` + `apply_aux`) AND any inline PL/SQL units
-    it declares (triggers/views/procedures/... via `parse_plsql` on the same
-    text). Inline units are appended to the shared `plsql_objects`/
-    `plsql_sources` accumulators (the runner also fills these from
-    `PLSQL_Objects/`), with `module` from the filename stem and the module
-    file recorded as the unit's source -- so a module-file trigger is carded
-    with an accurate `sources:`, and any object appearing both inline and in
-    `PLSQL_Objects` is handled by the shared reconcile/dedup path.
+    """Parse every table-DDL source file for a dialect -- the `Product/*.sql`
+    module files AND the `Seed/Product/<module>/` base-schema catalogs (see
+    `_dialect_table_files`). Each file yields BOTH tables (via `parse_tables` +
+    `apply_aux`) AND any inline PL/SQL units it declares (triggers/views/
+    procedures/... via `parse_plsql` on the same text). Inline units are
+    appended to the shared `plsql_objects`/`plsql_sources` accumulators (the
+    runner also fills these from `PLSQL_Objects/`), with `module` from the
+    filename stem (Product) or module folder (Seed) and the file recorded as
+    the unit's source -- so a module-file trigger is carded with an accurate
+    `sources:`, and any object appearing both inline and in `PLSQL_Objects` is
+    handled by the shared reconcile/dedup path.
     """
-    product_dir = src_root / _DIALECT_DIR[dialect] / "DBScripts" / "Product"
     tables: dict[str, Table] = {}
     sources: dict[str, list[str]] = {}
     texts: list[str] = []
 
-    for sql_file in _sql_files(product_dir, limit_modules):
-        module = sql_file.stem
+    for sql_file, module, rel, is_seed in _dialect_table_files(src_root, dialect, limit_modules):
         text = sql_file.read_text()
-        rel = f"{_DIALECT_DIR[dialect]}/DBScripts/Product/{sql_file.name}"
+        # Seed/Product holds thousands of per-table INSERT seed-data files with
+        # no object DDL -- skip them (never parse, never concat into apply_aux).
+        if is_seed and not _has_ddl(text):
+            continue
 
         with _capture_warnings("okfdbparse.parse_tables") as warnings:
             parsed = parse_tables(text, dialect)
@@ -220,7 +276,10 @@ def _parse_dialect_tables(
         for obj in units:
             obj.module = module
             _record_source(plsql_sources, obj.name, rel)
-            plsql_objects.append(obj)
+            # A unit inline in a Seed catalog is only a re-declaration of a
+            # Product unit: keep it in the lower-precedence bucket so it can
+            # never clobber the Product definition (see `_ordered_plsql`).
+            (seed_plsql_objects if is_seed else plsql_objects).append(obj)
 
         texts.append(text)
 
@@ -301,6 +360,37 @@ def _parse_dialect_plsql(
             plsql_objects.append(obj)
 
 
+def _ordered_plsql(
+    seed_units: list[PlsqlObject],
+    product_units: list[PlsqlObject],
+    product_names: set[str],
+) -> list[PlsqlObject]:
+    """Combine one dialect's PL/SQL units with precedence by SOURCE TIER: a
+    Product definition always beats a Seed catalog's re-declaration of the same
+    unit.
+
+    Implemented by DROPPING Seed units whose name Product already declares,
+    rather than by reordering. Reordering cannot express this: `reconcile.
+    _merge_package_units` resolves a package's `module` first-wins but its
+    spec/body last-wins, so no single ordering gives Product precedence for
+    both. Dropping instead leaves `product_units` (Product-inline followed by
+    the dedicated `PLSQL_Objects/` units) in its original order, so every
+    previously-emitted card is byte-identical; the Seed units that survive are
+    only those Product never declared -- purely additive new objects. The
+    dropped unit's file is still recorded in `plsql_sources`, so an overlapping
+    card still cites the Seed catalog that re-declares it.
+
+    `product_names` is the union across BOTH dialects, which matters: a unit
+    Product declares only in DB2 (so the card is `platform: [db2]`, module from
+    the DB2 file) would otherwise have its *Oracle* side supplied by a Seed
+    catalog -- and since `reconcile_plsql` builds the merged object on the
+    Oracle one, the card's module would flip to that Seed module. Excluding
+    cross-dialect keeps such a card exactly as it shipped.
+    """
+    seed_only = [obj for obj in seed_units if obj.name not in product_names]
+    return product_units + seed_only
+
+
 def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> RunReport:
     """Parse+reconcile every WMOS table/PL/SQL object under `src_root`, emit
     one card per object under `out_dir/{tables,plsql}/` plus
@@ -312,23 +402,27 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
     unparsed: list[str] = []
     duplicates: list[str] = []
 
-    # PL/SQL is collected from TWO places per dialect: inline units in the
-    # Product module files (filled by _parse_dialect_tables) and the dedicated
-    # PLSQL_Objects/ files (filled by _parse_dialect_plsql). Both append into
-    # these shared per-dialect accumulators; duplicate detection runs once on
-    # the combined result below.
+    # PL/SQL is collected from THREE places per dialect: inline units in the
+    # Product module files and inline units in the Seed/Product catalogs (both
+    # filled by _parse_dialect_tables, into separate buckets), plus the
+    # dedicated PLSQL_Objects/ files (filled by _parse_dialect_plsql, appended
+    # after the Product-inline units). `_ordered_plsql` then orders the buckets
+    # by source tier for reconcile's LAST-wins union; duplicate detection runs
+    # once on the combined result below.
     oracle_plsql: list[PlsqlObject] = []
+    oracle_seed_plsql: list[PlsqlObject] = []
     oracle_plsql_sources: dict[str, list[str]] = {}
     db2_plsql: list[PlsqlObject] = []
+    db2_seed_plsql: list[PlsqlObject] = []
     db2_plsql_sources: dict[str, list[str]] = {}
 
     oracle_tables, oracle_table_sources = _parse_dialect_tables(
         src_root, "oracle", limit_modules, unparsed, duplicates,
-        oracle_plsql, oracle_plsql_sources,
+        oracle_plsql, oracle_plsql_sources, oracle_seed_plsql,
     )
     db2_tables, db2_table_sources = _parse_dialect_tables(
         src_root, "db2", limit_modules, unparsed, duplicates,
-        db2_plsql, db2_plsql_sources,
+        db2_plsql, db2_plsql_sources, db2_seed_plsql,
     )
     merged_tables = reconcile_tables(oracle_tables, db2_tables)
     for table in merged_tables:
@@ -342,10 +436,14 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
     _parse_dialect_plsql(
         src_root, "db2", limit_modules, unparsed, db2_plsql, db2_plsql_sources
     )
-    _detect_plsql_duplicates(oracle_plsql, "oracle", duplicates)
-    _detect_plsql_duplicates(db2_plsql, "db2", duplicates)
+    # Union across dialects -- see `_ordered_plsql` on why cross-dialect matters.
+    product_plsql_names = {o.name for o in oracle_plsql} | {o.name for o in db2_plsql}
+    oracle_all_plsql = _ordered_plsql(oracle_seed_plsql, oracle_plsql, product_plsql_names)
+    db2_all_plsql = _ordered_plsql(db2_seed_plsql, db2_plsql, product_plsql_names)
+    _detect_plsql_duplicates(oracle_all_plsql, "oracle", duplicates)
+    _detect_plsql_duplicates(db2_all_plsql, "db2", duplicates)
 
-    merged_plsql = reconcile_plsql(oracle_plsql, db2_plsql)
+    merged_plsql = reconcile_plsql(oracle_all_plsql, db2_all_plsql)
     for obj in merged_plsql:
         obj.source_files = _union_sources(oracle_plsql_sources, db2_plsql_sources, name=obj.name)
 
@@ -397,6 +495,14 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
 
 
 def main(argv: list[str] | None = None) -> int:
+    # sqlglot logs a WARNING for every statement it degrades to a `Command`
+    # (PL/SQL bodies, EXECUTE IMMEDIATE, `CREATE OR REPLACE SYNONYM ... FOR &1..x`,
+    # etc.). `apply_aux` and `parse_plsql` handle `Command` nodes by design, so
+    # this is pure noise -- and over the large Seed/Product catalogs it explodes
+    # into hundreds of thousands of lines, whose disk I/O dominates the run.
+    # Silence it (correctness is unaffected; our own gate warnings are separate).
+    logging.getLogger("sqlglot").setLevel(logging.ERROR)
+
     parser = argparse.ArgumentParser(
         prog="okfdbparse",
         description="Parse WMOS Oracle/DB2 DDL into OKF dbobject cards + manifest.",

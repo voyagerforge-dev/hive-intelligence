@@ -122,3 +122,19 @@ def test_unparseable_statement_is_skipped_not_crashed():
         "oracle",
     )
     assert tabs["MASTER_STAGING_DATA"].comment == "after garbage"
+
+
+def test_apply_aux_skips_non_aux_statements_without_warning(caplog):
+    import logging
+    tabs = _t()
+    # a PL/SQL body (with an internal `/` division) + an INSERT must be skipped
+    # WITHOUT a parse attempt/warning; the COMMENT still attaches.
+    sql = (
+        "BEGIN\n  UPDATE X SET A = A / B WHERE ID = 1;\nEND;\n/\n"
+        "INSERT INTO MASTER_STAGING_DATA (EVENT_ID) VALUES (1);\n"
+        "comment on table MASTER_STAGING_DATA is 'kept';\n"
+    )
+    with caplog.at_level(logging.WARNING, logger="okfdbparse.parse_aux"):
+        apply_aux(tabs, sql, "oracle")
+    assert tabs["MASTER_STAGING_DATA"].comment == "kept"
+    assert not any("could not parse aux" in r.getMessage() for r in caplog.records)

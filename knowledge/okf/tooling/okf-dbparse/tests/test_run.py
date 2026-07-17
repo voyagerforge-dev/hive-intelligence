@@ -267,3 +267,104 @@ def test_db2_variable_is_skipped_and_does_not_trip_the_gate(tmp_path):
     assert rep.unparsed == []
     assert rep.counts["plsql"]["parsed"] == rep.counts["plsql"]["emitted"] == 1
     assert (out / "plsql/real_proc.md").exists()
+
+
+def test_walks_seed_product_catalogs_module_from_folder(tmp_path):
+    # Regression: PROD_TRKG_TRAN and the classic WM base schema are defined
+    # under DBScripts/Seed/Product/<module>/*_Tables_PKs.sql -- a tree the
+    # runner used to skip entirely. It must now walk those catalog files,
+    # deriving `module` from the folder (WMLM/CA/SLOT), while the per-table
+    # INSERT seed-data files (no DDL) are ignored, not carded, not a gate fail.
+    src = tmp_path / "src"
+    _write(src / "Oracle/DBScripts/Product/WM.sql", 'CREATE TABLE "TMP_X" ("A" NUMBER(1,0));\n')
+    _write(
+        src / "Oracle/DBScripts/Seed/Product/WMLM/WMLM_Tables_PKs.sql",
+        "CREATE TABLE PROD_TRKG_TRAN\n"
+        " ( TRAN_TYPE VARCHAR2(3) NOT NULL ENABLE,\n"
+        "   TRAN_NBR NUMBER(9,0) DEFAULT 0 NOT NULL ENABLE,\n"
+        "   CONSTRAINT PK_PTT PRIMARY KEY (TRAN_TYPE, TRAN_NBR) );\n",
+    )
+    # per-table INSERT seed-data (no CREATE TABLE) -- must be skipped
+    _write(
+        src / "Oracle/DBScripts/Seed/Product/CA/ACTIVITY_TYPE.sql",
+        "INSERT INTO ACTIVITY_TYPE (ID, NAME) VALUES (1, 'X');\n",
+    )
+    out = tmp_path / "out"
+    rep = run(src, out)
+    assert rep.unparsed == []
+    ptt = (out / "tables/PROD_TRKG_TRAN.md").read_text()
+    assert "module: WMLM" in ptt
+    assert "Oracle/DBScripts/Seed/Product/WMLM/WMLM_Tables_PKs.sql" in ptt
+    assert "TRAN_TYPE" in ptt and "PK_PTT" not in ptt  # columns carded; pk cols listed
+    assert (out / "tables/TMP_X.md").exists()
+    assert not (out / "tables/ACTIVITY_TYPE.md").exists()
+
+
+def test_product_definition_wins_over_seed_on_overlap(tmp_path):
+    # The 365 tables defined in BOTH Product/*.sql and a Seed/Product catalog:
+    # the Product module definition must win the keep-first dedup, and the
+    # divergent Seed copy is logged (never silently dropped, never fatal).
+    src = tmp_path / "src"
+    _write(
+        src / "Oracle/DBScripts/Product/CM.sql",
+        'CREATE TABLE "ACCESSORIAL" ("A" NUMBER(1,0), "B" VARCHAR2(5));\n',
+    )
+    _write(
+        src / "Oracle/DBScripts/Seed/Product/CA/CA_Tables_PKs.sql",
+        'CREATE TABLE "ACCESSORIAL" ("A" NUMBER(1,0));\n',
+    )
+    out = tmp_path / "out"
+    rep = run(src, out)
+    card = (out / "tables/ACCESSORIAL.md").read_text()
+    assert "| B |" in card  # Product's extra column survived -> Product won
+    assert (out / "conflicts.log").exists()
+    assert any("ACCESSORIAL" in d for d in rep.duplicates)
+
+
+def test_seed_redeclaration_does_not_clobber_product_plsql_unit(tmp_path):
+    # A Seed/Product catalog re-declares units that the Product module files
+    # already define. Precedence is by SOURCE TIER: the Product definition's
+    # module and body must survive; the Seed copy only adds a `sources:` entry.
+    src = tmp_path / "src"
+    _write(
+        src / "Oracle/DBScripts/Product/CM.sql",
+        "CREATE OR REPLACE TRIGGER T_TRG BEFORE UPDATE ON X FOR EACH ROW\n"
+        "BEGIN :new.A := 'product'; END;\n/\n",
+    )
+    _write(
+        src / "Oracle/DBScripts/Seed/Product/WMLM/WMLM_ProcFuncPkg.sql",
+        "CREATE OR REPLACE TRIGGER T_TRG BEFORE UPDATE ON X FOR EACH ROW\n"
+        "BEGIN :new.A := 'seed'; END;\n/\n",
+    )
+    out = tmp_path / "out"
+    rep = run(src, out)
+    assert rep.unparsed == []
+    card = (out / "plsql/T_TRG.md").read_text()
+    assert "module: CM" in card          # Product module wins, not WMLM
+    assert "product" in card             # Product body wins
+    assert "seed" not in card.replace("Seed/Product", "")   # seed body did NOT win
+    # the Seed file is still recorded as a source
+    assert "Seed/Product/WMLM/WMLM_ProcFuncPkg.sql" in card
+
+
+def test_seed_does_not_hijack_product_unit_declared_only_in_other_dialect(tmp_path):
+    # BAY_LAYOUT_REPORT-style: Product declares the view ONLY in DB2, so the card
+    # ships as platform:[db2] with the DB2 file's module. An Oracle Seed catalog
+    # also declares it -- that Seed copy must NOT become the object's Oracle side,
+    # because reconcile builds the merged object on the Oracle one and the card's
+    # module would flip to the Seed module.
+    src = tmp_path / "src"
+    _write(
+        src / "DB2/DBScripts/Product/SLOT.sql",
+        "CREATE OR REPLACE VIEW V1 AS SELECT A FROM T;\n",
+    )
+    _write(
+        src / "Oracle/DBScripts/Seed/Product/WMLM/WMLM_Views.sql",
+        "CREATE OR REPLACE VIEW V1 AS SELECT B FROM T;\n",
+    )
+    out = tmp_path / "out"
+    rep = run(src, out)
+    assert rep.unparsed == []
+    card = (out / "plsql/V1.md").read_text()
+    assert "module: SLOT" in card       # DB2 Product module retained
+    assert "module: WMLM" not in card   # Seed did not hijack the Oracle side

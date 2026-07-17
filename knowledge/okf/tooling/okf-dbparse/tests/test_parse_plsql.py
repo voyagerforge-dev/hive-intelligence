@@ -396,3 +396,17 @@ def test_quoted_dotted_name_strips_quotes_per_component():
     objs = parse_plsql(QUOTED_DOTTED_PROC, "oracle")
     assert len(objs) == 1
     assert objs[0].name == "SCHEMA.FOO"  # not 'SCHEMA."FOO"'
+
+
+def test_db2_alias_and_nickname_recognized_and_skipped(caplog):
+    import logging
+    # DB2 spells synonyms as ALIAS / NICKNAME (with a `!` terminator). They must
+    # be recognized as skip-kinds, not flagged as unrecognized units (gate fail).
+    sql = (
+        "CREATE OR REPLACE  ALIAS LOCN_HDR FOR TABLE SchemaName.LOCN_HDR!\n"
+        "CREATE OR REPLACE NICKNAME SLOT_NN FOR REMOTE.SLOT!\n"
+    )
+    with caplog.at_level(logging.WARNING, logger="okfdbparse.parse_plsql"):
+        units = parse_plsql(sql, "db2")
+    assert units == []
+    assert not any("unrecognized" in r.getMessage().lower() for r in caplog.records)

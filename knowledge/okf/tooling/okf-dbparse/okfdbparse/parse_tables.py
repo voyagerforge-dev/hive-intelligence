@@ -8,6 +8,7 @@ inline `--` comments, multi-line statements) is handled exactly.
 from __future__ import annotations
 
 import logging
+import re
 
 import sqlglot
 from sqlglot import exp
@@ -254,6 +255,38 @@ def _normalize_current_registers(text: str, dialect: str | None) -> str:
     return "".join(out)
 
 
+# An inline `GENERATED [ALWAYS | BY DEFAULT [ON NULL]] AS IDENTITY <options>`
+# column clause, e.g. `NUMBER GENERATED ALWAYS AS IDENTITY MINVALUE 1 MAXVALUE
+# 9999... INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER NOCYCLE`. sqlglot rejects
+# the fully-specified Oracle form; we don't model identity/default, so it's
+# stripped back to the bare type. Only the IDENTITY keyword and its option
+# tokens (a parenthesized group, or a run of MINVALUE/INCREMENT/CACHE/... and
+# numbers) are consumed -- the match STOPS at the next column constraint, so a
+# trailing `NOT NULL` (identity columns are NOT NULL) is preserved.
+_IDENTITY_CLAUSE = re.compile(
+    r"\bGENERATED\s+(?:ALWAYS|BY\s+DEFAULT(?:\s+ON\s+NULL)?)\s+AS\s+IDENTITY"
+    r"(?:\s*\([^)]*\))?"
+    r"(?:\s+(?:MINVALUE|MAXVALUE|INCREMENT|BY|START|WITH|CACHE|NOCACHE|"
+    r"CYCLE|NOCYCLE|ORDER|NOORDER|\d+))*",
+    re.IGNORECASE,
+)
+_LONG_RAW = re.compile(r"\bLONG\s+RAW\b", re.IGNORECASE)
+_LONG = re.compile(r"\bLONG\b(?!\s+RAW)", re.IGNORECASE)
+
+
+def _strip_identity_clause(text: str) -> str:
+    """Remove an inline identity-column clause (see `_IDENTITY_CLAUSE`) so the
+    column parses as its bare type. Identity/default aren't modelled."""
+    return _IDENTITY_CLAUSE.sub("", text)
+
+
+def _map_legacy_long_types(text: str) -> str:
+    """Map Oracle's deprecated `LONG RAW`/`LONG` LOB types (which sqlglot cannot
+    parse) to the modern equivalents `BLOB`/`CLOB` so the column parses. Only
+    these two legacy types are touched; every other type passes through."""
+    return _LONG.sub("CLOB", _LONG_RAW.sub("BLOB", text))
+
+
 _TABLE_MODIFIER_VARS = {"GLOBAL", "PRIVATE", "SHARED"}
 
 
@@ -372,6 +405,8 @@ def parse_tables(sql: str, dialect: str) -> dict[str, Table]:
         cleaned_text = _strip_constraint_state(stmt_text, sqlglot_dialect)
         cleaned_text = _strip_using_index_clause(cleaned_text, sqlglot_dialect)
         cleaned_text = _normalize_current_registers(cleaned_text, sqlglot_dialect)
+        cleaned_text = _strip_identity_clause(cleaned_text)
+        cleaned_text = _map_legacy_long_types(cleaned_text)
 
         try:
             parsed = sqlglot.parse_one(cleaned_text, read=sqlglot_dialect)
