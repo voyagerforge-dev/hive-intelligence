@@ -196,3 +196,4 @@ def test_package_merges_across_both_dialects():
     # identical spec/body text on both sides (normalized whitespace) -> db2 body cleared
     assert pkg.body_db2 == ""
     assert pkg.body_oracle.strip().startswith("CREATE OR REPLACE PACKAGE BODY dom_alloc")
+

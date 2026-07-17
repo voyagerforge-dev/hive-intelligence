@@ -48,6 +48,12 @@ def _split_statements(sql: str, dialect: str | None) -> list[str]:
     quoted string or comment is never mistaken for a separator), mirroring
     the chunking sqlglot's own parser does internally. Returns exact
     substrings of the original `sql`, never reconstructed/regenerated text.
+
+    NB: only `;` terminates. DB2 CLP scripts also use `!`, but `!` cannot be
+    treated as a separator here -- it occurs mid-statement in string literals
+    (`'... short !'`) and operators, and splitting on it corrupts DB2 CREATE
+    TABLEs. `!`-terminated DB2 sequence files are handled instead by
+    `parse_aux` extracting sequence names from the whole text (`_SEQUENCE_DECL`).
     """
     tokenizer = Dialect.get_or_raise(dialect).tokenizer_class()
     tokens = tokenizer.tokenize(sql)

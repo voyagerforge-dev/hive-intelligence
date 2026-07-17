@@ -55,7 +55,7 @@ from pathlib import Path
 
 from okfdbparse.emit import manifest_line, plsql_card, table_card
 from okfdbparse.model import PlsqlObject, Table
-from okfdbparse.parse_aux import apply_aux
+from okfdbparse.parse_aux import _SEQUENCE_DECL, _attach_sequence, apply_aux
 from okfdbparse.parse_plsql import parse_plsql
 from okfdbparse.parse_tables import parse_tables
 from okfdbparse.reconcile import (
@@ -218,6 +218,7 @@ def _parse_dialect_tables(
     unparsed: list[str],
     duplicates: list[str],
     unattached: list[str],
+    sequence_names: list[str],
     plsql_objects: list[PlsqlObject],
     plsql_sources: dict[str, list[str]],
     seed_plsql_objects: list[PlsqlObject],
@@ -304,6 +305,9 @@ def _parse_dialect_tables(
         prefix = f"{_DIALECT_DIR[dialect]} aux"
         unparsed.extend(f"{prefix}: {w}" for w in aux_failures)
         unattached.extend(f"{prefix}: {w}" for w in aux_unattached)
+        # Collect sequence names for post-reconcile attachment (their owners live
+        # in the MERGED table set, not this dialect's -- see `attach_sequences`).
+        sequence_names.extend(_SEQUENCE_DECL.findall("\n".join(texts)))
 
     return tables, sources
 
@@ -421,6 +425,7 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
     unparsed: list[str] = []
     duplicates: list[str] = []
     unattached: list[str] = []
+    sequence_names: list[str] = []
 
     # PL/SQL is collected from THREE places per dialect: inline units in the
     # Product module files and inline units in the Seed/Product catalogs (both
@@ -437,11 +442,11 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
     db2_plsql_sources: dict[str, list[str]] = {}
 
     oracle_tables, oracle_table_sources = _parse_dialect_tables(
-        src_root, "oracle", limit_modules, unparsed, duplicates, unattached,
+        src_root, "oracle", limit_modules, unparsed, duplicates, unattached, sequence_names,
         oracle_plsql, oracle_plsql_sources, oracle_seed_plsql,
     )
     db2_tables, db2_table_sources = _parse_dialect_tables(
-        src_root, "db2", limit_modules, unparsed, duplicates, unattached,
+        src_root, "db2", limit_modules, unparsed, duplicates, unattached, sequence_names,
         db2_plsql, db2_plsql_sources, db2_seed_plsql,
     )
     merged_tables = reconcile_tables(oracle_tables, db2_tables)
@@ -449,6 +454,18 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
         table.source_files = _union_sources(
             oracle_table_sources, db2_table_sources, name=table.name
         )
+
+    # Attach sequences AFTER reconcile, against the complete merged table set.
+    # A sequence owner is resolved by name, and most DB2 sequence owners exist
+    # only in the merged set (the DB2 dialect barely parses -- `!`-terminated
+    # files sqlglot can't split -- so db2_tables is nearly empty; the merged set
+    # carries every table name from the Oracle side). Orphans (no owner found)
+    # are the non-fatal, reported kind.
+    merged_by_name = {t.name: t for t in merged_tables}
+    with _capture_warnings("okfdbparse.aux_unattached") as seq_unattached:
+        for seq_name in sequence_names:
+            _attach_sequence(merged_by_name, seq_name)
+    unattached.extend(f"sequence: {w}" for w in seq_unattached)
 
     _parse_dialect_plsql(
         src_root, "oracle", limit_modules, unparsed, oracle_plsql, oracle_plsql_sources
