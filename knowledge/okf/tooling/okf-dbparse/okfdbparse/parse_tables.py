@@ -115,11 +115,13 @@ def _extract_create_table_fragment(text: str, dialect: str | None) -> str | None
 _CONSTRAINT_STATE_KEYWORDS = {"ENABLE", "DISABLE", "VALIDATE", "NOVALIDATE"}
 
 # Token types that can legally follow a constraint-state keyword in this
-# corpus: a comma (another column/constraint follows) or the table's own
-# closing paren. A *real* identifier can never be followed directly by one of
-# these (every column needs a type, every constraint needs its clause) --
-# which is what lets this be recognized without any preceding-context check.
-_STATE_FOLLOWER_TYPES = {TokenType.COMMA, TokenType.R_PAREN}
+# corpus: a comma (another column/constraint follows), the table's own closing
+# paren, or a semicolon (end of a standalone `ALTER TABLE ... ADD CONSTRAINT
+# ... ENABLE;` statement -- the shape `apply_aux` cleans before parsing FKs). A
+# *real* identifier can never be followed directly by one of these (every
+# column needs a type, every constraint needs its clause) -- which is what lets
+# this be recognized without any preceding-context check.
+_STATE_FOLLOWER_TYPES = {TokenType.COMMA, TokenType.R_PAREN, TokenType.SEMICOLON}
 
 # DB2's bare two-word "special register" default values (`CURRENT TIMESTAMP`/
 # `CURRENT DATE`/`CURRENT TIME`, no underscore, no parens) that sqlglot's

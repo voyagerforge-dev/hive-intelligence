@@ -368,3 +368,32 @@ def test_seed_does_not_hijack_product_unit_declared_only_in_other_dialect(tmp_pa
     card = (out / "plsql/V1.md").read_text()
     assert "module: SLOT" in card       # DB2 Product module retained
     assert "module: WMLM" not in card   # Seed did not hijack the Oracle side
+
+
+def test_aux_drop_fails_the_gate(tmp_path):
+    # An attachable aux statement we cannot parse is a SILENT DROP of a real
+    # index/sequence/FK/comment -- the gate must catch it.
+    src = tmp_path / "src"
+    _write(
+        src / "Oracle/DBScripts/Product/DOM.sql",
+        'CREATE TABLE "T" ("A" NUMBER(1,0));\n'
+        "COMMENT ON TABLE ((( totally broken ;\n",
+    )
+    with pytest.raises(RunError):
+        run(src, tmp_path / "out")
+
+
+def test_unattached_aux_is_reported_but_not_fatal(tmp_path):
+    # A comment on a table outside the carded corpus is a SCOPE consequence,
+    # not a parser gap: reported to unattached.log, run still succeeds.
+    src = tmp_path / "src"
+    _write(
+        src / "Oracle/DBScripts/Product/DOM.sql",
+        'CREATE TABLE "T" ("A" NUMBER(1,0));\n'
+        "comment on table SOMETHING_NOT_CARDED is 'x';\n",
+    )
+    out = tmp_path / "out"
+    rep = run(src, out)
+    assert rep.unparsed == []
+    assert any("SOMETHING_NOT_CARDED" in u for u in rep.unattached)
+    assert (out / "unattached.log").exists()
