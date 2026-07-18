@@ -1,0 +1,72 @@
+"""Core types. No I/O, no dependencies on other okfzendesk modules."""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+
+
+class RunError(RuntimeError):
+    """Raised when the verification gate fails. Never swallowed."""
+
+
+def slugify(text: str, max_len: int = 60) -> str:
+    s = re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")
+    return (s[:max_len].rstrip("-")) or "issue"
+
+
+@dataclass(frozen=True)
+class Comment:
+    author_role: str          # "agent" | "end-user"
+    public: bool
+    body: str
+    created_at: str
+
+
+@dataclass(frozen=True)
+class Ticket:
+    id: int
+    subject: str
+    description: str
+    org_id: int
+    client: str               # "alpha" | "beta"
+    closed_at: str            # mapped from updated_at
+    tags: list[str] = field(default_factory=list)
+    comments: list[Comment] = field(default_factory=list)
+
+    def thread_text(self) -> str:
+        parts = [self.subject or "", self.description or ""]
+        parts += [c.body or "" for c in self.comments]
+        return "\n\n".join(p for p in parts if p.strip())
+
+    def slug_source(self) -> str:
+        return self.subject or f"ticket-{self.id}"
+
+
+@dataclass
+class IssueCard:
+    ticket_id: int
+    client: str
+    title: str
+    description: str
+    module: str
+    related: list[str]
+    tags: list[str]
+    symptom: str
+    diagnosis: str
+    resolution: str
+    context: str
+    closed_at: str
+    status: str = "distilled"
+
+    def filename(self) -> str:
+        return f"{self.ticket_id}-{slugify(self.title)}.md"
+
+
+@dataclass
+class RunReport:
+    fetched: int = 0
+    skipped: int = 0
+    emitted: int = 0
+    preserved: int = 0        # approved cards left untouched
+    skipped_reasons: list[tuple[int, str]] = field(default_factory=list)
+    at_cap_slices: list[str] = field(default_factory=list)
