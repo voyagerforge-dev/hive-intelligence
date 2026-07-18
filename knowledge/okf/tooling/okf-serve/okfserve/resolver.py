@@ -63,13 +63,14 @@ def load_index(concepts_dir, clients_dir=None) -> list[dict]:
                     continue
                 rel = p.relative_to(cdir).with_suffix("")
                 parts = rel.parts
-                if len(parts) < 3 or parts[1] != "memory":
-                    continue  # only <client>/memory/<slug>.md
+                if len(parts) < 3 or parts[1] not in ("memory", "issues"):
+                    continue  # <client>/memory/<slug>.md and <client>/issues/<slug>.md
+                kind = "memory" if parts[1] == "memory" else "issue"
                 fm = parse_frontmatter(p.read_text())
                 out.append({"id": "clients/" + rel.as_posix(),
                             "title": fm.get("title", rel.as_posix()),
                             "description": fm.get("description", ""),
-                            "regime": fm.get("regime"), "type": "memory",
+                            "regime": fm.get("regime"), "type": kind,
                             "version": fm.get("version"), "product": fm.get("product"),
                             "client": parts[0],
                             "corrects": fm.get("corrects"), "status": fm.get("status")})

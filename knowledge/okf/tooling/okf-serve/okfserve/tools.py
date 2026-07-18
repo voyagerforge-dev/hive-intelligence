@@ -9,7 +9,9 @@ def list_concepts(concepts_dir, clients_dir=None, client=None) -> list[dict]:
     for c in load_index(concepts_dir, clients_dir):
         if c.get("type") == "correction":
             continue
-        if c.get("type") == "memory" and (client is None or c.get("client") != client):
+        # Client-scoped cards (memory, distilled issues) surface only for their own
+        # client, so a general concept listing is never diluted by them.
+        if c.get("type") in ("memory", "issue") and (client is None or c.get("client") != client):
             continue
         out.append(c)
     return out
