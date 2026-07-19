@@ -22,14 +22,11 @@ def _ticket():
                                     "2026-03-14T10:00:00Z")])
 
 
-GOOD = json.dumps({"title": "Wave allocation stalls when replenishment lags",
-                   "description": "Wave stopped allocating because replen lagged.",
+GOOD = json.dumps({"what_happened": "Morning wave did not allocate; replen lagged demand.",
+                   "how_it_closed": "Reran replenishment; wave allocated.",
                    "module": "allocation", "tags": ["allocation", "replenishment"],
                    "related_candidates": ["wms/allocation/wave-replen-lag"],
-                   "symptom": "Morning wave did not allocate.",
-                   "diagnosis": "Replenishment tasks lagged behind demand.",
-                   "resolution": "Reran replenishment; wave allocated.",
-                   "context": "ALPHA site; recurs when replen is behind."})
+                   "recurring": False})
 
 
 def test_distill_returns_card_and_never_sends_pii_to_the_model():
@@ -39,6 +36,8 @@ def test_distill_returns_card_and_never_sends_pii_to_the_model():
     assert card.ticket_id == 14872 and card.client == "alpha"
     assert card.module == "allocation"
     assert card.status == "distilled"
+    assert card.what_happened.startswith("Morning wave")
+    assert card.title == "Orders not allocating"      # ticket subject, not generated
     assert card.closed_at == "2026-03-14"
     assert "jane.doe@alpha.invalid" not in llm.seen_user
 
@@ -57,16 +56,22 @@ def test_distill_tolerates_fenced_and_thinking_output():
     assert distill(_ticket(), FakeLLM(fenced), known=set()) is not None
 
 
-def test_empty_diagnosis_is_allowed():
-    """The prompt tells the model to leave diagnosis empty when there is no root cause,
-    so requiring it would discard exactly those tickets."""
+def test_empty_how_it_closed_is_allowed():
+    """Many tickets never state how they ended; that must not discard the entry."""
     payload = json.loads(GOOD)
-    payload["diagnosis"] = ""
+    payload["how_it_closed"] = ""
     card = distill(_ticket(), FakeLLM(json.dumps(payload)), known=set())
-    assert card is not None and card.diagnosis == ""
+    assert card is not None and card.how_it_closed == ""
 
 
-def test_missing_resolution_is_still_rejected():
+def test_missing_module_is_rejected():
+    """module is the alerting surface: without it the entry cannot be matched."""
     payload = json.loads(GOOD)
-    payload["resolution"] = ""
+    payload["module"] = ""
     assert distill(_ticket(), FakeLLM(json.dumps(payload)), known=set()) is None
+
+
+def test_recurring_flag_is_carried():
+    payload = json.loads(GOOD)
+    payload["recurring"] = True
+    assert distill(_ticket(), FakeLLM(json.dumps(payload)), known=set()).recurring is True

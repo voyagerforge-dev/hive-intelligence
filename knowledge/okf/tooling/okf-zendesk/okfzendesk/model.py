@@ -44,6 +44,9 @@ class Ticket:
 
 @dataclass
 class IssueCard:
+    """A journal entry, not a knowledge card: what happened at this client and where,
+    pointing at the concept cards that explain the behaviour rather than restating it."""
+
     ticket_id: int
     client: str
     title: str
@@ -51,11 +54,10 @@ class IssueCard:
     module: str
     related: list[str]
     tags: list[str]
-    symptom: str
-    diagnosis: str
-    resolution: str
-    context: str
+    what_happened: str
+    how_it_closed: str
     closed_at: str
+    recurring: bool = False
     status: str = "distilled"
 
     def filename(self) -> str:

@@ -6,8 +6,7 @@ def _card(**kw):
     base = dict(ticket_id=14872, client="alpha", title="Wave allocation stalls",
                 description="d", module="allocation",
                 related=["wms/allocation/wave-replen-lag"], tags=["allocation"],
-                symptom="s", diagnosis="dg", resolution="r", context="c",
-                closed_at="2026-03-14")
+                what_happened="w", how_it_closed="h", closed_at="2026-03-14")
     base.update(kw)
     return IssueCard(**base)
 
@@ -18,8 +17,10 @@ def test_render_has_required_frontmatter_and_sections():
     assert "client: alpha" in out
     assert "ref: '14872'" in out
     assert "status: distilled" in out
-    assert "## Symptom" in out and "## Diagnosis" in out
-    assert "## Resolution" in out and "## Context" in out
+    assert "## What happened" in out
+    assert "## How it closed" in out
+    # a journal entry points at the explanation instead of restating it
+    assert "## See also" in out and "wms/allocation/wave-replen-lag" in out
 
 
 def test_write_is_idempotent(tmp_path):

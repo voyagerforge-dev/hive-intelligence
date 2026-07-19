@@ -7,8 +7,7 @@ from okfzendesk.verify import verify_card, verify_run
 
 def _card(**kw):
     base = dict(ticket_id=1, client="alpha", title="T", description="d", module="allocation",
-                related=["wms/a"], tags=[], symptom="s", diagnosis="dg", resolution="r",
-                context="c", closed_at="2026-03-14")
+                related=["wms/a"], tags=[], what_happened="w", how_it_closed="h", closed_at="2026-03-14")
     base.update(kw)
     return IssueCard(**base)
 
@@ -19,13 +18,13 @@ def test_valid_card_passes():
 
 
 def test_pii_leak_fails():
-    c = _card(context="Reported by Jane Doe")
+    c = _card(what_happened="Reported by Jane Doe")
     with pytest.raises(RunError, match="PII"):
         verify_card(render(c, "0.1.0"), c, known={"Jane Doe"}, card_ids={"wms/a"})
 
 
 def test_email_pattern_in_card_fails():
-    c = _card(context="Mail jane.doe@alpha.invalid")
+    c = _card(what_happened="Mail jane.doe@alpha.invalid")
     with pytest.raises(RunError, match="PII"):
         verify_card(render(c, "0.1.0"), c, known=set(), card_ids={"wms/a"})
 

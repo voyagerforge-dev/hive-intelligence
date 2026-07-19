@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     bifrost_api_key: str = ""
     distill_model: str = "minimax-m3"
     bifrost_timeout_s: int = 300
+    # The on-prem Qwen is a reasoning model: this budget must cover thinking AND the
+    # answer. At 2000 it spends the lot reasoning and returns nothing.
+    distill_max_tokens: int = 4000
     # The connector caps a pull at max_pages(30) * page_size(100).
     connector_page_cap: int = 3000
     # Treat >= this fraction of the cap as "probably truncated".

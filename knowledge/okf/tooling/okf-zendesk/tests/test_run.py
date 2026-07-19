@@ -21,10 +21,9 @@ class FakeLLM:
 
     def complete(self, system, user):
         self.calls += 1
-        return json.dumps({"title": "Wave allocation stalls", "description": "d",
+        return json.dumps({"what_happened": "Wave did not allocate", "how_it_closed": "reran",
                            "module": "allocation", "tags": ["allocation"],
-                           "related_candidates": [], "symptom": "s",
-                           "diagnosis": "dg", "resolution": "r", "context": "c"})
+                           "related_candidates": [], "recurring": False})
 
 
 ROW = {"id": 14872, "subject": "Orders not allocating",
@@ -85,11 +84,9 @@ def test_second_run_is_idempotent(tmp_path):
 class PIILLM(FakeLLM):
     def complete(self, system, user):
         self.calls += 1
-        return json.dumps({"title": "Leaky card", "description": "d",
-                           "module": "allocation", "tags": [], "related_candidates": [],
-                           "symptom": "s", "diagnosis": "dg",
-                           "resolution": "call +1 555 555 0100 to confirm",
-                           "context": "c"})
+        return json.dumps({"what_happened": "call +1 555 555 0100 to confirm",
+                           "how_it_closed": "", "module": "allocation", "tags": [],
+                           "related_candidates": [], "recurring": False})
 
 
 def test_pii_is_quarantined_not_aborted(tmp_path):
@@ -138,3 +135,15 @@ def test_one_bad_ticket_does_not_kill_the_run(tmp_path):
                     state_dir=tmp_path / "state")
     assert report.emitted == 1 and report.failed == 1
     assert report.failures[0][0] == 999
+
+
+def test_limit_samples_without_breaking_reconciliation(tmp_path):
+    """--limit is how a backfill gets sized; it must not trip the counts gate."""
+    (tmp_path / "concepts").mkdir()
+    # distinct subjects: identical tickets would (correctly) be dropped as duplicates
+    rows = [dict(ROW, id=1000 + i, subject=f"Distinct issue {i}") for i in range(5)]
+    report = ingest(clients=["alpha"], org_ids={"alpha": [42]},
+                    connector=FakeConnector(rows, COMMENTS), llm=FakeLLM(),
+                    clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts",
+                    state_dir=tmp_path / "state", dry_run=True, limit=2)
+    assert report.fetched == 2 and report.emitted == 2

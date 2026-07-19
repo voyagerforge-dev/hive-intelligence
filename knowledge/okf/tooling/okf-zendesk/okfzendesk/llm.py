@@ -39,8 +39,24 @@ def extract_json(text: str) -> dict | None:
 
 
 class BifrostChat:
+    """Chat client for Bifrost.
+
+    NB the on-prem Qwen (`host-d/qwen3.6-27b`) is a REASONING model: it emits
+    `reasoning`/`reasoning_details` and only adds `content` once it has finished
+    thinking. Two consequences, both learned the hard way against the live endpoint:
+
+    * `message["content"]` raises KeyError when the model is still mid-thought, which
+      a broad `except` turns into a silent "distillation failed" for every ticket.
+      Content is therefore read defensively.
+    * With too small a `max_tokens` the model spends the whole budget reasoning and
+      returns no answer at all (`finish_reason: length`). The budget must cover
+      thinking AND the answer. `chat_template_kwargs`/`extra_body` do NOT pass through
+      Bifrost to vLLM, so thinking cannot be switched off client-side - headroom is
+      the only lever.
+    """
+
     def __init__(self, base: str, api_key: str, model: str, timeout_s: int = 300,
-                 retries: int = 4, backoff_s: float = 2.0) -> None:
+                 retries: int = 4, backoff_s: float = 2.0, max_tokens: int = 4000) -> None:
         self._url = base.rstrip("/") + "/chat/completions"
         self._headers = {"Authorization": f"Bearer {api_key}",
                          "User-Agent": "okfzendesk/0.1"}
@@ -48,6 +64,7 @@ class BifrostChat:
         self._timeout = timeout_s
         self._retries = max(1, retries)
         self._backoff = backoff_s
+        self._max_tokens = max_tokens
 
     def complete(self, system: str, user: str) -> str | None:
         # Callers treat None as a hard failure (skip the ticket), so a transient blip
@@ -56,13 +73,21 @@ class BifrostChat:
             try:
                 r = httpx.post(self._url, headers=self._headers, timeout=self._timeout, json={
                     "model": self._model, "temperature": 0,
+                    "max_tokens": self._max_tokens,
                     "messages": [{"role": "system", "content": system},
                                  {"role": "user", "content": user}],
                 })
                 r.raise_for_status()
-                return r.json()["choices"][0]["message"]["content"]
-            except Exception:
-                if attempt == self._retries - 1:
+                choice = (r.json().get("choices") or [{}])[0]
+                content = (choice.get("message") or {}).get("content")
+                if content:
+                    return content
+                # Ran out of budget while reasoning: retrying identically will not
+                # help, so fail fast rather than burning the retry allowance.
+                if choice.get("finish_reason") == "length":
                     return None
+            except Exception:
+                pass
+            if attempt < self._retries - 1:
                 time.sleep(self._backoff * (attempt + 1))
         return None

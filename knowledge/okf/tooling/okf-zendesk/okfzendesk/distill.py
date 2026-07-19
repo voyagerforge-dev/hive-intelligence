@@ -1,7 +1,15 @@
-"""Scrubbed ticket thread -> structured issue fields.
+"""Scrubbed ticket thread -> a thin JOURNAL ENTRY.
+
+Deliberately NOT a knowledge card. The concept corpus (996 cards) and the db-object tier
+already explain how WMOS behaves; re-stating that per ticket would duplicate it at scale
+and dilute retrieval. A journal entry exists to make a consultant *aware* that this area
+has bitten this client before, and to point at the concept card that explains why.
+
+So an entry carries: what happened, where it happened (module + related cards), and how it
+was closed - in one or two lines each. The explanation lives in the card it links to.
 
 Returns None on any failure; callers treat None as "skip this ticket" so a model blip
-never silently produces a bad card.
+never silently produces a bad entry.
 """
 from __future__ import annotations
 
@@ -9,24 +17,29 @@ from .llm import ChatLLM, extract_json
 from .model import IssueCard, Ticket
 from .scrub import scrub_text
 
-# `diagnosis` is deliberately NOT required: the prompt tells the model to leave it empty
-# when the ticket shows no root cause, so requiring it here would discard exactly those
-# tickets as "distill-failed". The retired service made the same allowance for root_cause.
-REQUIRED = ("title", "description", "module", "symptom", "resolution")
+# `module` and `what_happened` are the alerting surface: without them an entry cannot be
+# matched to what a consultant is doing, which is the entry's whole purpose.
+REQUIRED = ("what_happened", "module")
 
 SYSTEM = (
-    "You turn a resolved support ticket into a single factual knowledge card for a "
-    "Manhattan WMOS consultancy. Reply with ONE JSON object and nothing else.\n"
-    "Keys: title, description, module, tags (array), related_candidates (array of short "
-    "topic slugs), symptom, diagnosis, resolution, context.\n"
-    "Write generic, reusable text. STRIP ALL PII: do not include any person names, email "
-    "addresses, phone numbers, ID numbers or account identifiers - describe roles and "
-    "systems instead (for example 'the site supervisor', 'the interface user').\n"
-    "State only what the ticket supports; never invent a cause or a fix. If the ticket "
-    "does not show a root cause, set diagnosis to an empty string."
+    "You write a one-entry incident JOURNAL line for a Manhattan WMOS consultancy, from a "
+    "resolved support ticket. Reply with ONE JSON object and nothing else.\n"
+    "Keys: what_happened (one sentence), how_it_closed (one sentence, empty string if the "
+    "ticket does not say), module (the WMOS functional area, lowercase, e.g. allocation, "
+    "replenishment, inbound, cycle-count, interfaces, wave), tags (array of short "
+    "lowercase keywords), related_candidates (array of short topic slugs a reader should "
+    "consult), recurring (true if this reads like a routine scheduled request rather than "
+    "a fault).\n"
+    "DO NOT explain how WMOS works - that is documented elsewhere and repeating it is "
+    "worse than useless. Record only what happened at this site and how it ended.\n"
+    "Write generic, reusable text. STRIP ALL PII: no person names, email addresses, phone "
+    "numbers, ID numbers or account identifiers - refer to roles instead (for example "
+    "'the site supervisor'). State only what the ticket supports; never invent a cause."
 )
 
-MAX_THREAD_CHARS = 12000
+# Journal entries need far less of the thread than a knowledge card would: the opening
+# report and the closing exchange carry the signal, the middle is usually back-and-forth.
+MAX_THREAD_CHARS = 6000
 
 
 def build_prompt(t: Ticket, known: set[str]) -> str:
@@ -46,17 +59,22 @@ def distill(t: Ticket, llm: ChatLLM, known: set[str]) -> IssueCard | None:
         return None
     if any(not str(data.get(k, "")).strip() for k in REQUIRED):
         return None
+
+    what = str(data["what_happened"]).strip()
+    closed = str(data.get("how_it_closed", "")).strip()
+    subject = (t.subject or "").strip()
     return IssueCard(
         ticket_id=t.id,
         client=t.client,
-        title=str(data["title"]).strip(),
-        description=str(data["description"]).strip(),
-        module=str(data["module"]).strip(),
+        # The ticket's own subject is a better, cheaper title than a generated one, and
+        # keeps the entry recognisable against the real Zendesk queue.
+        title=subject or what[:80],
+        description=what,
+        module=str(data["module"]).strip().lower(),
         related=[str(x).strip() for x in (data.get("related_candidates") or []) if str(x).strip()],
-        tags=[str(x).strip() for x in (data.get("tags") or []) if str(x).strip()],
-        symptom=str(data["symptom"]).strip(),
-        diagnosis=str(data["diagnosis"]).strip(),
-        resolution=str(data["resolution"]).strip(),
-        context=str(data.get("context", "")).strip(),
+        tags=[str(x).strip().lower() for x in (data.get("tags") or []) if str(x).strip()],
+        what_happened=what,
+        how_it_closed=closed,
+        recurring=bool(data.get("recurring", False)),
         closed_at=(t.closed_at or "")[:10],
     )

@@ -16,6 +16,5 @@ def test_ticket_thread_text_joins_description_and_comments():
 def test_issue_card_path_is_ticket_id_prefixed():
     c = IssueCard(ticket_id=14872, client="alpha", title="Wave allocation stalls",
                   description="d", module="allocation", related=[], tags=[],
-                  symptom="s", diagnosis="d2", resolution="r", context="c",
-                  closed_at="2026-03-14")
+                  what_happened="w", how_it_closed="h", closed_at="2026-03-14")
     assert c.filename() == "14872-wave-allocation-stalls.md"

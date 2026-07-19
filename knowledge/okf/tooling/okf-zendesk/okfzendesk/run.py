@@ -44,10 +44,15 @@ def ingest(clients, org_ids, connector, llm, clients_dir, concepts_dir, state_di
         for org_id in org_ids[client]:
             since = replay_since(cursor.get(str(org_id)), None)
             rows = connector.list_closed(org_id=org_id, since=since)
+            # Apply the sampling limit BEFORE counting, so `fetched` reflects what was
+            # actually processed and the reconciliation gate still holds. Counting the
+            # full list here would make --limit always fail verification.
+            if limit:
+                rows = rows[:limit]
             report.fetched += len(rows)
             newest = since
 
-            for raw in rows[: limit or len(rows)]:
+            for raw in rows:
                 ticket_id = int(raw["id"])
                 newest = max(newest, raw.get("updated_at") or "")
 
@@ -134,7 +139,8 @@ def main() -> int:
     org_ids = load_org_ids(args.customers, args.client)
     connector = ConnectorClient(s.connector_base, s.connector_api_key,
                                 s.connector_page_cap, s.cap_warn_ratio)
-    llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.distill_model, s.bifrost_timeout_s)
+    llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.distill_model,
+                      s.bifrost_timeout_s, max_tokens=s.distill_max_tokens)
 
     try:
         report = ingest(args.client, org_ids, connector, llm, args.clients_dir,

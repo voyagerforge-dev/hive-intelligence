@@ -24,6 +24,7 @@ def _frontmatter(card: IssueCard, version: str) -> dict:
         "module": card.module,
         "related": card.related,
         "tags": card.tags,
+        "recurring": card.recurring,
         "sources": [{"kind": "zendesk-ticket", "ref": str(card.ticket_id),
                      "closed": card.closed_at}],
         "status": card.status,
@@ -35,13 +36,15 @@ def _frontmatter(card: IssueCard, version: str) -> dict:
 def render(card: IssueCard, version: str) -> str:
     fm = yaml.safe_dump(_frontmatter(card, version), sort_keys=False, allow_unicode=True,
                         default_flow_style=False).strip()
-    return (
-        f"---\n{fm}\n---\n\n"
-        f"## Symptom\n\n{card.symptom}\n\n"
-        f"## Diagnosis\n\n{card.diagnosis}\n\n"
-        f"## Resolution\n\n{card.resolution}\n\n"
-        f"## Context\n\n{card.context}\n"
-    )
+    # Deliberately terse. This is a pointer, not an explanation: the concept cards in
+    # `related` carry the product behaviour, and duplicating it here would dilute them.
+    body = [f"---\n{fm}\n---\n", f"## What happened\n\n{card.what_happened}\n"]
+    if card.how_it_closed:
+        body.append(f"## How it closed\n\n{card.how_it_closed}\n")
+    if card.related:
+        links = "\n".join(f"- `{r}`" for r in card.related)
+        body.append(f"## See also\n\n{links}\n")
+    return "\n".join(body)
 
 
 def card_dir(clients_dir: str | Path, client: str) -> Path:
