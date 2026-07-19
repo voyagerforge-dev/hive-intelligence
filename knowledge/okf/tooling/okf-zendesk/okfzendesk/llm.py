@@ -66,6 +66,10 @@ class BifrostChat:
         self._backoff = backoff_s
         self._max_tokens = max_tokens
 
+    @property
+    def model(self) -> str:
+        return self._model
+
     def complete(self, system: str, user: str) -> str | None:
         # Callers treat None as a hard failure (skip the ticket), so a transient blip
         # must not silently look like a decision.

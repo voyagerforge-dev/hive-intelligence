@@ -29,6 +29,7 @@ def _frontmatter(card: IssueCard, version: str) -> dict:
                      "closed": card.closed_at}],
         "status": card.status,
         "distilled_by": f"okf-zendesk@{version}",
+        **({"model": card.model} if card.model else {}),
         "timestamp": date.today().isoformat(),
     }
 

@@ -75,6 +75,7 @@ def reshape(staged: StagedCard, llm: ChatLLM, known: set[str],
         how_it_closed=str(data.get("how_it_closed", "")).strip(),
         recurring=bool(data.get("recurring", False)),
         closed_at=(closed_at or "")[:10],
+        model=getattr(llm, "model", ""),
     )
 
 
@@ -135,4 +136,8 @@ def reshape_batch(batch: list[tuple[StagedCard, str, str]], llm: ChatLLM,
     if arr is None or len(arr) != len(batch):
         return [reshape(s, llm, known, c, sub) for s, c, sub in batch]
 
-    return [_card_from(obj, s, c, sub) for obj, (s, c, sub) in zip(arr, batch, strict=True)]
+    cards = [_card_from(obj, s, c, sub) for obj, (s, c, sub) in zip(arr, batch, strict=True)]
+    for c_ in cards:
+        if c_ is not None:
+            c_.model = getattr(llm, "model", "")
+    return cards

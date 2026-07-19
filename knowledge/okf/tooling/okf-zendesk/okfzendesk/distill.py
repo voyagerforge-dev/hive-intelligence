@@ -77,4 +77,5 @@ def distill(t: Ticket, llm: ChatLLM, known: set[str]) -> IssueCard | None:
         how_it_closed=closed,
         recurring=bool(data.get("recurring", False)),
         closed_at=(t.closed_at or "")[:10],
+        model=getattr(llm, "model", ""),
     )

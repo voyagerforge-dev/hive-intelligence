@@ -59,6 +59,7 @@ class IssueCard:
     closed_at: str
     recurring: bool = False
     status: str = "distilled"
+    model: str = ""   # which LLM produced this entry
 
     def filename(self) -> str:
         return f"{self.ticket_id}-{slugify(self.title)}.md"
