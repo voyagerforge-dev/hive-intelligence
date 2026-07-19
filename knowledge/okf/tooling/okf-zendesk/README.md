@@ -64,7 +64,7 @@ fetch -> gate -> scrub -> distil -> link -> emit -> verify
 | No silent truncation | connector caps at 3000 and does not error; an at-cap result raises instead |
 | Human edits survive | `status: approved` cards are never overwritten without `--force` |
 | No invented citations | unresolvable `related` candidates are dropped, and the gate rejects any that remain |
-| Counts reconcile | `fetched == emitted + skipped + preserved` |
+| Counts reconcile | `fetched == emitted + skipped + preserved + cached + pii_held + failed` |
 | One ticket, one card | existing card found by ticket-id prefix, not by title slug |
 
 ## Environment
