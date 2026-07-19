@@ -10,6 +10,8 @@ cards. So this is a reshape plus a classification, not a re-summarisation.
 """
 from __future__ import annotations
 
+import json
+
 from .llm import ChatLLM, extract_json
 from .model import IssueCard
 from .r2 import StagedCard
@@ -33,6 +35,17 @@ SYSTEM = (
 )
 
 MAX_CARD_CHARS = 4000
+
+# Batching exists purely to cut GPU work. The model is a reasoning model, so it spends
+# ~1,300 tokens per entry when asked one at a time but ~540 when asked for five at once:
+# it reasons about the batch rather than re-reasoning per card. Measured 2.4x fewer tokens
+# per entry, which on a token-throughput-bound GPU is a 2.4x throughput gain.
+BATCH_SYSTEM = (
+    "For EACH numbered support card, emit one JSON object with keys what_happened, "
+    "how_it_closed, module, tags, related_candidates, recurring - the same fields and the "
+    "same rules as for a single card. Reply with ONE JSON array of objects, in the same "
+    "order as the cards, and nothing else.\n" + SYSTEM
+)
 
 
 def reshape(staged: StagedCard, llm: ChatLLM, known: set[str],
@@ -63,3 +76,63 @@ def reshape(staged: StagedCard, llm: ChatLLM, known: set[str],
         recurring=bool(data.get("recurring", False)),
         closed_at=(closed_at or "")[:10],
     )
+
+
+def _card_from(data: dict, staged: StagedCard, closed_at: str, subject: str) -> IssueCard | None:
+    if not isinstance(data, dict):
+        return None
+    if any(not str(data.get(k, "")).strip() for k in REQUIRED):
+        return None
+    what = str(data["what_happened"]).strip()
+    return IssueCard(
+        ticket_id=staged.ticket_id,
+        client=staged.client,
+        title=(subject or staged.title() or what[:80]).strip(),
+        description=what,
+        module=str(data["module"]).strip().lower(),
+        related=[str(x).strip() for x in (data.get("related_candidates") or []) if str(x).strip()],
+        tags=[str(x).strip().lower() for x in (data.get("tags") or []) if str(x).strip()],
+        what_happened=what,
+        how_it_closed=str(data.get("how_it_closed", "")).strip(),
+        recurring=bool(data.get("recurring", False)),
+        closed_at=(closed_at or "")[:10],
+    )
+
+
+def extract_array(text: str) -> list | None:
+    """Pull the JSON array out of a batched reply, tolerating prose or fences around it."""
+    t = (text or "").strip()
+    start, end = t.find("["), t.rfind("]")
+    if start < 0 or end <= start:
+        return None
+    try:
+        arr = json.loads(t[start:end + 1])
+    except json.JSONDecodeError:
+        return None
+    return arr if isinstance(arr, list) else None
+
+
+def reshape_batch(batch: list[tuple[StagedCard, str, str]], llm: ChatLLM,
+                  known: set[str]) -> list[IssueCard | None]:
+    """Reshape several staged cards in one call.
+
+    Falls back to one-at-a-time for the whole batch if the reply cannot be parsed or the
+    object count does not match the cards sent - a misaligned array would silently attach
+    one ticket's summary to another ticket's id, which is far worse than being slow.
+    """
+    if not batch:
+        return []
+    if len(batch) == 1:
+        staged, closed_at, subject = batch[0]
+        return [reshape(staged, llm, known, closed_at, subject)]
+
+    parts = []
+    for i, (staged, _, _) in enumerate(batch, 1):
+        text = scrub_text(staged.text or "", known)[:MAX_CARD_CHARS]
+        parts.append(f"### CARD {i}\n{text}")
+
+    arr = extract_array(llm.complete(BATCH_SYSTEM, "\n\n".join(parts)) or "")
+    if arr is None or len(arr) != len(batch):
+        return [reshape(s, llm, known, c, sub) for s, c, sub in batch]
+
+    return [_card_from(obj, s, c, sub) for obj, (s, c, sub) in zip(arr, batch, strict=True)]

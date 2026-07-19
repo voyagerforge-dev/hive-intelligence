@@ -58,16 +58,29 @@ class FakeConnector:
         return self.rows
 
 
+ENTRY = {"what_happened": "Labels could not be traced to a printer.",
+         "how_it_closed": "Label design updated.",
+         "module": "labelling", "tags": ["labels", "pallet"],
+         "related_candidates": [], "recurring": False}
+
+
 class FakeLLM:
-    def __init__(self):
+    """Honours the batch contract: an array when asked for one, else a single object."""
+
+    def __init__(self, mode="ok"):
         self.calls = 0
+        self.mode = mode
 
     def complete(self, system, user):
         self.calls += 1
-        return json.dumps({"what_happened": "Labels could not be traced to a printer.",
-                           "how_it_closed": "Label design updated.",
-                           "module": "labelling", "tags": ["labels", "pallet"],
-                           "related_candidates": [], "recurring": False})
+        n = user.count("### CARD")
+        if n > 1:                                   # batched request
+            if self.mode == "unparsable":
+                return "sorry, no JSON here"
+            if self.mode == "miscount":
+                return json.dumps([ENTRY] * (n - 1))   # one short -> misalignment
+            return json.dumps([ENTRY] * n)
+        return json.dumps(ENTRY)
 
 
 KEYS = ["support_alpha/docs/alpha-10928-pallet-label.md",
@@ -92,7 +105,7 @@ def test_rebuild_writes_entries_from_staged_cards(tmp_path):
                      clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts",
                      workers=2)
     assert report.emitted == 2                 # the foreign example_prefix key is not listed
-    assert llm.calls == 2
+    assert llm.calls == 1                      # both cards in ONE batched call
     written = sorted(p.name for p in (tmp_path / "clients" / "alpha" / "issues").glob("*.md"))
     assert written[0].startswith("10928-")
     body = (tmp_path / "clients" / "alpha" / "issues" / written[0]).read_text()
@@ -120,3 +133,31 @@ def test_rebuild_skips_entries_already_written(tmp_path):
     second = FakeLLM()
     report = rebuild(llm=second, **kw)
     assert second.calls == 0 and report.cached == 2
+
+
+def test_batch_falls_back_to_singles_when_reply_is_unparsable(tmp_path):
+    (tmp_path / "concepts").mkdir()
+    llm = FakeLLM(mode="unparsable")
+    report = rebuild(clients=["alpha"], org_ids={"alpha": [1]},
+                     r2=R2Reader(FakeS3(KEYS), "bucket"), connector=FakeConnector(ROWS), llm=llm,
+                     clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts",
+                     workers=1, batch_size=5)
+    # 1 failed batch call + 2 individual retries, and both entries still land
+    assert llm.calls == 3
+    assert report.emitted == 2
+
+
+def test_batch_falls_back_when_the_count_does_not_match(tmp_path):
+    """A short array would otherwise attach one ticket's summary to another ticket's id."""
+    (tmp_path / "concepts").mkdir()
+    llm = FakeLLM(mode="miscount")
+    report = rebuild(clients=["alpha"], org_ids={"alpha": [1]},
+                     r2=R2Reader(FakeS3(KEYS), "bucket"), connector=FakeConnector(ROWS), llm=llm,
+                     clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts",
+                     workers=1, batch_size=5)
+    assert llm.calls == 3
+    assert report.emitted == 2
+    # each entry must carry its OWN ticket id
+    names = sorted(p.name.split("-")[0] for p in
+                   (tmp_path / "clients" / "alpha" / "issues").glob("*.md"))
+    assert names == ["10928", "10938"]

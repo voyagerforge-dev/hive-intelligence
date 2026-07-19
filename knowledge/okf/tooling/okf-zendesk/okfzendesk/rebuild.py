@@ -20,7 +20,7 @@ from .emit import render, write_card
 from .link import load_card_ids, resolve_related
 from .model import RunReport
 from .r2 import R2Reader
-from .reshape import reshape
+from .reshape import reshape_batch
 from .scrub import leaks
 from .verify import verify_card, verify_run
 
@@ -40,8 +40,8 @@ def ticket_meta(connector, org_ids: list[int]) -> dict[int, tuple[str, str]]:
 
 
 def rebuild(clients, org_ids, r2: R2Reader, connector, llm, clients_dir, concepts_dir,
-            workers: int = 6, force: bool = False, limit: int | None = None,
-            dry_run: bool = False) -> RunReport:
+            workers: int = 6, batch_size: int = 5, force: bool = False,
+            limit: int | None = None, dry_run: bool = False) -> RunReport:
     report = RunReport()
     card_ids = load_card_ids(concepts_dir) if Path(concepts_dir).exists() else set()
 
@@ -71,44 +71,50 @@ def rebuild(clients, org_ids, r2: R2Reader, connector, llm, clients_dir, concept
             report.emitted += len(todo)
             continue
 
-        # --- phase 2: reshape concurrently (the only slow step) ---
-        log.info("%s: reshaping %d entries with %d workers", client, len(todo), workers)
+        # --- phase 2: reshape concurrently, in batches (the only slow step) ---
+        # Batching cuts GPU work ~2.4x: the model reasons once per batch instead of once
+        # per card. Concurrency then multiplies that. Both levers are needed - the GPU is
+        # token-throughput-bound, so more workers alone saturates it without going faster.
+        groups = [todo[i:i + batch_size] for i in range(0, len(todo), batch_size)]
+        log.info("%s: reshaping %d entries in %d batches of %d, %d workers",
+                 client, len(todo), len(groups), batch_size, workers)
         done = 0
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {}
-            for staged in todo:
-                closed_at, subject = meta.get(staged.ticket_id, ("", ""))
-                futures[pool.submit(reshape, staged, llm, set(), closed_at, subject)] = staged
+            for group in groups:
+                payload = [(s, *meta.get(s.ticket_id, ("", ""))) for s in group]
+                futures[pool.submit(reshape_batch, payload, llm, set())] = group
             for fut in as_completed(futures):
-                staged = futures[fut]
-                done += 1
-                if done % 50 == 0:
+                group = futures[fut]
+                done += len(group)
+                if done % 50 < batch_size:
                     log.info("  %s: %d/%d reshaped", client, done, len(todo))
                 try:
-                    card = fut.result()
-                except Exception as e:      # noqa: BLE001 - isolate one entry
-                    report.failed += 1
-                    report.failures.append((staged.ticket_id, str(e)))
-                    continue
-                if card is None:
-                    report.skipped += 1
-                    report.skipped_reasons.append((staged.ticket_id, "reshape-failed"))
+                    cards = fut.result()
+                except Exception as e:      # noqa: BLE001 - isolate one batch
+                    report.failed += len(group)
+                    report.failures += [(s.ticket_id, str(e)) for s in group]
                     continue
 
                 # --- phase 3: link, PII gate, write, verify (serial) ---
-                card.related = resolve_related(card.related, card_ids)
-                rendered = render(card, __version__)
-                kinds = leaks(rendered, set())
-                if kinds:
-                    report.pii_held += 1
-                    report.pii_tickets.append((card.ticket_id, kinds))
-                    continue
-                path, status = write_card(clients_dir, card, __version__, force=force)
-                if status == "preserved":
-                    report.preserved += 1
-                else:
-                    report.emitted += 1
-                    verify_card(path.read_text(), card, set(), card_ids)
+                for staged, card in zip(group, cards, strict=True):
+                    if card is None:
+                        report.skipped += 1
+                        report.skipped_reasons.append((staged.ticket_id, "reshape-failed"))
+                        continue
+                    card.related = resolve_related(card.related, card_ids)
+                    rendered = render(card, __version__)
+                    kinds = leaks(rendered, set())
+                    if kinds:
+                        report.pii_held += 1
+                        report.pii_tickets.append((card.ticket_id, kinds))
+                        continue
+                    path, status = write_card(clients_dir, card, __version__, force=force)
+                    if status == "preserved":
+                        report.preserved += 1
+                    else:
+                        report.emitted += 1
+                        verify_card(path.read_text(), card, set(), card_ids)
 
     verify_run(report)
     return report

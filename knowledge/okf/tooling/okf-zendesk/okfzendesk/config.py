@@ -28,3 +28,6 @@ class Settings(BaseSettings):
     # Concurrency for the reshape step. vLLM batches well; the connector is untouched
     # here (one list call per org), so this only loads the LLM.
     reshape_workers: int = 6
+    # Cards per LLM call. 5 measured 2.4x fewer tokens/entry than 1; larger batches
+    # risk a long single request and an all-or-nothing parse.
+    reshape_batch_size: int = 5

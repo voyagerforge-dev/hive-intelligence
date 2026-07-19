@@ -133,6 +133,7 @@ def main() -> int:
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--workers", type=int, help="concurrency for rebuild (default from config)")
+    ap.add_argument("--batch-size", type=int, help="cards per LLM call in rebuild")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -156,6 +157,7 @@ def main() -> int:
             report = rebuild(args.client, org_ids, R2Reader(s3, s.r2_bucket), connector, llm,
                              args.clients_dir, args.concepts_dir,
                              workers=args.workers or s.reshape_workers,
+                             batch_size=args.batch_size or s.reshape_batch_size,
                              force=args.force, limit=args.limit, dry_run=args.dry_run)
         else:
             report = ingest(args.client, org_ids, connector, llm, args.clients_dir,
