@@ -12,18 +12,23 @@ from pathlib import Path
 from . import __version__
 from .config import Settings
 from .distill import distill
-from .emit import write_card
+from .emit import card_dir, render, write_card
 from .fetch import ConnectorClient, to_ticket
 from .gate import content_hash, keep
 from .link import load_card_ids, resolve_related
 from .llm import BifrostChat
 from .model import RunError, RunReport
 from .orgs import load_org_ids
-from .scrub import known_values
+from .scrub import known_values, leaks
 from .state import load_state, replay_since, save_state
 from .verify import verify_card, verify_run
 
 log = logging.getLogger("okfzendesk")
+
+
+def already_carded(clients_dir, client: str, ticket_id: int) -> bool:
+    d = card_dir(clients_dir, client)
+    return d.exists() and any(d.glob(f"{ticket_id}-*.md"))
 
 
 def ingest(clients, org_ids, connector, llm, clients_dir, concepts_dir, state_dir,
@@ -43,35 +48,64 @@ def ingest(clients, org_ids, connector, llm, clients_dir, concepts_dir, state_di
             newest = since
 
             for raw in rows[: limit or len(rows)]:
-                detail = connector.get_ticket(int(raw["id"]))
-                ticket = to_ticket(raw, client=client, comments=detail.get("comments") or [])
-                newest = max(newest, ticket.closed_at or "")
+                ticket_id = int(raw["id"])
+                newest = max(newest, raw.get("updated_at") or "")
 
-                ok, reason = keep(ticket, seen)
-                if not ok:
-                    report.skipped += 1
-                    report.skipped_reasons.append((ticket.id, reason))
-                    continue
-                seen.add(content_hash(ticket))
-
-                if dry_run:
-                    report.emitted += 1   # counted as "would emit"
+                # Closed tickets are immutable, so a ticket already carded is never
+                # re-fetched and never re-distilled. This is what makes the replayed
+                # window cheap: without it every replay re-spends on the whole window.
+                if not force and already_carded(clients_dir, client, ticket_id):
+                    report.cached += 1
                     continue
 
-                known = known_values(ticket)
-                card = distill(ticket, llm, known)
-                if card is None:
-                    report.skipped += 1
-                    report.skipped_reasons.append((ticket.id, "distill-failed"))
-                    continue
+                try:
+                    detail = connector.get_ticket(ticket_id)
+                    ticket = to_ticket(raw, client=client, comments=detail.get("comments") or [])
 
-                card.related = resolve_related(card.related, card_ids)
-                path, status = write_card(clients_dir, card, __version__, force=force)
-                if status == "preserved":
-                    report.preserved += 1
-                else:
-                    report.emitted += 1
-                    verify_card(path.read_text(), card, known, card_ids)
+                    ok, reason = keep(ticket, seen)
+                    if not ok:
+                        report.skipped += 1
+                        report.skipped_reasons.append((ticket.id, reason))
+                        continue
+                    seen.add(content_hash(ticket))
+
+                    if dry_run:
+                        report.emitted += 1   # counted as "would emit"
+                        continue
+
+                    known = known_values(ticket)
+                    card = distill(ticket, llm, known)
+                    if card is None:
+                        report.skipped += 1
+                        report.skipped_reasons.append((ticket.id, "distill-failed"))
+                        continue
+
+                    card.related = resolve_related(card.related, card_ids)
+
+                    # PII quarantine: hold this one card and carry on. Aborting a
+                    # several-hundred-ticket backfill over a single bad card would be
+                    # worse than surfacing it for review. The card is never written.
+                    rendered = render(card, __version__)
+                    kinds = leaks(rendered, known)
+                    if kinds:
+                        report.pii_held += 1
+                        report.pii_tickets.append((ticket.id, kinds))
+                        continue
+
+                    path, status = write_card(clients_dir, card, __version__, force=force)
+                    if status == "preserved":
+                        report.preserved += 1
+                    else:
+                        report.emitted += 1
+                        # Belt and braces: PII was already quarantined above, so a hit
+                        # here means a logic bug and must fail loudly.
+                        verify_card(path.read_text(), card, known, card_ids)
+                except RunError:
+                    raise
+                except Exception as e:      # noqa: BLE001 - isolate one bad ticket
+                    report.failed += 1
+                    report.failures.append((ticket_id, str(e)))
+                    continue
 
             new_cursor[str(org_id)] = newest
 
@@ -110,8 +144,14 @@ def main() -> int:
         log.error("run failed: %s", e)
         return 1
 
-    log.info("fetched=%d emitted=%d skipped=%d preserved=%d",
-             report.fetched, report.emitted, report.skipped, report.preserved)
+    log.info("fetched=%d emitted=%d skipped=%d cached=%d preserved=%d pii_held=%d failed=%d",
+             report.fetched, report.emitted, report.skipped, report.cached,
+             report.preserved, report.pii_held, report.failed)
     for tid, reason in report.skipped_reasons[:20]:
         log.info("  skipped %s: %s", tid, reason)
+    # Kinds only - never the offending values.
+    for tid, kinds in report.pii_tickets:
+        log.warning("  PII HELD %s: %s (card not written; needs review)", tid, kinds)
+    for tid, err in report.failures[:20]:
+        log.error("  failed %s: %s", tid, err)
     return 0

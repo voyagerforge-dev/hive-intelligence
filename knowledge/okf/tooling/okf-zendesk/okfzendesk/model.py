@@ -68,5 +68,11 @@ class RunReport:
     skipped: int = 0
     emitted: int = 0
     preserved: int = 0        # approved cards left untouched
+    cached: int = 0           # already carded; not re-fetched, not re-distilled
+    pii_held: int = 0         # quarantined before writing, never emitted
+    failed: int = 0           # per-ticket errors, isolated
     skipped_reasons: list[tuple[int, str]] = field(default_factory=list)
+    # (ticket_id, [kinds]) - kinds only, never the offending values
+    pii_tickets: list[tuple[int, list[str]]] = field(default_factory=list)
+    failures: list[tuple[int, str]] = field(default_factory=list)
     at_cap_slices: list[str] = field(default_factory=list)

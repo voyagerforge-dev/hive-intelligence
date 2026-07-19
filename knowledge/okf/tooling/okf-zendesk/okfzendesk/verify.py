@@ -41,8 +41,10 @@ def verify_card(text: str, card: IssueCard, known: set[str], card_ids: set[str])
 def verify_run(report: RunReport) -> None:
     if report.at_cap_slices:
         raise RunError(f"fetch hit the connector page cap for: {report.at_cap_slices}")
-    accounted = report.emitted + report.skipped + report.preserved
+    accounted = (report.emitted + report.skipped + report.preserved
+                 + report.cached + report.pii_held + report.failed)
     if accounted != report.fetched:
         raise RunError(
             f"counts do not reconcile: fetched={report.fetched} != emitted={report.emitted} "
-            f"+ skipped={report.skipped} + preserved={report.preserved}")
+            f"+ skipped={report.skipped} + preserved={report.preserved} "
+            f"+ cached={report.cached} + pii_held={report.pii_held} + failed={report.failed}")

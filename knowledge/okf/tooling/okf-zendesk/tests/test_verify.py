@@ -49,6 +49,13 @@ def test_counts_must_reconcile():
     verify_run(RunReport(fetched=10, skipped=3, emitted=6, preserved=1))
 
 
+def test_counts_account_for_cached_pii_held_and_failed():
+    verify_run(RunReport(fetched=10, skipped=1, emitted=4, preserved=1,
+                         cached=2, pii_held=1, failed=1))
+    with pytest.raises(RunError, match="reconcile"):
+        verify_run(RunReport(fetched=10, emitted=4, cached=2))
+
+
 def test_at_cap_slice_fails():
     with pytest.raises(RunError, match="cap"):
         verify_run(RunReport(fetched=1, skipped=0, emitted=1, at_cap_slices=["alpha/42"]))

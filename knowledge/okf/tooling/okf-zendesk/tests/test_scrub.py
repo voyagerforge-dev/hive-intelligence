@@ -15,9 +15,23 @@ def test_scrubs_known_name_in_prose():
     assert "[name]" in out
 
 
-def test_leaks_detects_residual_personal_value():
-    assert leaks("Reported by Jane Doe", {"Jane Doe"}) == ["Jane Doe"]
+def test_leaks_reports_kinds_never_the_values():
+    """The result lands in logs and error messages, so it must not carry the PII."""
+    out = leaks("Reported by Jane Doe", {"Jane Doe"})
+    assert out == ["known-name"]
+    assert "Jane Doe" not in str(out)
     assert leaks("Reported by [name]", {"Jane Doe"}) == []
+
+
+def test_leaks_detects_sa_id_and_phone_and_email():
+    assert leaks("id 0001010000089 here", set()) == ["sa_id"]
+    assert leaks("call +1 555 555 0100", set()) == ["phone"]
+    assert leaks("mail a@b.co", set()) == ["email"]
+
+
+def test_scrubs_sa_id():
+    out = scrub_text("His ID is 0001010000089 okay", set())
+    assert "0001010000089" not in out and "[id]" in out
 
 
 def test_known_values_pulls_from_ticket_identity():

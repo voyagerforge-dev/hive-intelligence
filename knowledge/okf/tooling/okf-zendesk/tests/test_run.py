@@ -80,3 +80,61 @@ def test_second_run_is_idempotent(tmp_path):
     ingest(**kw)
     written = list((tmp_path / "clients" / "alpha" / "issues").glob("*.md"))
     assert len(written) == 1
+
+
+class PIILLM(FakeLLM):
+    def complete(self, system, user):
+        self.calls += 1
+        return json.dumps({"title": "Leaky card", "description": "d",
+                           "module": "allocation", "tags": [], "related_candidates": [],
+                           "symptom": "s", "diagnosis": "dg",
+                           "resolution": "call +1 555 555 0100 to confirm",
+                           "context": "c"})
+
+
+def test_pii_is_quarantined_not_aborted(tmp_path):
+    """One leaky card must not kill a several-hundred-ticket backfill."""
+    (tmp_path / "concepts").mkdir()
+    report = ingest(clients=["alpha"], org_ids={"alpha": [42]},
+                    connector=FakeConnector([ROW], COMMENTS), llm=PIILLM(),
+                    clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts",
+                    state_dir=tmp_path / "state")
+    assert report.pii_held == 1 and report.emitted == 0
+    tid, kinds = report.pii_tickets[0]
+    assert tid == 14872 and "phone" in kinds
+    assert "555" not in str(report.pii_tickets)          # kinds only, never the value
+    assert not list((tmp_path / "clients" / "alpha" / "issues").glob("*.md"))
+
+
+def test_already_carded_ticket_is_not_refetched_or_redistilled(tmp_path):
+    """Closed tickets are immutable: a replayed window must not re-spend on them."""
+    (tmp_path / "concepts").mkdir()
+    kw = dict(clients=["alpha"], org_ids={"alpha": [42]},
+              clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts",
+              state_dir=tmp_path / "state")
+    first = FakeLLM()
+    ingest(connector=FakeConnector([ROW], COMMENTS), llm=first, **kw)
+    assert first.calls == 1
+
+    second = FakeLLM()
+    report = ingest(connector=FakeConnector([ROW], COMMENTS), llm=second, **kw)
+    assert second.calls == 0          # no LLM spend on a ticket already carded
+    assert report.cached == 1 and report.emitted == 0
+
+
+def test_one_bad_ticket_does_not_kill_the_run(tmp_path):
+    (tmp_path / "concepts").mkdir()
+
+    class Exploding(FakeConnector):
+        def get_ticket(self, ticket_id):
+            if ticket_id == 999:
+                raise RuntimeError("connector blew up")
+            return {"comments": self.comments}
+
+    other = dict(ROW, id=999)
+    report = ingest(clients=["alpha"], org_ids={"alpha": [42]},
+                    connector=Exploding([ROW, other], COMMENTS), llm=FakeLLM(),
+                    clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts",
+                    state_dir=tmp_path / "state")
+    assert report.emitted == 1 and report.failed == 1
+    assert report.failures[0][0] == 999

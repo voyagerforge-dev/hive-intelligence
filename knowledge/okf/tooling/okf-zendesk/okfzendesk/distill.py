@@ -9,16 +9,21 @@ from .llm import ChatLLM, extract_json
 from .model import IssueCard, Ticket
 from .scrub import scrub_text
 
-REQUIRED = ("title", "description", "module", "symptom", "diagnosis", "resolution")
+# `diagnosis` is deliberately NOT required: the prompt tells the model to leave it empty
+# when the ticket shows no root cause, so requiring it here would discard exactly those
+# tickets as "distill-failed". The retired service made the same allowance for root_cause.
+REQUIRED = ("title", "description", "module", "symptom", "resolution")
 
 SYSTEM = (
     "You turn a resolved support ticket into a single factual knowledge card for a "
     "Manhattan WMOS consultancy. Reply with ONE JSON object and nothing else.\n"
     "Keys: title, description, module, tags (array), related_candidates (array of short "
     "topic slugs), symptom, diagnosis, resolution, context.\n"
-    "Rules: state only what the ticket supports; never invent a cause or a fix; if the "
-    "ticket does not show a diagnosis, set diagnosis to an empty string. Do not include "
-    "any person's name, email address or phone number."
+    "Write generic, reusable text. STRIP ALL PII: do not include any person names, email "
+    "addresses, phone numbers, ID numbers or account identifiers - describe roles and "
+    "systems instead (for example 'the site supervisor', 'the interface user').\n"
+    "State only what the ticket supports; never invent a cause or a fix. If the ticket "
+    "does not show a root cause, set diagnosis to an empty string."
 )
 
 MAX_THREAD_CHARS = 12000

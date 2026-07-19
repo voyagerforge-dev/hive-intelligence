@@ -55,3 +55,18 @@ def test_distill_returns_none_when_required_field_missing():
 def test_distill_tolerates_fenced_and_thinking_output():
     fenced = f"<think>pondering</think>\n```json\n{GOOD}\n```"
     assert distill(_ticket(), FakeLLM(fenced), known=set()) is not None
+
+
+def test_empty_diagnosis_is_allowed():
+    """The prompt tells the model to leave diagnosis empty when there is no root cause,
+    so requiring it would discard exactly those tickets."""
+    payload = json.loads(GOOD)
+    payload["diagnosis"] = ""
+    card = distill(_ticket(), FakeLLM(json.dumps(payload)), known=set())
+    assert card is not None and card.diagnosis == ""
+
+
+def test_missing_resolution_is_still_rejected():
+    payload = json.loads(GOOD)
+    payload["resolution"] = ""
+    assert distill(_ticket(), FakeLLM(json.dumps(payload)), known=set()) is None
