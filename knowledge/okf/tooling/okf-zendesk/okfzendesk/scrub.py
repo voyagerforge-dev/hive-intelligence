@@ -16,7 +16,50 @@ _EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 _PHONE = re.compile(
     r"(?<!\d)(?:\+\d[\d\s\-]{6,}\d|\(?\d{2,4}\)?[\s\-]\d{3}[\s\-]?\d{2,4})(?!\d)"
 )
-_SA_ID = re.compile(r"(?<!\d)\d{13}(?!\d)")
+# A bare 13-digit match is not enough: WMS ticket subjects carry long numeric LPN, wave
+# and item identifiers, and treating those as national IDs quarantined legitimate cards.
+# A real SA ID is YYMMDD + sequence + citizenship digit + Luhn check digit, so all three
+# structural properties are required before calling it PII.
+_THIRTEEN = re.compile(r"(?<!\d)\d{13}(?!\d)")
+
+
+def _luhn_ok(digits: str) -> bool:
+    total = 0
+    for i, ch in enumerate(reversed(digits)):
+        d = int(ch)
+        if i % 2 == 1:
+            d *= 2
+            if d > 9:
+                d -= 9
+        total += d
+    return total % 10 == 0
+
+
+def is_sa_id(digits: str) -> bool:
+    if len(digits) != 13 or not digits.isdigit():
+        return False
+    month, day = int(digits[2:4]), int(digits[4:6])
+    if not (1 <= month <= 12 and 1 <= day <= 31):
+        return False
+    return _luhn_ok(digits)
+
+
+class _SAIdPattern:
+    """Duck-types the re interface used by _PATTERNS/scrub, adding structural validation."""
+
+    @staticmethod
+    def search(text: str):
+        for m in _THIRTEEN.finditer(text or ""):
+            if is_sa_id(m.group()):
+                return m
+        return None
+
+    @staticmethod
+    def sub(repl: str, text: str) -> str:
+        return _THIRTEEN.sub(lambda m: repl if is_sa_id(m.group()) else m.group(), text or "")
+
+
+_SA_ID = _SAIdPattern()
 
 _PATTERNS = {"email": _EMAIL, "phone": _PHONE, "sa_id": _SA_ID}
 

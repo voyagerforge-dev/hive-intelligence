@@ -1,8 +1,8 @@
 """Hard verification gate. Any failure raises RunError - never a warning."""
 from __future__ import annotations
 
-import yaml
 
+from .fm import parse_frontmatter
 from .model import IssueCard, RunError, RunReport
 from .scrub import leaks
 
@@ -10,8 +10,7 @@ from .scrub import leaks
 def _frontmatter_of(text: str) -> dict:
     if not text.startswith("---"):
         raise RunError("card has no frontmatter")
-    _, fm, _ = text.split("---", 2)
-    return yaml.safe_load(fm) or {}
+    return parse_frontmatter(text)
 
 
 def verify_card(text: str, card: IssueCard, known: set[str], card_ids: set[str]) -> None:

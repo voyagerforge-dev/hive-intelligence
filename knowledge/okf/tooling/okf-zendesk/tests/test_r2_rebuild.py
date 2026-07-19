@@ -61,7 +61,7 @@ class FakeConnector:
 ENTRY = {"what_happened": "Labels could not be traced to a printer.",
          "how_it_closed": "Label design updated.",
          "module": "labelling", "tags": ["labels", "pallet"],
-         "related_candidates": [], "recurring": False}
+         "related_candidates": [], "routine": False}
 
 
 class FakeLLM:
@@ -161,3 +161,34 @@ def test_batch_falls_back_when_the_count_does_not_match(tmp_path):
     names = sorted(p.name.split("-")[0] for p in
                    (tmp_path / "clients" / "alpha" / "issues").glob("*.md"))
     assert names == ["10928", "10938"]
+
+
+class CountingS3(FakeS3):
+    """Counts body downloads, so we can assert we do not pay for cards already carded."""
+
+    def __init__(self, keys):
+        super().__init__(keys)
+        self.gets = 0
+
+    def get_object(self, Bucket, Key):  # noqa: N803 - boto3 signature
+        self.gets += 1
+        return super().get_object(Bucket=Bucket, Key=Key)
+
+
+def test_already_carded_tickets_are_not_downloaded_from_r2(tmp_path):
+    """The key alone yields the ticket id, so a cached ticket needs no body fetch.
+
+    The first full run spent 7m23s re-downloading 1,132 cards it then discarded.
+    """
+    (tmp_path / "concepts").mkdir()
+    kw = dict(clients=["alpha"], org_ids={"alpha": [1]}, connector=FakeConnector(ROWS),
+              clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts", workers=1)
+    s3 = CountingS3(KEYS)
+    rebuild(r2=R2Reader(s3, "bucket"), llm=FakeLLM(), **kw)
+    first = s3.gets
+    assert first == 2                      # both cards fetched on the first pass
+
+    s3b = CountingS3(KEYS)
+    report = rebuild(r2=R2Reader(s3b, "bucket"), llm=FakeLLM(), **kw)
+    assert report.cached == 2
+    assert s3b.gets == 0                   # second pass downloads nothing

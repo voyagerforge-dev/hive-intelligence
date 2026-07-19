@@ -17,9 +17,9 @@ from pathlib import Path
 
 from . import __version__
 from .emit import render, write_card
-from .link import load_card_ids, resolve_related
+from .relink import load_card_ids
 from .model import RunReport
-from .r2 import R2Reader
+from .r2 import R2Reader, parse_key
 from .reshape import reshape_batch
 from .scrub import leaks
 from .verify import verify_card, verify_run
@@ -57,13 +57,21 @@ def rebuild(clients, org_ids, r2: R2Reader, connector, llm, clients_dir, concept
         from .run import already_carded
         todo = []
         for key in keys:
-            staged = r2.get_card(key)
-            if staged is None:
+            # The key already encodes the ticket id, so a card that is already written
+            # can be skipped without paying for its body. Fetching first cost 7m23s of
+            # pure waste on the first full run.
+            parsed = parse_key(key)
+            if parsed is None:
                 report.skipped += 1
                 report.skipped_reasons.append((0, f"unparsable-key:{key}"))
                 continue
-            if not force and already_carded(clients_dir, client, staged.ticket_id):
+            if not force and already_carded(clients_dir, client, parsed[1]):
                 report.cached += 1
+                continue
+            staged = r2.get_card(key)
+            if staged is None:
+                report.skipped += 1
+                report.skipped_reasons.append((parsed[1], f"unreadable-card:{key}"))
                 continue
             todo.append(staged)
 
@@ -102,7 +110,6 @@ def rebuild(clients, org_ids, r2: R2Reader, connector, llm, clients_dir, concept
                         report.skipped += 1
                         report.skipped_reasons.append((staged.ticket_id, "reshape-failed"))
                         continue
-                    card.related = resolve_related(card.related, card_ids)
                     rendered = render(card, __version__)
                     kinds = leaks(rendered, set())
                     if kinds:

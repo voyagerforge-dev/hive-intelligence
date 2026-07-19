@@ -23,7 +23,7 @@ class FakeLLM:
         self.calls += 1
         return json.dumps({"what_happened": "Wave did not allocate", "how_it_closed": "reran",
                            "module": "allocation", "tags": ["allocation"],
-                           "related_candidates": [], "recurring": False})
+                           "related_candidates": [], "routine": False})
 
 
 ROW = {"id": 14872, "subject": "Orders not allocating",
@@ -86,7 +86,7 @@ class PIILLM(FakeLLM):
         self.calls += 1
         return json.dumps({"what_happened": "call +1 555 555 0100 to confirm",
                            "how_it_closed": "", "module": "allocation", "tags": [],
-                           "related_candidates": [], "recurring": False})
+                           "related_candidates": [], "routine": False})
 
 
 def test_pii_is_quarantined_not_aborted(tmp_path):

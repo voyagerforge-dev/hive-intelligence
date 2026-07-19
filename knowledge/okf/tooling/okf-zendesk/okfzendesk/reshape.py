@@ -26,8 +26,7 @@ SYSTEM = (
     "card does not say), module (WMOS functional area, lowercase single token, e.g. "
     "allocation, replenishment, inbound, outbound, interfaces, labelling, wave, "
     "cycle-count, inventory, tasking), tags (3-6 short lowercase keywords), "
-    "related_candidates (array of short topic slugs a reader should consult), "
-    "recurring (true if this reads like a routine scheduled request rather than a fault).\n"
+    "routine (true if this is a routine scheduled request rather than a fault).\n"
     "Do NOT explain how WMOS works - that is documented elsewhere and repeating it is worse "
     "than useless. Record only what happened at this site and how it ended. Be terse.\n"
     "STRIP ALL PII: no person names, email addresses, phone numbers, ID numbers or account "
@@ -42,7 +41,7 @@ MAX_CARD_CHARS = 4000
 # per entry, which on a token-throughput-bound GPU is a 2.4x throughput gain.
 BATCH_SYSTEM = (
     "For EACH numbered support card, emit one JSON object with keys what_happened, "
-    "how_it_closed, module, tags, related_candidates, recurring - the same fields and the "
+    "how_it_closed, module, tags, routine - the same fields and the "
     "same rules as for a single card. Reply with ONE JSON array of objects, in the same "
     "order as the cards, and nothing else.\n" + SYSTEM
 )
@@ -69,11 +68,11 @@ def reshape(staged: StagedCard, llm: ChatLLM, known: set[str],
         title=title,
         description=what,
         module=str(data["module"]).strip().lower(),
-        related=[str(x).strip() for x in (data.get("related_candidates") or []) if str(x).strip()],
+        related=[],   # derived later by `relink` against the real corpus
         tags=[str(x).strip().lower() for x in (data.get("tags") or []) if str(x).strip()],
         what_happened=what,
         how_it_closed=str(data.get("how_it_closed", "")).strip(),
-        recurring=bool(data.get("recurring", False)),
+        routine=bool(data.get("routine", False)),
         closed_at=(closed_at or "")[:10],
         model=getattr(llm, "model", ""),
     )
@@ -91,11 +90,11 @@ def _card_from(data: dict, staged: StagedCard, closed_at: str, subject: str) -> 
         title=(subject or staged.title() or what[:80]).strip(),
         description=what,
         module=str(data["module"]).strip().lower(),
-        related=[str(x).strip() for x in (data.get("related_candidates") or []) if str(x).strip()],
+        related=[],   # derived later by `relink` against the real corpus
         tags=[str(x).strip().lower() for x in (data.get("tags") or []) if str(x).strip()],
         what_happened=what,
         how_it_closed=str(data.get("how_it_closed", "")).strip(),
-        recurring=bool(data.get("recurring", False)),
+        routine=bool(data.get("routine", False)),
         closed_at=(closed_at or "")[:10],
     )
 

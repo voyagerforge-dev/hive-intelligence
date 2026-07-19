@@ -24,7 +24,7 @@ def _frontmatter(card: IssueCard, version: str) -> dict:
         "module": card.module,
         "related": card.related,
         "tags": card.tags,
-        "recurring": card.recurring,
+        "routine": card.routine,
         "sources": [{"kind": "zendesk-ticket", "ref": str(card.ticket_id),
                      "closed": card.closed_at}],
         "status": card.status,

@@ -57,7 +57,10 @@ class IssueCard:
     what_happened: str
     how_it_closed: str
     closed_at: str
-    recurring: bool = False
+    # Named for what the model is actually asked: is this a routine scheduled request
+    # rather than a fault? It is NOT a measure of how often the issue recurs, and the
+    # old name `recurring` was read that way by both skills and humans.
+    routine: bool = False
     status: str = "distilled"
     model: str = ""   # which LLM produced this entry
 

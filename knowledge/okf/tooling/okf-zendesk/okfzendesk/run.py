@@ -1,4 +1,9 @@
-"""CLI orchestration: fetch -> gate -> scrub -> distil -> link -> emit -> verify.
+"""CLI orchestration: fetch -> gate -> scrub -> distil -> emit -> verify -> relink.
+
+Linking comes last and deliberately so. The distiller has never seen the corpus, so any
+id it produces is a guess (measured: 4% resolved). Cards are therefore emitted with
+`related: []` and linked afterwards by `relink`, against the real card ids, with the model
+judging each candidate and free to decline.
 
 `--dry-run` fetches and gates but never calls the LLM and never writes. That is how a
 backfill is sized and costed before any money is spent.
@@ -15,7 +20,7 @@ from .distill import distill
 from .emit import card_dir, render, write_card
 from .fetch import ConnectorClient, to_ticket
 from .gate import content_hash, keep
-from .link import load_card_ids, resolve_related
+from .relink import load_card_ids
 from .llm import BifrostChat
 from .model import RunError, RunReport
 from .orgs import load_org_ids
@@ -85,7 +90,6 @@ def ingest(clients, org_ids, connector, llm, clients_dir, concepts_dir, state_di
                         report.skipped_reasons.append((ticket.id, "distill-failed"))
                         continue
 
-                    card.related = resolve_related(card.related, card_ids)
 
                     # PII quarantine: hold this one card and carry on. Aborting a
                     # several-hundred-ticket backfill over a single bad card would be
@@ -123,12 +127,13 @@ def ingest(clients, org_ids, connector, llm, clients_dir, concepts_dir, state_di
 
 def main() -> int:
     ap = argparse.ArgumentParser(prog="okfzendesk")
-    ap.add_argument("mode", choices=["backfill", "incremental", "rebuild"])
+    ap.add_argument("mode", choices=["backfill", "incremental", "rebuild", "relink"])
     ap.add_argument("--client", action="append", required=True)
-    ap.add_argument("--customers", required=True, help="path to customers.yaml")
+    # relink reads only cards already on disk: no Zendesk, no R2, no run state.
+    ap.add_argument("--customers", help="path to customers.yaml (not used by relink)")
     ap.add_argument("--clients-dir", required=True)
     ap.add_argument("--concepts-dir", required=True)
-    ap.add_argument("--state-dir", required=True)
+    ap.add_argument("--state-dir", help="run state (not used by relink)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--limit", type=int)
@@ -138,6 +143,21 @@ def main() -> int:
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     s = Settings()
+
+    if args.mode == "relink":
+        from .relink import relink_cards
+        llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.distill_model,
+                          s.bifrost_timeout_s, max_tokens=s.distill_max_tokens)
+        rep = relink_cards(args.client, args.clients_dir, args.concepts_dir, llm,
+                           workers=args.workers or s.reshape_workers,
+                           dry_run=args.dry_run)
+        log.info("scanned=%d linked=%d declined=%d no_shortlist=%d cleared=%d",
+                 rep.scanned, rep.linked, rep.declined, rep.no_shortlist, rep.cleared)
+        return 0
+
+    for name in ("customers", "state_dir"):
+        if not getattr(args, name):
+            ap.error(f"--{name.replace('_', '-')} is required for mode {args.mode}")
     org_ids = load_org_ids(args.customers, args.client)
     connector = ConnectorClient(s.connector_base, s.connector_api_key,
                                 s.connector_page_cap, s.cap_warn_ratio)
@@ -166,6 +186,17 @@ def main() -> int:
     except RunError as e:
         log.error("run failed: %s", e)
         return 1
+
+    # Linking is a pipeline stage, not an optional follow-up. Cards are emitted with
+    # `related: []` by design (the distiller cannot know corpus ids), so skipping this
+    # would ship a journal whose entries point at nothing - which is what the first run
+    # did, at 96%. skip_linked keeps it incremental: only new entries cost anything.
+    if not args.dry_run:
+        from .relink import relink_cards
+        rl = relink_cards(args.client, args.clients_dir, args.concepts_dir, llm,
+                          workers=args.workers or s.reshape_workers, skip_linked=True)
+        log.info("relink: scanned=%d linked=%d declined=%d no_shortlist=%d cleared=%d",
+                 rl.scanned, rl.linked, rl.declined, rl.no_shortlist, rl.cleared)
 
     log.info("fetched=%d emitted=%d skipped=%d cached=%d preserved=%d pii_held=%d failed=%d",
              report.fetched, report.emitted, report.skipped, report.cached,

@@ -26,7 +26,7 @@ GOOD = json.dumps({"what_happened": "Morning wave did not allocate; replen lagge
                    "how_it_closed": "Reran replenishment; wave allocated.",
                    "module": "allocation", "tags": ["allocation", "replenishment"],
                    "related_candidates": ["wms/allocation/wave-replen-lag"],
-                   "recurring": False})
+                   "routine": False})
 
 
 def test_distill_returns_card_and_never_sends_pii_to_the_model():
@@ -71,7 +71,7 @@ def test_missing_module_is_rejected():
     assert distill(_ticket(), FakeLLM(json.dumps(payload)), known=set()) is None
 
 
-def test_recurring_flag_is_carried():
+def test_routine_flag_is_carried():
     payload = json.loads(GOOD)
-    payload["recurring"] = True
-    assert distill(_ticket(), FakeLLM(json.dumps(payload)), known=set()).recurring is True
+    payload["routine"] = True
+    assert distill(_ticket(), FakeLLM(json.dumps(payload)), known=set()).routine is True

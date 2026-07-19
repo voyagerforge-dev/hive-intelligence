@@ -27,9 +27,8 @@ SYSTEM = (
     "Keys: what_happened (one sentence), how_it_closed (one sentence, empty string if the "
     "ticket does not say), module (the WMOS functional area, lowercase, e.g. allocation, "
     "replenishment, inbound, cycle-count, interfaces, wave), tags (array of short "
-    "lowercase keywords), related_candidates (array of short topic slugs a reader should "
-    "consult), recurring (true if this reads like a routine scheduled request rather than "
-    "a fault).\n"
+    "lowercase keywords), routine (true if this is a routine scheduled request rather "
+    "than a fault).\n"
     "DO NOT explain how WMOS works - that is documented elsewhere and repeating it is "
     "worse than useless. Record only what happened at this site and how it ended.\n"
     "Write generic, reusable text. STRIP ALL PII: no person names, email addresses, phone "
@@ -71,11 +70,13 @@ def distill(t: Ticket, llm: ChatLLM, known: set[str]) -> IssueCard | None:
         title=subject or what[:80],
         description=what,
         module=str(data["module"]).strip().lower(),
-        related=[str(x).strip() for x in (data.get("related_candidates") or []) if str(x).strip()],
+        # Links are derived later by `relink`, against the real corpus: asking the
+        # model for ids it has never seen produced a 4% hit rate.
+        related=[],
         tags=[str(x).strip().lower() for x in (data.get("tags") or []) if str(x).strip()],
         what_happened=what,
         how_it_closed=closed,
-        recurring=bool(data.get("recurring", False)),
+        routine=bool(data.get("routine", False)),
         closed_at=(t.closed_at or "")[:10],
         model=getattr(llm, "model", ""),
     )
