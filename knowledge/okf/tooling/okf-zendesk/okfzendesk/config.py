@@ -20,3 +20,11 @@ class Settings(BaseSettings):
     connector_page_cap: int = 3000
     # Treat >= this fraction of the cap as "probably truncated".
     cap_warn_ratio: float = 0.95
+    # R2: the retired service's staged cards, reused instead of re-distilling.
+    r2_endpoint: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_bucket: str = "example-bucket"
+    # Concurrency for the reshape step. vLLM batches well; the connector is untouched
+    # here (one list call per org), so this only loads the LLM.
+    reshape_workers: int = 6

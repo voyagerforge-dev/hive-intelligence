@@ -123,7 +123,7 @@ def ingest(clients, org_ids, connector, llm, clients_dir, concepts_dir, state_di
 
 def main() -> int:
     ap = argparse.ArgumentParser(prog="okfzendesk")
-    ap.add_argument("mode", choices=["backfill", "incremental"])
+    ap.add_argument("mode", choices=["backfill", "incremental", "rebuild"])
     ap.add_argument("--client", action="append", required=True)
     ap.add_argument("--customers", required=True, help="path to customers.yaml")
     ap.add_argument("--clients-dir", required=True)
@@ -132,6 +132,7 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--workers", type=int, help="concurrency for rebuild (default from config)")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -143,9 +144,23 @@ def main() -> int:
                       s.bifrost_timeout_s, max_tokens=s.distill_max_tokens)
 
     try:
-        report = ingest(args.client, org_ids, connector, llm, args.clients_dir,
-                        args.concepts_dir, args.state_dir, dry_run=args.dry_run,
-                        force=args.force, limit=args.limit)
+        if args.mode == "rebuild":
+            import boto3
+
+            from .r2 import R2Reader
+            from .rebuild import rebuild
+            s3 = boto3.client("s3", endpoint_url=s.r2_endpoint,
+                              aws_access_key_id=s.r2_access_key_id,
+                              aws_secret_access_key=s.r2_secret_access_key,
+                              region_name="auto")
+            report = rebuild(args.client, org_ids, R2Reader(s3, s.r2_bucket), connector, llm,
+                             args.clients_dir, args.concepts_dir,
+                             workers=args.workers or s.reshape_workers,
+                             force=args.force, limit=args.limit, dry_run=args.dry_run)
+        else:
+            report = ingest(args.client, org_ids, connector, llm, args.clients_dir,
+                            args.concepts_dir, args.state_dir, dry_run=args.dry_run,
+                            force=args.force, limit=args.limit)
     except RunError as e:
         log.error("run failed: %s", e)
         return 1
