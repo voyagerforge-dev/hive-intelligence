@@ -45,7 +45,9 @@ fetch -> gate -> scrub -> distil -> link -> emit -> verify
 - **gate** - deterministic, pre-LLM, so noise costs nothing. Drops thin content, noise patterns
   (password/access requests), threads with no agent diagnosis, and near-duplicates. Every drop is
   logged with a reason.
-- **scrub** - strips names/emails/phones **before** the model sees the thread.
+- **scrub** - strips names, emails, phones and **13-digit SA ID numbers** before the model sees
+  the thread. A card that still trips the detector is **quarantined, not written**, and the run
+  continues (`pii_held` in the report).
 - **distil** - one LLM call per ticket, strict schema; returns nothing rather than a half-card.
 - **link** - `related` ids are kept only if they resolve to a real card. Never invented.
 - **emit** - idempotent; a ticket is bound to one file by id prefix even if the title is reworded.
@@ -55,7 +57,10 @@ fetch -> gate -> scrub -> distil -> link -> emit -> verify
 
 | Property | Enforced by |
 |---|---|
-| No personal data in a card | scrub before the LLM, then `leaks()` re-asserted on every emitted card |
+| No personal data in a card | scrub before the LLM; `leaks()` checked before writing, card quarantined if it hits |
+| PII never reaches logs | `leaks()` returns *kinds* (`email`, `phone`, `sa_id`, `known-name`), never values |
+| One leaky card cannot kill a backfill | quarantine + continue, reported as `pii_held` |
+| No repeat spend | a ticket already carded is not re-fetched or re-distilled |
 | No silent truncation | connector caps at 3000 and does not error; an at-cap result raises instead |
 | Human edits survive | `status: approved` cards are never overwritten without `--force` |
 | No invented citations | unresolvable `related` candidates are dropped, and the gate rejects any that remain |
