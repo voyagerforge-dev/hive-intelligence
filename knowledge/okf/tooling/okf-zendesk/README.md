@@ -63,7 +63,7 @@ Two traps worth knowing about the R2 data:
 ## Pipeline
 
 ```
-fetch -> gate -> scrub -> distil -> link -> emit -> verify
+fetch -> gate -> scrub -> distil -> PII quarantine -> emit -> verify -> relink
 ```
 
 - **fetch** - read-only, via `connectors/zendesk-connector` (never Zendesk directly). ALPHA is 1 org,
@@ -79,9 +79,12 @@ fetch -> gate -> scrub -> distil -> link -> emit -> verify
   the answer (4000; at 2000 it returns nothing at all), and thinking cannot be disabled client-side
   because `chat_template_kwargs` does not pass through Bifrost. Uses `VK_HOST_D_LOCAL` - `VK_OKF` is
   scoped to minimax/openrouter and 403s on host-d.
-- **link** - `related` ids are kept only if they resolve to a real card. Never invented.
 - **emit** - idempotent; a ticket is bound to one file by id prefix even if the title is reworded.
 - **verify** - hard gate; any failure raises and the run fails.
+- **relink** (`relink.py`) - linking runs *after* distillation, never during it: the distiller has never
+  seen the corpus, so cards are emitted with `related: []` and linked afterwards against real card ids
+  by a lexical shortlist plus a model rerank that is free to decline. `related` ids are kept only if
+  they resolve to a real card. Never invented.
 
 ## Safety properties (all test-covered)
 
@@ -125,5 +128,8 @@ distillation, so it needs explicit approval.
 
 ## Status
 
-Built and tested. **Never yet run against live Zendesk.** Outstanding before a first real run:
-a counting dry-run to size the backfill and its cost, and a decision on the review sample rate.
+Built, tested and shipped: **2,295 issue cards are live for ALPHA and BETA**, all built via `rebuild`
+from the staged R2 cards. The `backfill` / `incremental` paths - the ones that read live ticket
+threads - have **still never run against live Zendesk**. Outstanding before a first real run: a
+counting dry-run to size it and its cost, and a decision on the review sample rate. See the
+[tooling doc's TODO list](../../docs/tooling/okf-zendesk.md) for the full set.
