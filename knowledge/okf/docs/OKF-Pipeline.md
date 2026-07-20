@@ -13,7 +13,7 @@ and render inline on GitHub.*
 > step (facets, conformance, index) sits between card creation and serving; a product-isolation eval
 > gates every deploy; a corrections layer overlays outdated cards without editing them; and a
 > **memory layer** adds per-owner private notes plus hard-isolated **client-scoped memory cards**
-> (`clients/<client>/memory/`). Alongside the narrative cards, a **database-object tier** - 3,027 WMOS
+> (`clients/<client>/memory/`). Alongside the narrative cards, a **database-object tier** - 7,249 WMOS
 > schema cards (tables + PL/SQL) parsed **deterministically** from the Manhattan deploy scripts - is
 > served **on-demand** behind a dedicated `find_db_objects` tool, deliberately kept out of the concept
 > index. Claude reaches all of this through a **Cowork plugin** whose skills (base OKF grounding +
@@ -470,7 +470,7 @@ memory tools and client isolation verified end-to-end.
 
 Concept cards describe **how WMOS works**; they do not describe **the data model itself** - the tables,
 columns, data types, keys, and stored PL/SQL that a WMOS system actually runs on. The database-object
-tier fills that gap with **3,027 precise schema cards** parsed straight from the product's own deploy
+tier fills that gap with **7,249 precise schema cards** parsed straight from the product's own deploy
 DDL - the authoritative source, not prose about it.
 
 **This is a different mechanism from Stages 1-2.** Concept cards are *distilled by an LLM* from messy prose
@@ -482,7 +482,8 @@ dialect-aware SQL parser - a real tokenizer/AST, never regex, so quirky DDL pars
 
 **Source.** The Manhattan WMOS deploy scripts ship the schema twice, once per supported DBMS:
 `ManhDBDeploy/{Oracle,DB2}/DBScripts/Product/*.sql` (one file per functional **module** - `DOM.sql`,
-`CM.sql`, …). The parser reads both dialects and reconciles them per object.
+`CM.sql`, …) **and** `ManhDBDeploy/{Oracle,DB2}/DBScripts/Seed/Product/<module>/` (the base-schema
+catalogs, which hold the bulk of the tables). The parser reads both dialects and reconciles them per object.
 
 ```mermaid
 flowchart TD
@@ -517,8 +518,8 @@ surfaced every real-corpus DDL quirk - `NOT NULL ENABLE`, `GLOBAL TEMPORARY`, `G
 collisions are deduped when structurally identical and otherwise **logged to `conflicts.log`**, never
 silently overwritten. The output is a folder of cards plus a `manifest.jsonl` index the serving layer reads.
 
-**Corpus.** `concepts/wms/db/{tables,plsql}/*.md` = **3,027 cards**: 892 tables, 913 triggers, 841
-procedures, 146 functions, 140 views, 95 packages. Every card is `type: dbobject`, carries its `module`
+**Corpus.** `concepts/wms/db/{tables,plsql}/*.md` = **7,249 cards**: 3,654 tables, 1,399 procedures,
+1,288 triggers, 429 functions, 364 views, 115 packages. Every card is `type: dbobject`, carries its `module`
 (the source functional area), its `platform` dialects (`oracle`/`db2`), `sources:` (the exact DDL file),
 and `related:` edges to referenced tables (from the FKs).
 
@@ -543,7 +544,7 @@ Key / Description), then `## Primary key`, `## Foreign keys`, `## Indexes`, `## 
 `## Source (Oracle)` / `## Source (DB2)` fenced bodies (a DB2 body identical to Oracle's is recorded as
 *"Identical to Oracle."* rather than duplicated).
 
-**On-demand serving, not in the concept index.** This tier is 3× the concept corpus and is schema-level,
+**On-demand serving, not in the concept index.** This tier is over 7× the concept corpus and is schema-level,
 not narrative - putting it in `list_concepts` would drown concept retrieval. So the db cards are
 **excluded from the selectable index** and reached **only** through the `find_db_objects` tool
 (see [§Stage 3 - the database-object door](#the-database-object-door)); the base skill nudges Claude into
@@ -562,7 +563,8 @@ that tool for schema questions and stays on concept cards for functional ones.
 **Deep dive:** [`tooling/okf-dbparse.md`](tooling/okf-dbparse.md) - each parser stage in module-level detail.
 
 Design + plan: `docs/superpowers/{specs,plans}/2026-07-15-okf-wmos-dbobjects*`. Shipped in PR #82 (3,027
-cards, gate-verified, 0 unparsed).
+cards, gate-verified, 0 unparsed); the `Seed/Product/` base-schema tree was added in PR #87, taking the
+tier to its current 7,249 cards.
 
 ---
 
@@ -873,7 +875,8 @@ SQLite memory.
 Every code file in the pipeline and its one-line job. For **module-level detail** on any package -
 each module's logic, inputs/outputs, dependencies, and how it's invoked/deployed - see the per-package
 **[tooling reference](tooling/README.md)**: [okf-prep](tooling/okf-prep.md) · [okf-gen](tooling/okf-gen.md) ·
-[okf-serve](tooling/okf-serve.md) · [okf-dbparse](tooling/okf-dbparse.md) · [okf-author](tooling/okf-author.md).
+[okf-serve](tooling/okf-serve.md) · [okf-dbparse](tooling/okf-dbparse.md) · [okf-author](tooling/okf-author.md) ·
+[okf-zendesk](tooling/okf-zendesk.md).
 
 ### `tooling/okf-prep/okfprep/` - Stage 1, doc prep
 `cli.py` · `config.py` · `scanner.py` · `folder_parser.py` · `dups.py` · `curation_plan.py` ·
@@ -1024,7 +1027,7 @@ uv run okfserve serve --http      # team: REST + mounted MCP behind the CF Acces
 #   Authentik alternative → docs/runbooks/okf-serve-authentik.md
 ```
 
-All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev && uv run pytest -q`.
+All six packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev && uv run pytest -q`.
 
 ---
 
@@ -1056,7 +1059,7 @@ All three packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev
 ## See also
 
 - [OKF Overview](../README.md) - the documentation map and how the pieces fit together.
-- [Tooling reference](tooling/README.md) - the code-level companion: a module-level technical doc per package (`okf-prep`, `okf-gen`, `okf-serve`, `okf-dbparse`, `okf-author`).
+- [Tooling reference](tooling/README.md) - the code-level companion: a module-level technical doc per package (`okf-prep`, `okf-gen`, `okf-serve`, `okf-dbparse`, `okf-author`, `okf-zendesk`).
 - [Guide: Prepare a knowledge corpus](runbooks/wms-prep-e2e.md) - Stage 1 as a step-by-step procedure.
 - [Guide: Add OKF as a Claude connector](runbooks/okf-connector-deploy.md) - make Stage 3 available to Claude.
 - [Operations: Deploy okf-serve](../tooling/okf-serve/deploy/README.md) and [the Cloudflare Access gate](../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md) - run the serving layer.
