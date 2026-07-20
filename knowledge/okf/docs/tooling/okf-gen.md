@@ -2,7 +2,7 @@
 
 *Stage 2 of the OKF pipeline: distills atomic markdown into cross-linked concept cards, and hosts the post-promote + corrections/memory authoring scripts. Conceptual model in [OKF-Pipeline.md §4](../OKF-Pipeline.md#4-stage-2-card-creation-okfgen).*
 
-**Tooling reference:** [Hub](README.md) · [okf-prep](okf-prep.md) · **okf-gen** · [okf-serve](okf-serve.md) · [okf-dbparse](okf-dbparse.md) · [okf-author](okf-author.md) · [Architecture & Concepts](../OKF-Pipeline.md)
+**Tooling reference:** [Hub](README.md) · [okf-prep](okf-prep.md) · **okf-gen** · [okf-serve](okf-serve.md) · [okf-dbparse](okf-dbparse.md) · [okf-author](okf-author.md) · [okf-zendesk](okf-zendesk.md) · [Architecture & Concepts](../OKF-Pipeline.md)
 
 `okfgen` (distribution `example-okfgen`, import `okfgen`) turns the curated WMOS atomic-markdown corpus into OKF concept cards through a 3-gate, human-in-the-loop LLM flow: propose a per-area concept **taxonomy** (Gate 1), **assign** each doc to one concept, **distill** each concept's docs into a draft card (Gate 2), then **promote** approved drafts into `concepts/<product>/` with frontmatter and cross-link validation (Gate 3). All LLM calls go through the firm's Bifrost gateway (OpenAI-compatible, key `VK_OKF`): `minimax-m3` for taxonomy and distill, `deepseek-v4-flash` for assign. After promotion, a set of deterministic post-promote scripts stamp product/platform/version/regime facets, run an OKF-conformance pass (resource URIs, `## Related`, `# Citations`), and regenerate the index hierarchy. The package also hosts the corrections and client-memory authoring seams (CLI + GitHub Issue-Form actions) and the memory-conflict PR gate that runs under Windmill.
 

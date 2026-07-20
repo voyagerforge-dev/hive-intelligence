@@ -2,7 +2,7 @@
 
 *Stage 1 of the OKF pipeline: turns raw vendor docs (PDF/DOCX/PPTX/XLSX) into atomic markdown. Conceptual model in [OKF-Pipeline.md §3](../OKF-Pipeline.md#3-stage-1-document-preparation-okf-prep).*
 
-**Tooling reference:** [Hub](README.md) · **okf-prep** · [okf-gen](okf-gen.md) · [okf-serve](okf-serve.md) · [okf-dbparse](okf-dbparse.md) · [okf-author](okf-author.md) · [Architecture & Concepts](../OKF-Pipeline.md)
+**Tooling reference:** [Hub](README.md) · **okf-prep** · [okf-gen](okf-gen.md) · [okf-serve](okf-serve.md) · [okf-dbparse](okf-dbparse.md) · [okf-author](okf-author.md) · [okf-zendesk](okf-zendesk.md) · [Architecture & Concepts](../OKF-Pipeline.md)
 
 `okfprep` is a self-contained Python package (CLI entrypoint `okfprep = okfprep.cli:cli`) that converts a subtree of messy vendor documents into one clean, single-topic markdown file per source doc, each carrying validated frontmatter. It is a chain of Click subcommands (`scan · dups · validate-plan · dedup-formats · normalize · route · transform · stamp · validate-atomic`), most of them deterministic; the only intelligence is a single LLM curation pass (the `wms-curator` agent) that writes a reviewable `wms-curation.yaml`. Two human review gates bracket the automated steps: **gate 1** approves the curation plan after `validate-plan`, **gate 2** approves the text/vision/passthrough tally after `route` and before any GPU work. The whole chain is orchestrated end-to-end by the [`/wms-prep`](../../.claude/commands/wms-prep.md) command on the dev box via `uv`.
 

@@ -2,7 +2,7 @@
 
 *The write-only authoring door: a minimal `issues:write`-only MCP server that files memory-promotion and correction issues, so okf-serve stays keyless. Described in [OKF-Pipeline.md - the memory layer](../OKF-Pipeline.md#the-memory-layer).*
 
-**Tooling reference:** [Hub](README.md) · [okf-prep](okf-prep.md) · [okf-gen](okf-gen.md) · [okf-serve](okf-serve.md) · [okf-dbparse](okf-dbparse.md) · **okf-author** · [Architecture & Concepts](../OKF-Pipeline.md)
+**Tooling reference:** [Hub](README.md) · [okf-prep](okf-prep.md) · [okf-gen](okf-gen.md) · [okf-serve](okf-serve.md) · [okf-dbparse](okf-dbparse.md) · **okf-author** · [okf-zendesk](okf-zendesk.md) · [Architecture & Concepts](../OKF-Pipeline.md)
 
 okf-author is the only OKF component that holds a GitHub credential, and that credential is scoped to `issues:write` only - it can file an issue, never push, merge, or open a PR. It exposes exactly two hard-separated MCP tools: `submit_memory_promotion` (client-scoped, labels `okf-memory`) and `submit_correction` (targets a core concept id, labels `okf-correction`). Each tool builds an issue body whose `### <section>` layout mirrors the `memory.yml` / `correction.yml` Issue Forms exactly, so the same okf-gen Action parsers round-trip the body losslessly; a GitHub Action then opens the PR, but only after a CODEOWNER applies the approve-label. By concentrating the write path here, the read side (okf-serve) can stay keyless and read-only.
 

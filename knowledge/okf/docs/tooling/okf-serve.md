@@ -2,7 +2,7 @@
 
 *Stage 3 of the OKF pipeline: serves the cards to Claude and tools over a REST door and an MCP door, LLM-free, over a per-owner SQLite work ledger. Conceptual model in [OKF-Pipeline.md §5](../OKF-Pipeline.md#5-stage-3-serving-okf-serve).*
 
-**Tooling reference:** [Hub](README.md) · [okf-prep](okf-prep.md) · [okf-gen](okf-gen.md) · **okf-serve** · [okf-dbparse](okf-dbparse.md) · [okf-author](okf-author.md) · [Architecture & Concepts](../OKF-Pipeline.md)
+**Tooling reference:** [Hub](README.md) · [okf-prep](okf-prep.md) · [okf-gen](okf-gen.md) · **okf-serve** · [okf-dbparse](okf-dbparse.md) · [okf-author](okf-author.md) · [okf-zendesk](okf-zendesk.md) · [Architecture & Concepts](../OKF-Pipeline.md)
 
 okf-serve is the runtime that hands OKF cards to an agent. It has **one core** (a no-RAG `resolver` over git-tracked markdown cards, plus a SQLite `ledger` of per-owner objectives and personal memory), reached through **two doors** (a FastAPI REST/OpenAPI router in `app.py` and an MCP server in `mcp_app.py`, both mounted in one ASGI app), backed by **two stores** (the card corpus on disk and `objectives.db`). The serving path is deliberately LLM-free: retrieval is direct id lookup plus cross-link traversal, and search is substring/token matching. A separate **offline eval harness** (`agent`/`eval`/`run_eval`, which does call an LLM through `okfgen`) scores the retrieval logic against labelled Q&A sets but is never on the serving path.
 

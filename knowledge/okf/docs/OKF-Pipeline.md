@@ -566,6 +566,39 @@ cards, gate-verified, 0 unparsed).
 
 ---
 
+### The issue-journal tier (`okf-zendesk`)
+
+Concept cards describe how WMOS works; the memory layer describes how *this client's* system was
+modified. Neither records **what has actually gone wrong at a site**. The issue-journal tier fills that
+gap with one thin `type: issue` card per closed support ticket, under `clients/<client>/issues/`.
+
+**A journal entry is deliberately not a knowledge card.** Distilling each ticket into an explanation
+would restate the concept corpus thousands of times and dilute retrieval. An entry carries only what
+happened, how it closed, and `related` links to the concept cards that explain the behaviour. Its
+purpose is *awareness*: to tell a consultant that this area has bitten this client before. The
+Diagnose / Plan / Learn skills state the contract explicitly - an entry is a lead, never a root cause.
+
+Two properties follow from that:
+
+- **Client-scoped, like memory.** Issue cards never appear in an unscoped `list_concepts`, and one
+  client's incidents never reach another's answer.
+- **Linking is a separate stage from distillation.** The distiller has never seen the corpus, so any
+  card id it invents resolves ~4% of the time. Cards are emitted with `related: []` and linked
+  afterwards against real ids by a model shown a shortlist and free to decline.
+
+Unlike the db-object tier, this one *does* have a model in the loop, and two different ones: the prose
+is distilled on-prem (`host-d/qwen3.6-27b`) while the links are chosen by a hosted model
+(`minimax-m3` by default, escalated to `claude-opus-4-8` when precision demands it). Each card records
+both in `model:` and `linked_by:`.
+
+**Deep dive:** [`tooling/okf-zendesk.md`](tooling/okf-zendesk.md) - pipeline, modes, model selection,
+measured link quality, and the open TODO list.
+
+Design + plan: `docs/superpowers/{specs,plans}/2026-07-19-okf-zendesk-issue-cards*`. Shipped in PR #92
+(2,295 entries for ALPHA and BETA; 0 dangling links, 0 cross-product bleed).
+
+---
+
 ## 5. Stage 3: Serving (`okf-serve`)
 
 **Goal:** serve the cards to people and tools, and track each person's *work* - without

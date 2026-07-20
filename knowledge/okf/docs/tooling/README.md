@@ -5,11 +5,11 @@ works, and how it is deployed. The conceptual model (the pipeline, the two store
 the design decisions) lives in [Architecture & Concepts](../OKF-Pipeline.md); this set is the
 code-level companion to it.*
 
-**Tooling reference:** **Hub** · [okf-prep](okf-prep.md) · [okf-gen](okf-gen.md) · [okf-serve](okf-serve.md) · [okf-dbparse](okf-dbparse.md) · [okf-author](okf-author.md) · [Architecture & Concepts](../OKF-Pipeline.md)
+**Tooling reference:** **Hub** · [okf-prep](okf-prep.md) · [okf-gen](okf-gen.md) · [okf-serve](okf-serve.md) · [okf-dbparse](okf-dbparse.md) · [okf-author](okf-author.md) · [okf-zendesk](okf-zendesk.md) · [Architecture & Concepts](../OKF-Pipeline.md)
 
 ---
 
-## The five packages
+## The six packages
 
 Everything lives under `knowledge/okf/tooling/<package>/`. Each is a self-contained, `uv`-managed
 Python package with fakes-only tests.
@@ -21,6 +21,7 @@ Python package with fakes-only tests.
 | `okf-serve` | serve cards to Claude over REST + MCP, with a per-owner work ledger | [Stage 3](../OKF-Pipeline.md#5-stage-3-serving-okf-serve) | container on Host-A (`:8015`) | [okf-serve.md](okf-serve.md) |
 | `okf-dbparse` | Manhattan deploy DDL → database-object cards | [db-object tier](../OKF-Pipeline.md#the-database-object-tier-okf-dbparse) | one-time dev-box parse | [okf-dbparse.md](okf-dbparse.md) |
 | `okf-author` | file memory/correction issues, keeping okf-serve keyless | [authoring door](../OKF-Pipeline.md#the-memory-layer) | container on Host-A (`:8016`) | [okf-author.md](okf-author.md) |
+| `okf-zendesk` | closed Zendesk tickets → client issue-journal entries | [issue-journal tier](okf-zendesk.md) | dev-box CLI (`uv`); monthly Windmill job pending | [okf-zendesk.md](okf-zendesk.md) |
 
 ## How to read this set
 
