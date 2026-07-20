@@ -139,6 +139,8 @@ def main() -> int:
     ap.add_argument("--limit", type=int)
     ap.add_argument("--workers", type=int, help="concurrency for rebuild (default from config)")
     ap.add_argument("--batch-size", type=int, help="cards per LLM call in rebuild")
+    ap.add_argument("--model", help="override the rerank model for this run "
+                                    "(e.g. openrouter/claude-opus-4-8)")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -146,7 +148,9 @@ def main() -> int:
 
     if args.mode == "relink":
         from .relink import relink_cards
-        llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.distill_model,
+        # Linking uses its own model: see config.rerank_model. `--model` overrides it,
+        # which is how an Opus escalation is run without editing config.
+        llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, args.model or s.rerank_model,
                           s.bifrost_timeout_s, max_tokens=s.distill_max_tokens)
         rep = relink_cards(args.client, args.clients_dir, args.concepts_dir, llm,
                            workers=args.workers or s.reshape_workers,
@@ -193,7 +197,11 @@ def main() -> int:
     # did, at 96%. skip_linked keeps it incremental: only new entries cost anything.
     if not args.dry_run:
         from .relink import relink_cards
-        rl = relink_cards(args.client, args.clients_dir, args.concepts_dir, llm,
+        # NB a distinct client: the distiller and the reranker are different models.
+        rerank_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key,
+                                 args.model or s.rerank_model, s.bifrost_timeout_s,
+                                 max_tokens=s.distill_max_tokens)
+        rl = relink_cards(args.client, args.clients_dir, args.concepts_dir, rerank_llm,
                           workers=args.workers or s.reshape_workers, skip_linked=True)
         log.info("relink: scanned=%d linked=%d declined=%d no_shortlist=%d cleared=%d",
                  rl.scanned, rl.linked, rl.declined, rl.no_shortlist, rl.cleared)

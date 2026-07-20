@@ -198,6 +198,26 @@ def set_product(text: str, product: str) -> str:
     return re.sub(r"^(client: .*\n)", rf"\1product: {product}\n", text, count=1, flags=re.M)
 
 
+_LINKED_BY_RE = re.compile(r"^linked_by: .*\n", re.M)
+
+
+def set_linked_by(text: str, model: str) -> str:
+    """Record which model chose the links.
+
+    `model:` names the distiller, which is not necessarily what did the linking - the
+    corpus was distilled by the on-prem Qwen and later re-linked by a stronger model.
+    Without this the two are indistinguishable after the fact.
+    """
+    line = f"linked_by: {model}\n"
+    if _LINKED_BY_RE.search(text):
+        return _LINKED_BY_RE.sub(lambda _: line, text, count=1)
+    for anchor in (r"^(distilled_by: .*\n)", r"^(status: .*\n)"):
+        out, n = re.subn(anchor, rf"\1{line}", text, count=1, flags=re.M)
+        if n:
+            return out
+    return text
+
+
 def clear_links(text: str) -> str:
     """Retract links: empty `related:` and drop the `## See also` block."""
     if _SEE_RE.search(text):
@@ -346,7 +366,9 @@ def relink_cards(clients: list[str], clients_dir: str | Path, concepts_dir: str 
                     continue
                 report.linked += 1
                 if not dry_run:
-                    # Product first: the entry belongs to whatever product explains it.
-                    p.write_text(apply_links(set_product(p.read_text(), product_of(links[0])),
-                                             links))
+                    # Product first: the entry belongs to whatever product explains it,
+                    # then the links, then which model chose them.
+                    body = set_product(p.read_text(), product_of(links[0]))
+                    body = apply_links(body, links)
+                    p.write_text(set_linked_by(body, getattr(llm, "model", "")))
     return report

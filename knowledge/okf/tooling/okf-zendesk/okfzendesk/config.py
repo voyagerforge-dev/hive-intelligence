@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     bifrost_base: str = ""
     bifrost_api_key: str = ""
     distill_model: str = "minimax-m3"
+    # Linking is a separate job from distilling and is measured separately. On a 16-item
+    # labelled set Qwen, minimax-m3 and deepseek all scored ~80% and kept the SAME wrong
+    # links, while claude-opus-4-8 scored 92% - a capability cliff, not a gradient. So the
+    # cheap tier is the default and Opus is an on-demand escalation, not the norm.
+    rerank_model: str = "minimax-m3"
     bifrost_timeout_s: int = 300
     # The on-prem Qwen is a reasoning model: this budget must cover thinking AND the
     # answer. At 2000 it spends the lot reasoning and returns nothing.

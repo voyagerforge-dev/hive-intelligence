@@ -6,6 +6,7 @@ from okfzendesk.relink import (
     clear_links,
     confine_to_one_product,
     product_of,
+    set_linked_by,
     set_product,
     allowed_products,
     apply_links,
@@ -392,3 +393,16 @@ def test_results_are_written_as_they_complete_not_at_the_end(tmp_path):
                  workers=1)
     assert written[-1], "no card was persisted before the final model call"
 
+
+
+def test_set_linked_by_records_which_model_chose_the_links():
+    """`model:` records the distiller. Links can come from a different model entirely,
+    and without this there is no way to tell Qwen-chosen links from Opus-chosen ones."""
+    out = set_linked_by(CARD, "openrouter/claude-opus-4-8")
+    assert "linked_by: openrouter/claude-opus-4-8" in out
+    assert "## What happened" in out
+    # idempotent, and does not duplicate on a second pass
+    assert set_linked_by(out, "openrouter/claude-opus-4-8") == out
+    # a later run with a different model replaces it
+    assert "linked_by: x" in set_linked_by(out, "x")
+    assert out.count("linked_by:") == 1
