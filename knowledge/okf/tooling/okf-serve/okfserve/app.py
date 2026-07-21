@@ -28,8 +28,12 @@ def build_rest_router(settings) -> APIRouter:
         return PlainTextResponse(body, media_type=content_type)
 
     @router.get("/concepts")
-    def concepts() -> list[dict]:
-        return tools.list_concepts(cdir)
+    def concepts(product: str | None = None) -> list[dict]:
+        return tools.list_concepts(cdir, product=product)
+
+    @router.get("/find_concepts")
+    def find_concepts(q: str, product: str | None = None, limit: int = 20) -> list[dict]:
+        return tools.find_concepts(cdir, q, product=product, limit=limit)
 
     @router.get("/card/{card_id:path}")
     def card(card_id: str) -> dict:

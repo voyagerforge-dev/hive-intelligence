@@ -14,7 +14,9 @@ class Settings(BaseSettings):
     judge_model: str = "minimax-m3"
     bifrost_timeout_s: int = 300
     max_cards: int = 8
-    max_chars: int = 80000
+    # 40K chars is ~10K tokens. The old 80K produced ~18K-token bundles that overran the
+    # MCP client's per-result token cap and spilled to a file, forcing chunked re-reads.
+    max_chars: int = 40000
     resolve_depth: int = 1
     concepts_dir: str = "../../concepts"
     clients_dir: str = "../../clients"
