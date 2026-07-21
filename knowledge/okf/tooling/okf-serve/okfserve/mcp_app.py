@@ -21,10 +21,20 @@ def build_mcp(settings, conn_factory) -> FastMCP:
 
     @mcp.tool()
     @track_tool("list_concepts")
-    def list_concepts(client: str | None = None) -> list[dict]:
-        """List selectable OKF cards (concepts always; a client's memory only when
-        `client` is set)."""
-        return tools.list_concepts(cdir, cldir, client=client)
+    def list_concepts(client: str | None = None, product: str | None = None) -> list[dict]:
+        """List selectable OKF cards, lean (id + title, no description). Optionally scope by
+        `product`, or by `client` to include that client's memory. For a topic or subject
+        question, prefer `find_concepts` - listing the whole catalogue is large."""
+        return tools.list_concepts(cdir, cldir, client=client, product=product)
+
+    @mcp.tool()
+    @track_tool("find_concepts")
+    def find_concepts(query: str, product: str | None = None, limit: int = 20) -> list[dict]:
+        """Search concept cards by name or by what they mean, and get back a small ranked
+        set with descriptions. Use this for any topic or subject question ("explain X",
+        "how does Y work") instead of listing the whole catalogue; then load the ids you
+        want with `resolve` / `get_card`."""
+        return tools.find_concepts(cdir, query, clients_dir=cldir, product=product, limit=limit)
 
     @mcp.tool()
     @track_tool("get_card")

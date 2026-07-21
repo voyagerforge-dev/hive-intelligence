@@ -18,10 +18,10 @@ def _seed(tmp_path):
 def test_list_concepts(tmp_path):
     d = _seed(tmp_path)
     idx = tools.list_concepts(d)
-    assert idx == [{"id": "wave-replen", "title": "Wave Replen",
-                    "description": "how replen feeds waves", "regime": None,
-                    "type": "concept", "version": None, "product": None,
-                    "client": None, "corrects": None, "status": None}]
+    # Lean rows: description is dropped so the 990-card catalogue does not blow the client
+    # token cap. Use find_concepts for a topic search that returns descriptions.
+    assert idx == [{"id": "wave-replen", "title": "Wave Replen", "type": "concept"}]
+    assert "description" not in idx[0]   # dropped: it balloons the 990-card catalogue
 
 
 def test_list_concepts_excludes_corrections(tmp_path):
@@ -130,3 +130,49 @@ body
     assert "wave-replen" in ids
     assert "db/tables/T" not in ids
     assert "No card" not in tools.get_card_text(tmp_path, "db/tables/T")
+
+
+# --- find_concepts: topic search so a broad question never dumps 990 cards ------------
+
+C_ALLOC = """---
+title: Allocation Process
+description: how allocation assigns inventory to waves
+related: []
+---
+body
+"""
+C_LABEL = """---
+title: Label Printing
+description: pallet and carton label formats
+related: []
+---
+body
+"""
+
+
+def _seed_two(tmp_path):
+    (tmp_path / "allocation-process.md").write_text(C_ALLOC)
+    (tmp_path / "label-printing.md").write_text(C_LABEL)
+    return tmp_path
+
+
+def test_find_concepts_ranks_by_query_and_keeps_description(tmp_path):
+    d = _seed_two(tmp_path)
+    hits = tools.find_concepts(d, "allocation inventory")
+    assert hits[0]["id"] == "allocation-process"
+    assert hits[0]["description"] == "how allocation assigns inventory to waves"
+
+
+def test_find_concepts_returns_nothing_for_no_match(tmp_path):
+    d = _seed_two(tmp_path)
+    assert tools.find_concepts(d, "yard trailer dock") == []
+
+
+def test_find_concepts_respects_limit(tmp_path):
+    d = _seed_two(tmp_path)
+    assert len(tools.find_concepts(d, "label allocation", limit=1)) == 1
+
+
+def test_find_concepts_empty_query_is_empty(tmp_path):
+    d = _seed_two(tmp_path)
+    assert tools.find_concepts(d, "   ") == []
