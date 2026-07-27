@@ -36,6 +36,14 @@ needs_live_corpus = pytest.mark.skipif(
     reason="live corpus not present (it lives in its own repository)",
 )
 
+# The QA sets under data/ name real cards and real clients, so they are corpus-side
+# and travel with the corpus. They can be absent while the corpus is present, and
+# vice versa, so the two guards are separate and stack where a test needs both.
+needs_live_qa = pytest.mark.skipif(
+    not DATA.is_dir(),
+    reason="live QA datasets not present (they live with the corpus)",
+)
+
 
 def _rows(path: Path) -> list[dict]:
     return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
@@ -97,6 +105,7 @@ def test_fixture_qa_covers_scope_cases():
 
 
 @needs_live_corpus
+@needs_live_qa
 def test_dataset_ids_exist_in_bundle():
     qa = load_qa(DATA / "wave_replen_qa.jsonl")
     known = {c["id"] for c in load_index(LIVE_CONCEPTS)}
@@ -105,6 +114,7 @@ def test_dataset_ids_exist_in_bundle():
     assert not missing, f"expected_card_ids not in concepts/: {missing}"
 
 
+@needs_live_qa
 def test_memory_qa_wellformed():
     rows = _rows(DATA / "memory_qa.jsonl")
     assert rows, "memory_qa.jsonl must be non-empty"
@@ -117,6 +127,7 @@ def test_memory_qa_wellformed():
 
 
 @needs_live_corpus
+@needs_live_qa
 def test_memory_qa_ids_resolve():
     idx = {c["id"] for c in load_index(LIVE_CONCEPTS, LIVE_CLIENTS)}
     for r in _rows(DATA / "memory_qa.jsonl"):

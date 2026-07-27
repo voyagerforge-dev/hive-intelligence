@@ -16,8 +16,15 @@ def main() -> None:
     mode = sys.argv[1] if len(sys.argv) > 1 else "progressive"
     if mode not in ("progressive", "ceiling"):
         raise SystemExit(f"unknown mode {mode!r}; use 'progressive' or 'ceiling'")
-    # optional 2nd arg: qa set — a bare name under data/ (e.g. corrections_qa) or a path.
-    qa_arg = sys.argv[2] if len(sys.argv) > 2 else "wave_replen_qa"
+    # 2nd arg: qa set — a bare name resolved under data/, or a path to a .jsonl.
+    # No default: QA sets are corpus-side and ship with the corpus, not the product.
+    if len(sys.argv) < 3:
+        raise SystemExit(
+            "usage: run_eval <progressive|ceiling> <qa-set>\n"
+            "  qa-set is a path to a .jsonl, or a bare name resolved under data/.\n"
+            "  QA sets name real cards, so they live with the corpus, not here."
+        )
+    qa_arg = sys.argv[2]
     s = get_settings()
     pkg = Path(__file__).resolve().parents[1]
     concepts = pkg.parents[1] / "concepts"
