@@ -1,0 +1,8 @@
+{"id": "fx-01", "question": "What are the three stages of widget assembly?", "expected_card_ids": ["widget/assembly-process"], "client": null}
+{"id": "fx-02", "question": "What is the default calibration tolerance?", "expected_card_ids": ["widget/calibration-routine"], "client": null}
+{"id": "fx-03", "question": "Which table records assembled widgets?", "expected_card_ids": ["widget/widget-registry"], "client": null}
+{"id": "fx-04", "question": "Where does a gadget go when no station is free?", "expected_card_ids": ["gadget/routing-rules"], "client": null}
+{"id": "fx-05", "question": "What tolerance does alpha calibrate to?", "expected_card_ids": ["widget/calibration-routine"], "client": "alpha", "expects_memory": "clients/alpha/memory/calibration-override"}
+{"id": "fx-06", "question": "Where does beta hold gadgets?", "expected_card_ids": ["gadget/routing-rules"], "client": "beta", "expects_memory": "clients/beta/memory/routing-override"}
+{"id": "fx-07", "question": "What caused tolerance drift after sealing?", "expected_card_ids": ["clients/alpha/issues/1001-tolerance-drift"], "client": "alpha"}
+{"id": "fx-08", "question": "Has the calibration tolerance been restated?", "expected_card_ids": ["widget/corrections/calibration-tolerance-restated"], "client": null}
