@@ -33,12 +33,12 @@ jobs:
           if git diff --name-only "$BASE_SHA"...HEAD \
              | grep -qE '(\.py$|/tests/|/pyproject\.toml$|(^|/)Dockerfile$|^\.github/workflows/fastapi-svcs\.yml$)'; then
             # Discover services with a pyproject.toml across all service roots
-            #   (infra-repo/hosts/host-a/docker/, connectors/, knowledge/, automation/).
+            #   (tooling/).
             # Emits the FULL relative dir path (used directly as working-directory); each path is
             # validated against a strict regex before hitting GITHUB_OUTPUT so no pathological
             # directory name can poison the matrix interpolation.
             services=$(
-              find infra-repo/hosts/host-a/docker connectors knowledge automation \
+              find tooling \
                 -path '*/.venv' -prune -o -name pyproject.toml -printf '%h\n' \
               | sort -u \
               | grep -E '^[a-z][a-z0-9/-]{1,127}$' \
@@ -71,7 +71,7 @@ jobs:
       # own ruff/mypy CONFIG via pyproject.toml (line-length, ignores, target-version).
       - name: Install lint/type tooling
         run: pip install "ruff>=0.7" "mypy>=1.10"
-      # okf-serve/okf-author depend on the in-repo `okfgen` via [tool.uv.sources]. Plain pip
+      # hive-serve/hive-author depend on the in-repo `hivegen` via [tool.uv.sources]. Plain pip
       # does not read that table and would otherwise pull a SAME-NAMED package from PyPI
       # (which exists and is not ours), so install any local path source first (editable) to
       # pin the in-repo package before the service resolves its dependencies.
@@ -90,7 +90,7 @@ jobs:
         working-directory: ${{ matrix.svc }}
         run: pip install -e ".[dev]"
       # `ruff check .` is layout-agnostic — services use either src/ or a named package
-      # dir (okfgen/, okfserve/, …). Ruff reads the nearest pyproject for config/excludes.
+      # dir (hivegen/, hiveserve/, …). Ruff reads the nearest pyproject for config/excludes.
       - name: Lint (ruff)
         working-directory: ${{ matrix.svc }}
         run: ruff check .
@@ -117,7 +117,7 @@ jobs:
           BEARER_TOKEN: "test-token-padded-to-thirty-two-chars"
         run: |
           if [ -d tests ]; then pytest -v; else echo "no tests/ — skipping."; fi
-      # Not every service ships a container (the OKF tooling packages are libraries).
+      # Not every service ships a container (most Hive tooling packages are libraries).
       - name: Verify Dockerfile builds (only if present)
         working-directory: ${{ matrix.svc }}
         env:
