@@ -1,8 +1,8 @@
 # OKF tooling - hive-author (`hiveauthor`)
 
-*The write-only authoring door: a minimal `issues:write`-only MCP server that files memory-promotion and correction issues, so hive-serve stays keyless. Described in [OKF-Pipeline.md - the memory layer](../OKF-Pipeline.md#the-memory-layer).*
+*The write-only authoring door: a minimal `issues:write`-only MCP server that files memory-promotion and correction issues, so hive-serve stays keyless. Described in [architecture/pipeline.md - the memory layer](../architecture/pipeline.md#the-memory-layer).*
 
-**Tooling reference:** [Hub](README.md) · [hive-prep](hive-prep.md) · [hive-gen](hive-gen.md) · [hive-serve](hive-serve.md) · [hive-dbparse](hive-dbparse.md) · **hive-author** · [hive-zendesk](hive-zendesk.md) · [Architecture & Concepts](../OKF-Pipeline.md)
+**Tooling reference:** [Hub](README.md) · [hive-prep](hive-prep.md) · [hive-gen](hive-gen.md) · [hive-serve](hive-serve.md) · [hive-dbparse](hive-dbparse.md) · **hive-author** · [hive-zendesk](hive-zendesk.md) · [Architecture & Concepts](../architecture/pipeline.md)
 
 hive-author is the only OKF component that holds a GitHub credential, and that credential is scoped to `issues:write` only - it can file an issue, never push, merge, or open a PR. It exposes exactly two hard-separated MCP tools: `submit_memory_promotion` (client-scoped, labels `okf-memory`) and `submit_correction` (targets a core concept id, labels `okf-correction`). Each tool builds an issue body whose `### <section>` layout mirrors the `memory.yml` / `correction.yml` Issue Forms exactly, so the same hive-gen Action parsers round-trip the body losslessly; a GitHub Action then opens the PR, but only after a CODEOWNER applies the approve-label. By concentrating the write path here, the read side (hive-serve) can stay keyless and read-only.
 
@@ -100,12 +100,12 @@ hive-author is the only OKF component that holds a GitHub credential, and that c
 
 ## Deployment & runtime
 
-Accurate to `deploy/compose.yml`, `deploy/Dockerfile`, and `README.md`:
+Accurate to `deploy/compose.example.yml` and `deploy/Dockerfile`:
 
 - **Image / build.** `deploy/Dockerfile` is `python:3.12-slim`, `pip install uv` then `uv pip install --system -e .`, and bakes `ENV HOST=0.0.0.0`, `PORT=8016`, `IDENTITY_HEADER=Cf-Access-Authenticated-User-Email`; `EXPOSE 8016`; `CMD ["hiveauthor"]`. The compose build context is `..` (the package dir), image tagged `hive-author:latest`.
 - **Container on Host-A.** Service/container `hive-author`, `restart: unless-stopped`, published on `hive-host.internal:8016:8016` - VLAN60 LAN only (same host=VLAN60 model as hive-serve). `environment` sets `HOST=0.0.0.0` and `PORT=8016`. Healthcheck GETs `http://localhost:8016/healthz` every 30s.
 - **Secret, outside the checkout.** `env_file: [/srv/hive-author/hive-author.env]` - the `GITHUB_TOKEN` (`issues:write` only) lives outside the git checkout, decrypted by the operator from SOPS `infra-repo/secrets/host-a/hive-author.enc.env` to `/srv/hive-author/hive-author.env` (mode 600, never committed). The token is the only secret; everything else is plain config.
-- **Explicit compose project `name:` (anti-collision).** `deploy/compose.yml` pins `name: hive-author`. Both hive-serve and hive-author use a `deploy/` dir, so without this they collide on Compose's default project name - and a `docker compose down --remove-orphans` in one dir would remove the other's containers. If a stale container lands under the wrong project, the README fix is to remove it by name (`docker rm -f hive-author`) then re-`up`, leaving hive-serve untouched.
+- **Explicit compose project `name:` (anti-collision).** `deploy/compose.example.yml` pins `name: hive-author`. Both hive-serve and hive-author use a `deploy/` dir, so without this they collide on Compose's default project name - and a `docker compose down --remove-orphans` in one dir would remove the other's containers. If a stale container lands under the wrong project, the README fix is to remove it by name (`docker rm -f hive-author`) then re-`up`, leaving hive-serve untouched.
 - **Public edge (CF Access), for consultants.** hive-author is LAN-only by default. To let consultants promote memory / file corrections from Claude Desktop / claude.ai, front it with its own Cloudflare Access app: a self-hosted app named `hive-author` on hostname `hive-author.example.com` (Managed OAuth on, team `homelab-gateway`, Allow policy scoped to consultant emails), with `cloudflared` routing `hive-author.example.com` direct to `host-a:8016` (bypassing Caddy, like hive-serve). Consultants then add **hive-author** as a second custom Claude connector alongside the read-only hive-serve one - two doors, one read (keyless hive-serve) and one write (`issues:write` hive-author). (CF Access app and cloudflared route are repo-external live infra - verify.)
 
 ## Tests

@@ -261,7 +261,7 @@ def test_declining_does_not_rewrite_a_card_that_had_no_links(tmp_path):
     assert (d / "123-fc-wave.md").read_text() == CARD
 
 
-# --- product facet: OKF mandates 0 cross-product bleed (docs/OKF-Pipeline.md) ---------
+# --- product facet: OKF mandates 0 cross-product bleed (docs/architecture/pipeline.md) ---------
 
 OSCI = """---
 type: concept

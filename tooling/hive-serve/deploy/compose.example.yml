@@ -1,0 +1,64 @@
+# Example deployment of hive-serve.
+#
+# Copy this file, change the marked values, and keep your copy with your infrastructure rather than
+# in this repository. See docs/architecture/product-deployment-boundary.md for why.
+#
+#   CORPUS_DIR   directory of OKF concept cards to serve. Required.
+#   CLIENTS_DIR  directory of client-scoped memory cards. Optional; omit the mount to disable.
+#   LEDGER_DIR   writable directory for the SQLite objectives and memory ledger. Required.
+#   BIND         address:port to expose. Use 127.0.0.1 unless something in front terminates TLS.
+
+services:
+  # One-shot: make the bind-mounted ledger directory writable by the runtime uid.
+  #
+  # The image runs as `svc` (uid 1001). A host directory owned by any other uid makes every ledger
+  # operation fail with "unable to open database file". This runs as root, chowns, and exits, so a
+  # fresh clone or a redeploy onto a new host works without a manual chown.
+  hive-ledger-init:
+    image: alpine:3.20
+    command: ["sh", "-c", "chown -R 1001:1001 /data/ledger"]
+    volumes:
+      - ${LEDGER_DIR:-./ledger}:/data/ledger
+    restart: "no"
+
+  hive-serve:
+    build:
+      # Context is the repository root so the image can install both hivegen and hiveserve.
+      context: ../../..
+      dockerfile: tooling/hive-serve/deploy/Dockerfile
+    container_name: hive-serve
+    depends_on:
+      hive-ledger-init:
+        condition: service_completed_successfully
+
+    # hive-serve makes no LLM calls and holds no credentials, so there is no secret file here.
+    # This is for non-secret overrides only: see .env.example for the recognised keys.
+    env_file: [./hive-serve.env]
+
+    volumes:
+      # Card corpus, read-only and read live. No rebuild is needed when cards change; whatever keeps
+      # this directory fresh is your choice (a git pull on a timer, a sync job, a mounted volume).
+      - ${CORPUS_DIR:?set CORPUS_DIR to your card corpus}:/data/concepts:ro
+
+      # Client-scoped memory. Hard-isolated at serve time: a caller identified as one client cannot
+      # read another's cards. Omit this mount if you are not using client memory.
+      - ${CLIENTS_DIR:-/dev/null}:/data/clients:ro
+
+      # Per-owner objectives and personal memory. This is the only writable mount, and the only
+      # state that does not survive in git. Back it up.
+      - ${LEDGER_DIR:-./ledger}:/data/ledger
+
+    ports:
+      # Defaults to loopback. Bind to a LAN address only if the network is trusted, and put an
+      # authenticating proxy in front before exposing this beyond the host: hive-serve trusts the
+      # identity header named by IDENTITY_HEADER and does not authenticate callers itself.
+      - "${BIND:-127.0.0.1:8015}:8000"
+
+    restart: unless-stopped
+    healthcheck:
+      # Liveness only. This reports ok on an empty corpus, so it will not tell you that a corpus
+      # mount has gone stale. Alert on the card count from /metrics instead.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/healthz').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

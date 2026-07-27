@@ -7,9 +7,8 @@ merge, or open PRs (the Actions do that with the built-in `GITHUB_TOKEN`, and on
 applies the approve-label). It is LLM-free and stateless.
 
 For the model behind this, see
-[Architecture & Concepts: The memory layer](../../docs/OKF-Pipeline.md#the-memory-layer). To use the
-tools, see [Guide: Remember and promote a memory](../../docs/runbooks/okf-remember-and-promote.md) and
-[Guide: Correct a concept card](../../docs/runbooks/okf-correct-a-card.md).
+[Architecture & Concepts: The memory layer](../../docs/architecture/pipeline.md#the-memory-layer). To use the
+tools, see the operator runbooks kept with your deployment.
 
 ## Tools (hard-separated)
 
@@ -42,7 +41,7 @@ Read from the environment (via `env_file` in the compose). The only secret is th
 - **Image** built from this package via `deploy/Dockerfile` (the build context is the package dir).
 - **Secret** decrypted from SOPS to **`/srv/hive-author/hive-author.env`** (mode 600, *outside* the git
   checkout) — never committed.
-- **Compose project** is pinned to **`hive-author`** (`name: hive-author` in `deploy/compose.yml`).
+- **Compose project** is pinned to **`hive-author`** (`name: hive-author` in `deploy/compose.example.yml`).
   > ⚠️ **Gotcha:** both hive-serve and hive-author deploy dirs are named `deploy`, so without an explicit
   > `name:` they collide on Compose's default project name — and a `docker compose down --remove-orphans`
   > in one dir would remove the other's containers. The explicit `name:` isolates them.
@@ -76,7 +75,7 @@ name first — this leaves hive-serve untouched: `ssh host-a 'sudo docker rm -f 
 
 hive-author is LAN-only by default (reachable from Claude Code on the LAN). To let **consultants** submit
 corrections / promote memory from **Claude Desktop / claude.ai**, front it with a Cloudflare Access app,
-exactly like hive-serve (see `infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md`):
+exactly like hive-serve, behind whatever authenticating proxy your deployment uses:
 
 1. **CF Access app** (owner: Yash) — Zero Trust → Access → Applications → Add → Self-hosted. Name
    `hive-author`, hostname **`hive-author.example.com`** (no path), **Managed OAuth on**, team

@@ -3,7 +3,7 @@
 Distils **closed** Zendesk tickets for ALPHA and BETA into client-scoped OKF **issue cards**, so the
 Diagnose skill can answer "has this happened at this client before?".
 
-Design: `knowledge/okf/docs/superpowers/specs/2026-07-19-hive-zendesk-issue-cards-design.md`
+Design: kept with the infrastructure repository's Hive design history.
 
 ## ⚠ Before you run this
 

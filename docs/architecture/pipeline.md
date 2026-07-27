@@ -5,7 +5,7 @@ grounded answer inside Claude. This is the conceptual reference: the model, the 
 serving layer, and the design decisions behind them. Diagrams are [Mermaid](https://mermaid.js.org/)
 and render inline on GitHub.*
 
-**OKF docs:** [Overview](../README.md) · **Architecture & Concepts** (you are here) · [Guide: Prepare a corpus](runbooks/wms-prep-e2e.md) · [Tooling reference](tooling/README.md) · [Operations: Deploy](../tooling/hive-serve/deploy/README.md)
+**OKF docs:** [Overview](../README.md) · **Architecture & Concepts** (you are here) · the operator runbooks kept with your deployment · [Tooling reference](tooling/README.md) · Operations: Deploy
 
 > **At a glance.** OKF covers four products - WMOS (832), oSCI (60), Slotting (34), and Labour
 > Management (64) = **990 concept cards**, plus a **corrections overlay** (991 total). Cards are
@@ -118,11 +118,11 @@ single-topic file per source document, labeled with metadata - that Stage 2 can 
 
 **Package:** `tooling/hive-prep/` (package `hiveprep`, CLI `hiveprep`). Orchestrated end-to-end by
 the [`/wms-prep`](../.claude/commands/wms-prep.md) command; the operational runbook is
-[`docs/runbooks/wms-prep-e2e.md`](runbooks/wms-prep-e2e.md).
+the operator runbooks kept with your deployment.
 
 **The pipeline, short form:** `scan → dups → wms-curator → validate-plan → ⟨gate 1⟩ → dedup →
 normalize → route → ⟨gate 2⟩ → transform → stamp → validate-atomic`. That's what "end-to-end" (e2e)
-means - the [flow diagram](#the-flow) and the [runbook](runbooks/wms-prep-e2e.md) walk each step in detail.
+means - the [flow diagram](#the-flow) and the the operator runbooks kept with your deployment walk each step in detail.
 
 ### The flow
 
@@ -366,7 +366,7 @@ A concept card can be **wrong or stale** without anyone wanting to edit the dist
 reviewed artifact, and edits lose the "what the source said" provenance). The corrections layer fixes this
 with an **overlay**: a *correction* is an ordinary OKF card at `concepts/<product>/corrections/<slug>.md`
 with `type: correction` and `corrects: <path-id>` pointing at the concept it amends. To author one, see
-[Guide: Correct a concept card](runbooks/okf-correct-a-card.md).
+the operator runbooks kept with your deployment.
 
 - **Surface-don't-resolve.** `hive-serve`'s `resolve()` reverse-looks-up the **active** corrections
   (`type: correction` **and** `status: approved`) of every selected concept and **co-pulls** them into the
@@ -394,7 +394,7 @@ with `type: correction` and `corrects: <path-id>` pointing at the concept it ame
 | `hive-gen/scripts/correction_from_issue.py` | Parse a Correction Issue-Form body → record → card (product allowlist-guarded against path traversal). |
 | `hive-gen/scripts/corrections_lint.py` | Lint: dangling `corrects`, bad `supersedes`, status inconsistency, >1-active conflict warning. |
 
-Design + acceptance: `docs/superpowers/specs/2026-07-09-okf-corrections-layer-design.md`. Shipped in PR #15;
+Design + acceptance: the design history kept with the infrastructure repository. Shipped in PR #15;
 verified live (a seeded correction on `slotting/data-requirements` co-pulls and overrides at query time).
 
 ### The memory layer
@@ -436,7 +436,7 @@ the `memory-from-issue` Action, which
 builds the card and opens a PR; merging it makes the memory live on the next `cards_sync` pull. The
 authoring surface mirrors corrections and shares one **pure `record ⇄ card` seam** (`hivegen/memory.py`).
 To capture and promote a memory step by step, see
-[Guide: Remember and promote a memory](runbooks/okf-remember-and-promote.md).
+the operator runbooks kept with your deployment.
 
 **Conflict is a two-layer gate.** When a promoted memory would collide with another for the *same client*
 on the *same subject*, `memory_lint` (deterministic) enumerates candidate pairs (shared `related`/tag),
@@ -462,7 +462,7 @@ issue, never push, merge, or open a PR - the Action does that after the human ap
 | `hive-gen/scripts/memory_conflict_score.py` | LLM conflict-probability gate over the candidates - fail-safe to block; advisory unless keyed. |
 | `hive-author/` (package `hiveauthor`) | Write-only MCP server: `submit_memory_promotion` / `submit_correction` (issues:write only). Module-level detail: [`tooling/hive-author.md`](tooling/hive-author.md). |
 
-Design + acceptance: `docs/superpowers/specs/2026-07-11-okf-memory-cards-design.md`. Shipped across
+Design + acceptance: the design history kept with the infrastructure repository. Shipped across
 PRs #45-#48 (personal tier → client-scoped serving → authoring/gate → hive-author); hive-serve is live with
 memory tools and client isolation verified end-to-end.
 
@@ -562,7 +562,7 @@ that tool for schema questions and stays on concept cards for functional ones.
 
 **Deep dive:** [`tooling/hive-dbparse.md`](tooling/hive-dbparse.md) - each parser stage in module-level detail.
 
-Design + plan: `docs/superpowers/{specs,plans}/2026-07-15-okf-wmos-dbobjects*`. Shipped in PR #82 (3,027
+Design + plan: the design history kept with the infrastructure repository. Shipped in PR #82 (3,027
 cards, gate-verified, 0 unparsed); the `Seed/Product/` base-schema tree was added in PR #87, taking the
 tier to its current 7,249 cards.
 
@@ -596,7 +596,7 @@ both in `model:` and `linked_by:`.
 **Deep dive:** [`tooling/hive-zendesk.md`](tooling/hive-zendesk.md) - pipeline, modes, model selection,
 measured link quality, and the open TODO list.
 
-Design + plan: `docs/superpowers/{specs,plans}/2026-07-19-hive-zendesk-issue-cards*`. Shipped in PR #92
+Design + plan: the design history kept with the infrastructure repository. Shipped in PR #92
 (2,295 entries for ALPHA and BETA; 0 dangling links, 0 cross-product bleed).
 
 ---
@@ -699,7 +699,7 @@ Diagnose/Plan/Learn optionally open a ledger objective (`start_objective`) for m
 explanation does not. Full skill bodies, the manifest set (`marketplace.json` / `plugin.json` / `.mcp.json`),
 install steps, and a six-scenario behavioural eval live in the plugin repo's
 [`plugins/okf/README.md`](https://github.com/example-org/voyagerforge-plugins); design +
-acceptance: `docs/superpowers/specs/2026-07-15-okf-cowork-plugin-design.md` (PR #81).
+acceptance: the design history kept with the infrastructure repository (PR #81).
 
 ### The stateful store - the SQLite objective ledger (`ledger.py`)
 
@@ -802,10 +802,10 @@ sequenceDiagram
 
 Deploy is operator-run behind an identity gate. The **live** gate is **Cloudflare Access** (keyless
 OAuth → `Cf-Access-Authenticated-User-Email`) - see
-[`../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md`](../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md)
-and [`tooling/hive-serve/deploy/README.md`](../tooling/hive-serve/deploy/README.md). The self-hosted
+the operator runbooks kept with your deployment
+and `tooling/hive-serve/deploy/compose.example.yml`. The self-hosted
 **Authentik** alternative is in
-[`docs/runbooks/hive-serve-authentik.md`](runbooks/hive-serve-authentik.md).
+the operator runbooks kept with your deployment.
 
 ---
 
@@ -924,7 +924,7 @@ each module's logic, inputs/outputs, dependencies, and how it's invoked/deployed
 | `clients/<client>/memory/*.md` | **Client-scoped memory cards** (`type: memory`) - selectable only in that client's scope, hard-isolated. |
 | `.claude/agents/wms-curator.md` | The curation subagent. |
 | `.claude/commands/wms-prep.md` | The `/wms-prep` orchestration command. |
-| `docs/runbooks/*.md` | Operator runbooks (doc-prep e2e; okf connector one-pager; hive-serve Authentik-alt deploy). Live CF-Access deploy → `infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md`. |
+| the operator runbooks kept with your deployment | Operator runbooks (doc-prep e2e; okf connector one-pager; hive-serve Authentik-alt deploy). Live CF-Access deploy → the operator runbooks kept with your deployment. |
 
 ### Infrastructure (external, sovereign)
 | Thing | Where | Used by |
@@ -1023,8 +1023,7 @@ uv run python -m hivedbparse.run --src <ManhDBDeploy_root> --out ../../concepts/
 cd tooling/hive-serve && uv sync --extra dev
 uv run hiveserve serve --stdio     # local: register as an MCP server in Claude Code
 uv run hiveserve serve --http      # team: REST + mounted MCP behind the CF Access gate
-#   live deploy → infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md
-#   Authentik alternative → docs/runbooks/hive-serve-authentik.md
+#   deploy and edge-gating runbooks live with your infrastructure, not here
 ```
 
 All six packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev && uv run pytest -q`.
@@ -1060,6 +1059,6 @@ All six packages test **fakes-only**: `cd tooling/<pkg> && uv sync --extra dev &
 
 - [OKF Overview](../README.md) - the documentation map and how the pieces fit together.
 - [Tooling reference](tooling/README.md) - the code-level companion: a module-level technical doc per package (`hive-prep`, `hive-gen`, `hive-serve`, `hive-dbparse`, `hive-author`, `hive-zendesk`).
-- [Guide: Prepare a knowledge corpus](runbooks/wms-prep-e2e.md) - Stage 1 as a step-by-step procedure.
-- [Guide: Add OKF as a Claude connector](runbooks/okf-connector-deploy.md) - make Stage 3 available to Claude.
-- [Operations: Deploy hive-serve](../tooling/hive-serve/deploy/README.md) and [the Cloudflare Access gate](../../../infra-repo/docs/runbooks/okf-mcp-cf-access-oauth.md) - run the serving layer.
+- the operator runbooks kept with your deployment - Stage 1 as a step-by-step procedure.
+- the operator runbooks kept with your deployment - make Stage 3 available to Claude.
+- Operations: Deploy hive-serve and the operator runbooks kept with your deployment - run the serving layer.

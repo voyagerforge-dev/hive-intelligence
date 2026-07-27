@@ -1,0 +1,37 @@
+# Example deployment of hive-author.
+#
+# Copy this file, change the marked values, and keep your copy with your infrastructure rather than
+# in this repository. See docs/architecture/product-deployment-boundary.md for why.
+
+# Explicit project name. Both hive-serve and hive-author live in a directory called `deploy`, which
+# would otherwise collide on the default compose project name, and let `down --remove-orphans` in
+# one remove the other.
+name: hive-author
+
+services:
+  hive-author:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: hive-author:latest
+    container_name: hive-author
+    restart: unless-stopped
+
+    # hive-author holds a GITHUB_TOKEN, unlike hive-serve. Scope it to issues:write on the single
+    # corpus repository and nothing else: this service opens card submissions as issues and needs no
+    # other access. Keep this file outside the git checkout.
+    env_file: [./hive-author.env]
+
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8016"
+
+    # Defaults to loopback. hive-author trusts an upstream identity header and does not authenticate
+    # callers itself, so put an authenticating proxy in front before exposing it beyond the host.
+    ports: ["${BIND:-127.0.0.1:8016}:8016"]
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8016/healthz').read() else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
