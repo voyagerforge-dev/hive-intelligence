@@ -1,8 +1,8 @@
 # OKF tooling - hive-serve (`hiveserve`)
 
-*Stage 3 of the OKF pipeline: serves the cards to Claude and tools over a REST door and an MCP door, LLM-free, over a per-owner SQLite work ledger. Conceptual model in [OKF-Pipeline.md §5](../OKF-Pipeline.md#5-stage-3-serving-hive-serve).*
+*Stage 3 of the OKF pipeline: serves the cards to Claude and tools over a REST door and an MCP door, LLM-free, over a per-owner SQLite work ledger. Conceptual model in [architecture/pipeline.md §5](../architecture/pipeline.md#5-stage-3-serving-hive-serve).*
 
-**Tooling reference:** [Hub](README.md) · [hive-prep](hive-prep.md) · [hive-gen](hive-gen.md) · **hive-serve** · [hive-dbparse](hive-dbparse.md) · [hive-author](hive-author.md) · [hive-zendesk](hive-zendesk.md) · [Architecture & Concepts](../OKF-Pipeline.md)
+**Tooling reference:** [Hub](README.md) · [hive-prep](hive-prep.md) · [hive-gen](hive-gen.md) · **hive-serve** · [hive-dbparse](hive-dbparse.md) · [hive-author](hive-author.md) · [hive-zendesk](hive-zendesk.md) · [Architecture & Concepts](../architecture/pipeline.md)
 
 hive-serve is the runtime that hands OKF cards to an agent. It has **one core** (a no-RAG `resolver` over git-tracked markdown cards, plus a SQLite `ledger` of per-owner objectives and personal memory), reached through **two doors** (a FastAPI REST/OpenAPI router in `app.py` and an MCP server in `mcp_app.py`, both mounted in one ASGI app), backed by **two stores** (the card corpus on disk and `objectives.db`). The serving path is deliberately LLM-free: retrieval is direct id lookup plus cross-link traversal, and search is substring/token matching. A separate **offline eval harness** (`agent`/`eval`/`run_eval`, which does call an LLM through `hivegen`) scores the retrieval logic against labelled Q&A sets but is never on the serving path.
 
@@ -146,7 +146,7 @@ These import `hivegen.llm` and call an LLM; they exist to measure the LLM-free r
 - `run_eval.py` - CLI that builds three `BifrostChat` models from `config` and runs `run_eval` over a JSONL QA set (default `data/wave_replen_qa.jsonl`), writing a report under `.eval/`.
 
 ## Deployment & runtime
-Accurate to `deploy/compose.yml`, `deploy/Dockerfile`, and `deploy/README.md`.
+Accurate to `deploy/compose.example.yml` and `deploy/Dockerfile`.
 
 - **Image.** `python:3.12-slim`, non-root user `svc` (uid **1001**), installs both local path deps `hive-gen` (`vf-hive-gen`) and `hive-serve` from the repo checkout (compose `context: ../../..` = repo root). The card corpus is **not** baked in. Default `CMD` is `hiveserve serve --http`.
 - **Container / port.** Runs as `hive-serve` on **Host-A** (`hive-host.internal`), published `hive-host.internal:8015 → :8000` (VLAN60-internal). Healthcheck curls `/healthz`.

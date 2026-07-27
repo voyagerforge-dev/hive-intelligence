@@ -1,8 +1,8 @@
 # OKF tooling - hive-prep (`hiveprep`)
 
-*Stage 1 of the OKF pipeline: turns raw vendor docs (PDF/DOCX/PPTX/XLSX) into atomic markdown. Conceptual model in [OKF-Pipeline.md §3](../OKF-Pipeline.md#3-stage-1-document-preparation-hive-prep).*
+*Stage 1 of the OKF pipeline: turns raw vendor docs (PDF/DOCX/PPTX/XLSX) into atomic markdown. Conceptual model in [architecture/pipeline.md §3](../architecture/pipeline.md#3-stage-1-document-preparation-hive-prep).*
 
-**Tooling reference:** [Hub](README.md) · **hive-prep** · [hive-gen](hive-gen.md) · [hive-serve](hive-serve.md) · [hive-dbparse](hive-dbparse.md) · [hive-author](hive-author.md) · [hive-zendesk](hive-zendesk.md) · [Architecture & Concepts](../OKF-Pipeline.md)
+**Tooling reference:** [Hub](README.md) · **hive-prep** · [hive-gen](hive-gen.md) · [hive-serve](hive-serve.md) · [hive-dbparse](hive-dbparse.md) · [hive-author](hive-author.md) · [hive-zendesk](hive-zendesk.md) · [Architecture & Concepts](../architecture/pipeline.md)
 
 `hiveprep` is a self-contained Python package (CLI entrypoint `hiveprep = hiveprep.cli:cli`) that converts a subtree of messy vendor documents into one clean, single-topic markdown file per source doc, each carrying validated frontmatter. It is a chain of Click subcommands (`scan · dups · validate-plan · dedup-formats · normalize · route · transform · stamp · validate-atomic`), most of them deterministic; the only intelligence is a single LLM curation pass (the `wms-curator` agent) that writes a reviewable `wms-curation.yaml`. Two human review gates bracket the automated steps: **gate 1** approves the curation plan after `validate-plan`, **gate 2** approves the text/vision/passthrough tally after `route` and before any GPU work. The whole chain is orchestrated end-to-end by the [`/wms-prep`](../../.claude/commands/wms-prep.md) command on the dev box via `uv`.
 

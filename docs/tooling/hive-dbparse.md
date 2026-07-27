@@ -1,8 +1,8 @@
 # OKF tooling - hive-dbparse (`hivedbparse`)
 
-*The deterministic, LLM-free parser (dep: `sqlglot`) that builds the WMOS database-object card tier from the Manhattan deploy DDL. Conceptual model in [OKF-Pipeline.md](../OKF-Pipeline.md#the-database-object-tier-hive-dbparse).*
+*The deterministic, LLM-free parser (dep: `sqlglot`) that builds the WMOS database-object card tier from the Manhattan deploy DDL. Conceptual model in [architecture/pipeline.md](../architecture/pipeline.md#the-database-object-tier-hive-dbparse).*
 
-**Tooling reference:** [Hub](README.md) · [hive-prep](hive-prep.md) · [hive-gen](hive-gen.md) · [hive-serve](hive-serve.md) · **hive-dbparse** · [hive-author](hive-author.md) · [hive-zendesk](hive-zendesk.md) · [Architecture & Concepts](../OKF-Pipeline.md)
+**Tooling reference:** [Hub](README.md) · [hive-prep](hive-prep.md) · [hive-gen](hive-gen.md) · [hive-serve](hive-serve.md) · **hive-dbparse** · [hive-author](hive-author.md) · [hive-zendesk](hive-zendesk.md) · [Architecture & Concepts](../architecture/pipeline.md)
 
 `hive-dbparse` turns the Manhattan WMOS deploy DDL (Oracle + DB2 `CREATE TABLE`/`COMMENT`/`ALTER`/`CREATE INDEX`/`CREATE SEQUENCE` and `CREATE [OR REPLACE]` PL/SQL units under `ManhDBDeploy/{Oracle,DB2}/DBScripts/Product/*.sql` and the base-schema catalogs under `.../DBScripts/Seed/Product/<module>/`) into OKF `dbobject` cards under `concepts/wms/db/`. The flow is **parse (per dialect) -> reconcile (union Oracle+DB2) -> gate -> emit**: `parse_tables`/`parse_aux`/`parse_plsql` read each dialect independently, `reconcile` unions the two into one dialect-tagged model per object, `run` enforces a hard verification gate (no unparsed construct may be silently dropped), and `emit` renders one markdown card per surviving object plus a manifest. It is deterministic and LLM-free because every step is driven by `sqlglot`'s tokenizer/AST and exact character-slice arithmetic - the same input always yields byte-identical cards, and PL/SQL bodies are copied verbatim rather than summarized. It runs once on the dev box; there is no `deploy/` directory.
 

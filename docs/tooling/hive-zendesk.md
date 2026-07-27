@@ -1,8 +1,8 @@
 # OKF tooling - hive-zendesk (`hivezendesk`)
 
-*Distils closed Zendesk tickets into client-scoped **journal entries** - the incident history that the Diagnose / Plan / Learn skills consult. Conceptual model in [OKF-Pipeline.md](../OKF-Pipeline.md).*
+*Distils closed Zendesk tickets into client-scoped **journal entries** - the incident history that the Diagnose / Plan / Learn skills consult. Conceptual model in [architecture/pipeline.md](../architecture/pipeline.md).*
 
-**Tooling reference:** [Hub](README.md) · [hive-prep](hive-prep.md) · [hive-gen](hive-gen.md) · [hive-serve](hive-serve.md) · [hive-dbparse](hive-dbparse.md) · [hive-author](hive-author.md) · **hive-zendesk** · [Architecture & Concepts](../OKF-Pipeline.md)
+**Tooling reference:** [Hub](README.md) · [hive-prep](hive-prep.md) · [hive-gen](hive-gen.md) · [hive-serve](hive-serve.md) · [hive-dbparse](hive-dbparse.md) · [hive-author](hive-author.md) · **hive-zendesk** · [Architecture & Concepts](../architecture/pipeline.md)
 
 `hivezendesk` turns resolved support tickets into one thin `type: issue` card per ticket under `clients/<client>/issues/`. All LLM calls go through Bifrost. Two different models do two different jobs: the **distiller** writes the prose (on-prem `host-d/qwen3.6-27b`), and the **reranker** chooses the concept-card links (`minimax-m3` by default).
 

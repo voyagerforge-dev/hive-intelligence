@@ -175,7 +175,7 @@ def allowed_products(text: str) -> set[str]:
 def confine_to_one_product(links: list[str]) -> list[str]:
     """Keep only the links belonging to the first pick's product.
 
-    OKF requires 0 cross-product bleed (docs/OKF-Pipeline.md). An entry linking to both
+    OKF requires 0 cross-product bleed (docs/architecture/pipeline.md). An entry linking to both
     an osci card and a wms card would be exactly that, so the first pick wins the product
     and any pick from another product is dropped.
     """
