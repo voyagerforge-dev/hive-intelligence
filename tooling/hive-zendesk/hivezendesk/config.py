@@ -7,7 +7,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    connector_base: str = "http://hive-host.internal:8014"
+    # No default. A connector address belongs to a deployment, and a plausible-looking
+    # default fails late and against the wrong host rather than at startup.
+    connector_base: str = ""
     connector_api_key: str = ""
     bifrost_base: str = ""
     bifrost_api_key: str = ""

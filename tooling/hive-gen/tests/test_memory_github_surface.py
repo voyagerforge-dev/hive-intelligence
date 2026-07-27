@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-ROOT = Path(__file__).resolve().parents[5]   # repo root from hive-gen/tests
+ROOT = Path(__file__).resolve().parents[3]   # repo root: tests -> hive-gen -> tooling -> root
 
 ISSUE_FORM = ROOT / ".github/ISSUE_TEMPLATE/memory.yml"
 MEMORY_WORKFLOW = ROOT / ".github/workflows/memory-from-issue.yml"

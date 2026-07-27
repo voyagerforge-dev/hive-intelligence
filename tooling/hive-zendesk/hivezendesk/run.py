@@ -163,6 +163,11 @@ def main() -> int:
         if not getattr(args, name):
             ap.error(f"--{name.replace('_', '-')} is required for mode {args.mode}")
     org_ids = load_org_ids(args.customers, args.client)
+    # Fail here rather than on the first request against an empty base URL, which
+    # surfaces as an opaque connection error a long way from the cause.
+    if not s.connector_base:
+        ap.error("CONNECTOR_BASE is not set. It is deployment-specific: point it at your "
+                 "Zendesk connector, in the environment or a .env file.")
     connector = ConnectorClient(s.connector_base, s.connector_api_key,
                                 s.connector_page_cap, s.cap_warn_ratio)
     llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.distill_model,

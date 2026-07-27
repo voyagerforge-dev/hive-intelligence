@@ -14,7 +14,9 @@ import sys
 
 import yaml
 
-BASE_URL = "https://hive.example.com/card"
+# Per-deployment: the public base a card id resolves under. Cards are portable, so this
+# cannot be baked in. Set CARD_BASE_URL in the environment of whoever runs the pass.
+BASE_URL = os.environ.get("CARD_BASE_URL", "https://hive.example.com/card")
 
 
 def _title_map(concepts_dir):

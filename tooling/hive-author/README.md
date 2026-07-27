@@ -35,54 +35,22 @@ Read from the environment (via `env_file` in the compose). The only secret is th
 | `HOST` / `PORT` | `0.0.0.0` / `8016` | |
 | `IDENTITY_HEADER` | `Cf-Access-Authenticated-User-Email` | The trusted header the edge injects; the caller's email → `submitted_by`. |
 
-## Live deployment (Host-A)
+## Deployment
 
-- **Container** `hive-author`, bound to **`hive-host.internal:8016`** (VLAN60 LAN, same host model as hive-serve).
-- **Image** built from this package via `deploy/Dockerfile` (the build context is the package dir).
-- **Secret** decrypted from SOPS to **`/srv/hive-author/hive-author.env`** (mode 600, *outside* the git
-  checkout) — never committed.
-- **Compose project** is pinned to **`hive-author`** (`name: hive-author` in `deploy/compose.example.yml`).
-  > ⚠️ **Gotcha:** both hive-serve and hive-author deploy dirs are named `deploy`, so without an explicit
-  > `name:` they collide on Compose's default project name — and a `docker compose down --remove-orphans`
-  > in one dir would remove the other's containers. The explicit `name:` isolates them.
+Deployment is not described here. hive-author is packaged by `deploy/Dockerfile` and configured by
+the keys above; how it is built, where its secret comes from, what address it binds and what
+authenticates its callers all belong to whoever runs it. See
+`docs/architecture/product-deployment-boundary.md`.
 
-### Deploy / redeploy (operator)
+`deploy/compose.example.yml` is a starting point. Two things in it are not decoration:
 
-The deploy runs from the Windmill-pulled checkout on Host-A
-(`/srv/hive-serve/repo/knowledge/okf/tooling/hive-author/deploy`):
-
-```bash
-# 1. Provision the token → SOPS (one-time; rotate before the PAT expires)
-sops infra-repo/secrets/host-a/hive-author.enc.env      # GITHUB_TOKEN=github_pat_...
-
-# 2. Decrypt → place on Host-A, outside the checkout (piped, never printed)
-sops -d infra-repo/secrets/host-a/hive-author.enc.env \
-  | ssh host-a 'sudo mkdir -p /srv/hive-author && sudo tee /srv/hive-author/hive-author.env >/dev/null \
-                && sudo chmod 600 /srv/hive-author/hive-author.env'
-
-# 3. Build + start (ensure the checkout is current first: wmill script run f/example/okf/cards_sync)
-ssh host-a 'cd /srv/hive-serve/repo/knowledge/okf/tooling/hive-author/deploy \
-            && sudo docker compose build && sudo docker compose up -d'
-
-# 4. Validate: healthz + file one real issue from Claude Code, then close it
-curl -s hive-host.internal:8016/healthz     # {"ok":true}
-```
-
-If a stale `hive-author` container exists under the wrong project (the `deploy` collision), remove it by
-name first — this leaves hive-serve untouched: `ssh host-a 'sudo docker rm -f hive-author'` then re-`up`.
-
-## Public edge (CF Access) — for consultants
-
-hive-author is LAN-only by default (reachable from Claude Code on the LAN). To let **consultants** submit
-corrections / promote memory from **Claude Desktop / claude.ai**, front it with a Cloudflare Access app,
-exactly like hive-serve, behind whatever authenticating proxy your deployment uses:
-
-1. **CF Access app** (owner: Yash) — Zero Trust → Access → Applications → Add → Self-hosted. Name
-   `hive-author`, hostname **`hive-author.example.com`** (no path), **Managed OAuth on**, team
-   `homelab-gateway`, policy Allow → the consultant emails. Copy the AUD.
-2. **cloudflared** (owner: operator) — route `hive-author.example.com` **direct to `host-a:8016`**
-   (bypass Caddy, like hive-serve), reload, validate the `/mcp` OAuth gate.
-3. Consultants add **hive-author** as a second custom connector (alongside the read-only hive-serve one).
+- The explicit compose `name:`. Both hive-serve and hive-author use a directory called `deploy`, so
+  without it they collide on the default project name, and `down --remove-orphans` in one removes the
+  other's containers. If a stale container lands under the wrong project, remove it by name
+  (`docker rm -f hive-author`) rather than tearing the project down.
+- The loopback default on `ports`. hive-author trusts the header named by `IDENTITY_HEADER` and does
+  not authenticate callers itself, so exposing it without an authenticating proxy in front hands
+  anyone who can reach the port the ability to submit cards as any identity they choose.
 
 ## Package layout
 
