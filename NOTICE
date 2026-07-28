@@ -1,0 +1,20 @@
+Hive Intelligence
+Copyright 2026 VoyagerForge
+
+This product includes software developed at VoyagerForge (https://voyagerforge.dev).
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file, or
+http://www.apache.org/licenses/LICENSE-2.0, for the full terms.
+
+---
+
+This licence covers the SOFTWARE in this repository only.
+
+It does not cover knowledge corpora. A corpus is the output of pointing Hive at a
+particular organisation's documents, so it belongs to that organisation, ships in its own
+repository, and carries its own terms. Nothing in this repository grants any right to a
+corpus, and no corpus is distributed here.
+
+The only cards present are the synthetic fixtures under
+tooling/hive-serve/tests/fixtures/corpus/, which describe no real product or organisation
+and are covered by this licence like any other file.

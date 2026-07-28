@@ -2,3 +2,9 @@ __pycache__/
 *.py[cod]
 .venv/
 .pytest_cache/
+
+# Per-package licence copies. The sources of truth are ./LICENSE and ./NOTICE at the root;
+# these are copied in by tools/sync-licence.sh because build backends cannot follow symlinks
+# out of the package directory and packaging must not silently drop the licence.
+tooling/*/LICENSE
+tooling/*/NOTICE

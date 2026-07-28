@@ -74,4 +74,8 @@ repository they are expected to skip. In a deployment that has a corpus, they ru
 
 ## Licence
 
-Not yet chosen. Until one is, treat this as all rights reserved.
+[Apache License 2.0](LICENSE). Use it, run it, modify it, redistribute it, build a product on
+it. The licence includes an express patent grant.
+
+**The licence covers the software, not any corpus.** A corpus belongs to whoever produced it and
+ships separately; see [NOTICE](NOTICE).

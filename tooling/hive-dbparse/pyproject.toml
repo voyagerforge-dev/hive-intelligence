@@ -3,6 +3,8 @@ name = "vf-hive-dbparse"
 version = "0.1.0"
 description = "Deterministic parser: Oracle and DB2 DDL to OKF database-object cards"
 requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 dependencies = ["sqlglot>=25", "PyYAML>=6.0"]
 
 [project.optional-dependencies]
