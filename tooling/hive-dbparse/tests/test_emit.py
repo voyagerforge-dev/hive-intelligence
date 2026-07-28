@@ -30,15 +30,15 @@ def test_table_card_has_frontmatter_columns_and_verbatim_comment():
         pk=["EVENT_ID"],
         dialects={"oracle", "db2"},
     )
-    md = table_card(t)
+    md = table_card(t, "widgets")
     assert "type: dbobject" in md and "kind: table" in md
     assert "description: Stage inbound events" in md
     assert (
         "| EVENT_ID | NUMBER(20,0) | BIGINT | NOT NULL | PK | Unique identifier of the event |"
         in md
     )
-    assert card_id(t) == "wms/db/tables/MASTER_STAGING_DATA"
-    assert manifest_line(t)["description"] == "Stage inbound events"
+    assert card_id(t, "widgets") == "widgets/db/tables/MASTER_STAGING_DATA"
+    assert manifest_line(t, "widgets")["description"] == "Stage inbound events"
 
 
 def test_table_card_frontmatter_is_valid_yaml():
@@ -49,17 +49,17 @@ def test_table_card_frontmatter_is_valid_yaml():
         columns=[Column("A", type_oracle="NUMBER(20,0)")],
         dialects={"oracle"},
     )
-    fm = _frontmatter_dict(table_card(t))
+    fm = _frontmatter_dict(table_card(t, "widgets"))
     assert fm["type"] == "dbobject"
     assert fm["kind"] == "table"
-    assert fm["product"] == "wms"
+    assert fm["product"] == "widgets"
     assert fm["module"] == "DOM"
     assert fm["platform"] == ["oracle"]
 
 
 def test_table_card_platform_reflects_dialects_both():
     t = Table("T", "DOM", columns=[Column("A")], dialects={"oracle", "db2"})
-    fm = _frontmatter_dict(table_card(t))
+    fm = _frontmatter_dict(table_card(t, "widgets"))
     assert fm["platform"] == ["oracle", "db2"]
 
 
@@ -71,17 +71,17 @@ def test_table_card_related_is_fk_target_ids_only():
         fks=[("SYS_CODE_ID", "SYS_CODE", "CODE_ID")],
         dialects={"oracle"},
     )
-    fm = _frontmatter_dict(table_card(t))
-    assert fm["related"] == ["wms/db/tables/SYS_CODE"]
-    md = table_card(t)
-    assert "wms/db/tables/SYS_CODE" in md
+    fm = _frontmatter_dict(table_card(t, "widgets"))
+    assert fm["related"] == ["widgets/db/tables/SYS_CODE"]
+    md = table_card(t, "widgets")
+    assert "widgets/db/tables/SYS_CODE" in md
 
 
 def test_table_card_no_comment_yields_empty_description_never_invented():
     t = Table("T", "DOM", comment="", columns=[Column("A")], dialects={"oracle"})
-    fm = _frontmatter_dict(table_card(t))
+    fm = _frontmatter_dict(table_card(t, "widgets"))
     assert fm["description"] == ""
-    assert manifest_line(t)["description"] == ""
+    assert manifest_line(t, "widgets")["description"] == ""
 
 
 def test_table_card_pipe_in_comment_is_escaped_in_columns_table():
@@ -91,7 +91,7 @@ def test_table_card_pipe_in_comment_is_escaped_in_columns_table():
         columns=[Column("A", comment="Values are A|B|C")],
         dialects={"oracle"},
     )
-    md = table_card(t)
+    md = table_card(t, "widgets")
     assert "A\\|B\\|C" in md
     # the raw, unescaped comment must not appear (it would break the table row)
     assert "| Values are A|B|C |" not in md
@@ -101,7 +101,7 @@ def test_table_card_comment_with_colon_stays_valid_yaml():
     t = Table(
         "T", "DOM", comment="Ratio: quantity per unit", columns=[Column("A")], dialects={"oracle"}
     )
-    fm = _frontmatter_dict(table_card(t))
+    fm = _frontmatter_dict(table_card(t, "widgets"))
     assert fm["description"] == "Ratio: quantity per unit"
 
 
@@ -112,7 +112,7 @@ def test_table_card_column_missing_in_one_dialect_is_marked_not_blank():
         columns=[Column("A", type_oracle="NUMBER(20,0)", type_db2=None)],
         dialects={"oracle", "db2"},
     )
-    md = table_card(t)
+    md = table_card(t, "widgets")
     # A blank cell would read as "no type recorded"; this says "not in this dialect".
     assert "| A | NUMBER(20,0) | n/a |" in md
 
@@ -129,19 +129,19 @@ def test_table_card_sections_render_pk_fk_index_sequence_trigger():
         triggers=["TRG_T"],
         dialects={"oracle"},
     )
-    md = table_card(t)
+    md = table_card(t, "widgets")
     pk_section = md.split("## Primary key")[1].split("## Foreign keys")[0]
     assert "## Primary key" in md and "A" in pk_section
     assert "B → OTHER(ID)" in md
-    assert "wms/db/tables/OTHER" in md
+    assert "widgets/db/tables/OTHER" in md
     assert "IDX_T (A) [UNIQUE]" in md
     assert "T_SEQ" in md
-    assert "TRG_T" in md and "wms/db/plsql/TRG_T" in md
+    assert "TRG_T" in md and "widgets/db/plsql/TRG_T" in md
 
 
 def test_table_card_empty_sections_render_none():
     t = Table("T", "DOM", columns=[Column("A")], dialects={"oracle"})
-    md = table_card(t)
+    md = table_card(t, "widgets")
     headings = ("## Primary key", "## Foreign keys", "## Indexes", "## Sequences", "## Triggers")
     for heading in headings:
         section = md.split(heading, 1)[1].lstrip("\n")
@@ -157,7 +157,7 @@ def test_plsql_card_signature_and_oracle_source():
         body_oracle="CREATE OR REPLACE PACKAGE BODY dom_alloc AS ... END;",
         dialects={"oracle"},
     )
-    md = plsql_card(o)
+    md = plsql_card(o, "widgets")
     fm = _frontmatter_dict(md)
     assert fm["type"] == "dbobject"
     assert fm["kind"] == "package"
@@ -166,7 +166,7 @@ def test_plsql_card_signature_and_oracle_source():
     assert "CREATE OR REPLACE PACKAGE dom_alloc AS ..." in md
     assert "## Source (Oracle)" in md
     assert "CREATE OR REPLACE PACKAGE BODY dom_alloc AS ... END;" in md
-    assert card_id(o) == "wms/db/plsql/DOM_ALLOC"
+    assert card_id(o, "widgets") == "widgets/db/plsql/DOM_ALLOC"
 
 
 def test_plsql_card_omits_db2_body_when_identical():
@@ -179,7 +179,7 @@ def test_plsql_card_omits_db2_body_when_identical():
         body_db2="",
         dialects={"oracle", "db2"},
     )
-    md = plsql_card(o)
+    md = plsql_card(o, "widgets")
     assert "## Source (DB2)" in md
     assert "Identical to Oracle." in md
 
@@ -194,7 +194,7 @@ def test_plsql_card_includes_db2_body_when_present():
         body_db2="BEGIN CALL SOMETHING(); END;",
         dialects={"oracle", "db2"},
     )
-    md = plsql_card(o)
+    md = plsql_card(o, "widgets")
     assert "## Source (DB2)" in md
     assert "BEGIN CALL SOMETHING(); END;" in md
     assert "Identical to Oracle." not in md
@@ -212,11 +212,11 @@ def test_plsql_comment_less_title_is_clean_and_description_empty():
         body_oracle="CREATE OR REPLACE VIEW LANE_DETAIL_VIEW AS SELECT ...",
         dialects={"oracle"},
     )
-    fm = _frontmatter_dict(plsql_card(o))
+    fm = _frontmatter_dict(plsql_card(o, "widgets"))
     assert fm["title"] == "LANE_DETAIL_VIEW (view)"
     assert fm["description"] == ""
     assert "CREATE OR REPLACE VIEW" not in fm["title"]
-    ml = manifest_line(o)
+    ml = manifest_line(o, "widgets")
     assert ml["title"] == "LANE_DETAIL_VIEW (view)"
     assert ml["description"] == ""
 
@@ -230,7 +230,7 @@ def test_plsql_with_comment_title_uses_comment():
         signature="CREATE OR REPLACE PACKAGE dom_alloc AS ...",
         dialects={"oracle"},
     )
-    fm = _frontmatter_dict(plsql_card(o))
+    fm = _frontmatter_dict(plsql_card(o, "widgets"))
     assert fm["title"] == "DOM_ALLOC: Allocation engine"
     assert fm["description"] == "Allocation engine"
 
@@ -238,11 +238,43 @@ def test_plsql_with_comment_title_uses_comment():
 def test_manifest_line_shape_for_table_and_plsql():
     t = Table("T", "DOM", comment="purpose", columns=[Column("A")], dialects={"oracle"})
     o = PlsqlObject("P", "DOM", kind="procedure", comment="does a thing", dialects={"oracle"})
-    ml_t = manifest_line(t)
-    ml_o = manifest_line(o)
+    ml_t = manifest_line(t, "widgets")
+    ml_o = manifest_line(o, "widgets")
     assert set(ml_t) == {"id", "kind", "module", "product", "title", "description", "tags"}
-    assert ml_t["id"] == "wms/db/tables/T"
+    assert ml_t["id"] == "widgets/db/tables/T"
     assert ml_t["kind"] == "table"
-    assert ml_o["id"] == "wms/db/plsql/P"
+    assert ml_o["id"] == "widgets/db/plsql/P"
     assert ml_o["kind"] == "procedure"
     assert ml_o["description"] == "does a thing"
+
+
+def test_no_vendor_name_survives_in_the_default_product():
+    """The default must stay neutral.
+
+    Card ids and the product facet were hardcoded to one vendor's product name, which meant
+    a schema parsed for anything else produced cards filed under the wrong product. A
+    vendor-shaped default would quietly reintroduce that.
+    """
+    from hivedbparse.emit import DEFAULT_PRODUCT
+
+    assert DEFAULT_PRODUCT == "db"
+    t = Table("T", "MOD", columns=[Column("A")], dialects={"oracle"})
+    assert card_id(t) == "db/db/tables/T"
+    assert card_id(t, "widgets") == "widgets/db/tables/T"
+
+
+def test_product_reaches_every_rendered_reference():
+    """Not just the id: the facet, the foreign-key links and the trigger links all carry it,
+    and a card whose links point at another product's ids resolves to nothing."""
+    t = Table(
+        "ORDERS", "MOD",
+        columns=[Column("CUST_ID", type_oracle="NUMBER")],
+        fks=[("CUST_ID", "CUSTOMER", "ID")],
+        triggers=["ORDERS_AI"],
+        dialects={"oracle"},
+    )
+    md = table_card(t, "widgets")
+    assert "widgets/db/tables/CUSTOMER" in md
+    assert "widgets/db/plsql/ORDERS_AI" in md
+    assert _frontmatter_dict(md)["product"] == "widgets"
+    assert "wms/" not in md

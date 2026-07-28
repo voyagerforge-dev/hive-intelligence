@@ -4,7 +4,7 @@ Cheaper than distilling from scratch: the input is a 300-700 byte card rather th
 multi-thousand-character ticket thread, so the model both reads and thinks less
 (~20s vs ~39s per entry measured against the on-prem Qwen).
 
-The old cards explain WMOS behaviour (Problem / Root cause / Resolution). A journal entry
+The old cards explain product behaviour (Problem / Root cause / Resolution). A journal entry
 deliberately does not: it records what happened at this site and points at the concept
 cards. So this is a reshape plus a classification, not a re-summarisation.
 """
@@ -23,11 +23,11 @@ SYSTEM = (
     "You convert an existing support knowledge card into ONE JSON journal index entry. "
     "Reply with ONE JSON object and nothing else.\n"
     "Keys: what_happened (one sentence), how_it_closed (one sentence, empty string if the "
-    "card does not say), module (WMOS functional area, lowercase single token, e.g. "
+    "card does not say), module (the functional area, lowercase single token, e.g. "
     "allocation, replenishment, inbound, outbound, interfaces, labelling, wave, "
     "cycle-count, inventory, tasking), tags (3-6 short lowercase keywords), "
     "routine (true if this is a routine scheduled request rather than a fault).\n"
-    "Do NOT explain how WMOS works - that is documented elsewhere and repeating it is worse "
+    "Do NOT explain how the product works. That is documented elsewhere and repeating it is worse "
     "than useless. Record only what happened at this site and how it ended. Be terse.\n"
     "STRIP ALL PII: no person names, email addresses, phone numbers, ID numbers or account "
     "identifiers - refer to roles instead."

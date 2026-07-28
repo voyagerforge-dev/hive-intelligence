@@ -6,7 +6,7 @@ from hivegen.load import Doc
 from hivegen.taxonomy import Concept
 
 _SYSTEM = (
-    "You classify a Manhattan WMOS document into exactly ONE concept from the provided list, "
+    "You classify a reference document into exactly ONE concept from the provided list, "
     "or 'exclude' if it is instance-specific/junk not worth keeping as reusable knowledge. "
     "Reply with ONLY {\"concept_id\": \"<id-or-exclude>\"}."
 )

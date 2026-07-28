@@ -10,8 +10,9 @@ from hivegen.llm import ChatLLM, extract_json
 from hivegen.load import Doc
 
 _SYSTEM = (
-    "You are a Manhattan WMOS expert. Given a list of document titles and snippets from the "
-    "Wave/Replenishment functional area, propose a FINE-GRAINED taxonomy of distinct CONCEPTS "
+    "You are a domain expert reading reference documentation. Given a list of document "
+    "titles and snippets from one functional area, propose a FINE-GRAINED taxonomy of "
+    "distinct CONCEPTS "
     "they cover. Reply with ONLY a JSON object: {\"concepts\": [{\"id\", \"title\", "
     "\"description\", \"aliases\"}]}. id is a short kebab-case slug; aliases is a list of "
     "alternative terms. "

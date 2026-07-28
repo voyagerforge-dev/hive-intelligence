@@ -12,10 +12,14 @@ class Settings(BaseSettings):
     # and R2 is not read. Leave empty to fall back to the R2 reader.
     atomic_dir: str = ""
 
-    # Which functional-area slice to generate (see hivegen.load.AREAS). Empty → the legacy
-    # Wave/Replenishment filename slice + shared taxonomy.yaml. Set e.g. SLICE_AREA=inbound to
-    # generate one area at a time into its own taxonomy.<area>.yaml.
+    # Which functional-area slice to generate. Names an area or sub-area defined by the
+    # corpus profile. Empty means the whole corpus in one taxonomy, which is rarely what
+    # you want: a taxonomy call spanning everything produces a poor taxonomy.
     slice_area: str = ""
+
+    # Path to the corpus profile (domain vocabulary). Empty means look for
+    # corpus-profile.yaml in the working directory, then beside ATOMIC_DIR.
+    corpus_profile: str = ""
 
     r2_endpoint: str = ""
     r2_access_key_id: str = ""

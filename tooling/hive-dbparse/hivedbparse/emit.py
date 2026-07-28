@@ -27,12 +27,19 @@ _DIALECT_DIR = {"oracle": "Oracle", "db2": "DB2"}
 _MISSING_TYPE = "n/a"  # column absent from that dialect
 
 
-def card_id(obj: Table | PlsqlObject) -> str:
-    """`wms/db/tables/<NAME>` for a `Table`, `wms/db/plsql/<NAME>` for a `PlsqlObject`."""
+DEFAULT_PRODUCT = "db"
+
+
+def card_id(obj: Table | PlsqlObject, product: str = DEFAULT_PRODUCT) -> str:
+    """`<product>/db/tables/<NAME>` for a `Table`, `<product>/db/plsql/<NAME>` otherwise.
+
+    The product names the corpus this schema belongs to. It is a run-level constant, so it
+    is passed rather than inferred: a schema does not know which product it implements.
+    """
     if isinstance(obj, Table):
-        return f"wms/db/tables/{obj.name}"
+        return f"{product}/db/tables/{obj.name}"
     if isinstance(obj, PlsqlObject):
-        return f"wms/db/plsql/{obj.name}"
+        return f"{product}/db/plsql/{obj.name}"
     raise TypeError(f"hivedbparse: card_id: unsupported object type {type(obj)!r}")
 
 
@@ -77,26 +84,26 @@ def _table_sources(t: Table) -> list[str]:
     ]
 
 
-def _table_related(t: Table) -> list[str]:
+def _table_related(t: Table, product: str) -> list[str]:
     related: list[str] = []
     for _col, ref_table, _ref_col in t.fks:
-        rid = f"wms/db/tables/{ref_table}"
+        rid = f"{product}/db/tables/{ref_table}"
         if rid not in related:
             related.append(rid)
     return related
 
 
-def _table_frontmatter(t: Table) -> dict:
+def _table_frontmatter(t: Table, product: str) -> dict:
     return {
         "type": "dbobject",
         "kind": "table",
         "title": _table_title(t),
         "description": t.comment,
-        "product": "wms",
+        "product": product,
         "module": t.module,
         "platform": _platform(t.dialects),
         "tags": _table_tags(t),
-        "related": _table_related(t),
+        "related": _table_related(t, product),
         "sources": _table_sources(t),
     }
 
@@ -127,11 +134,11 @@ def _pk_section(t: Table) -> str:
     return ", ".join(t.pk) if t.pk else "none"
 
 
-def _fks_section(t: Table) -> str:
+def _fks_section(t: Table, product: str) -> str:
     if not t.fks:
         return "none"
     return "\n".join(
-        f"{col} → {ref_table}({ref_col})   → wms/db/tables/{ref_table}"
+        f"{col} → {ref_table}({ref_col})   → {product}/db/tables/{ref_table}"
         for col, ref_table, ref_col in t.fks
     )
 
@@ -150,13 +157,13 @@ def _sequences_section(t: Table) -> str:
     return "\n".join(t.sequences) if t.sequences else "none"
 
 
-def _triggers_section(t: Table) -> str:
+def _triggers_section(t: Table, product: str) -> str:
     if not t.triggers:
         return "none"
-    return "\n".join(f"{name} → wms/db/plsql/{name}" for name in t.triggers)
+    return "\n".join(f"{name} → {product}/db/plsql/{name}" for name in t.triggers)
 
 
-def table_card(t: Table) -> str:
+def table_card(t: Table, product: str = DEFAULT_PRODUCT) -> str:
     """Render `t` as an OKF `dbobject`/`table` markdown card (design Sec. 4.1)."""
     body_lines = [f"# {t.name}  (table · module {t.module})", ""]
     if t.comment:
@@ -170,7 +177,7 @@ def table_card(t: Table) -> str:
         _pk_section(t),
         "",
         "## Foreign keys",
-        _fks_section(t),
+        _fks_section(t, product),
         "",
         "## Indexes",
         _indexes_section(t),
@@ -179,10 +186,10 @@ def table_card(t: Table) -> str:
         _sequences_section(t),
         "",
         "## Triggers",
-        _triggers_section(t),
+        _triggers_section(t, product),
         "",
     ]
-    return _frontmatter(_table_frontmatter(t)) + "\n" + "\n".join(body_lines)
+    return _frontmatter(_table_frontmatter(t, product)) + "\n" + "\n".join(body_lines)
 
 
 # ---------------------------------------------------------------------------
@@ -228,13 +235,13 @@ def _plsql_sources(o: PlsqlObject) -> list[str]:
     ]
 
 
-def _plsql_frontmatter(o: PlsqlObject) -> dict:
+def _plsql_frontmatter(o: PlsqlObject, product: str) -> dict:
     return {
         "type": "dbobject",
         "kind": o.kind,
         "title": _plsql_title(o),
         "description": _plsql_header_text(o),
-        "product": "wms",
+        "product": product,
         "module": o.module,
         "platform": _platform(o.dialects),
         "tags": _plsql_tags(o),
@@ -242,7 +249,7 @@ def _plsql_frontmatter(o: PlsqlObject) -> dict:
     }
 
 
-def plsql_card(o: PlsqlObject) -> str:
+def plsql_card(o: PlsqlObject, product: str = DEFAULT_PRODUCT) -> str:
     """Render `o` as an OKF `dbobject`/`<kind>` markdown card (design Sec. 4.2)."""
     body_lines = [
         f"# {o.name}  ({o.kind} · module {o.module})",
@@ -264,7 +271,7 @@ def plsql_card(o: PlsqlObject) -> str:
     else:
         body_lines.append("Identical to Oracle.")
     body_lines.append("")
-    return _frontmatter(_plsql_frontmatter(o)) + "\n" + "\n".join(body_lines)
+    return _frontmatter(_plsql_frontmatter(o, product)) + "\n" + "\n".join(body_lines)
 
 
 # ---------------------------------------------------------------------------
@@ -272,24 +279,24 @@ def plsql_card(o: PlsqlObject) -> str:
 # ---------------------------------------------------------------------------
 
 
-def manifest_line(obj: Table | PlsqlObject) -> dict:
+def manifest_line(obj: Table | PlsqlObject, product: str = DEFAULT_PRODUCT) -> dict:
     """`{id, kind, module, product, title, description, tags}` for the manifest index."""
     if isinstance(obj, Table):
         return {
-            "id": card_id(obj),
+            "id": card_id(obj, product),
             "kind": "table",
             "module": obj.module,
-            "product": "wms",
+            "product": product,
             "title": _table_title(obj),
             "description": obj.comment,
             "tags": _table_tags(obj),
         }
     if isinstance(obj, PlsqlObject):
         return {
-            "id": card_id(obj),
+            "id": card_id(obj, product),
             "kind": obj.kind,
             "module": obj.module,
-            "product": "wms",
+            "product": product,
             "title": _plsql_title(obj),
             "description": _plsql_header_text(obj),
             "tags": _plsql_tags(obj),

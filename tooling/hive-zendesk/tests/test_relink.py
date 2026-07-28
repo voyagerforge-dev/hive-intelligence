@@ -333,21 +333,46 @@ def test_skip_linked_leaves_already_linked_cards_alone(tmp_path):
 
 
 # --- a wrong product facet HIDES an entry, so it needs positive evidence --------------
+#
+# The vocabulary below is synthetic. Which products exist, and which words mark them, is
+# one corpus's knowledge and lives in its profile; what the product owns is the rule that
+# leaving the default requires positive evidence in the entry's own words.
 
-def test_allowed_products_always_includes_wms():
-    assert allowed_products("WMOS Application is down") == {"wms"}
+from hivezendesk.profile import LinkingProfile
+
+LINKING = LinkingProfile(
+    default_product="core",
+    product_markers={
+        "reporting": {"cognos", "dashboard", "kpi"},
+        "workforce": {"payroll", "roster", "timesheet"},
+        "layout": {"slotting"},
+    },
+)
+
+
+def test_allowed_products_always_includes_the_default():
+    assert allowed_products("Application is down", LINKING) == {"core"}
 
 
 def test_allowed_products_opens_up_on_distinctive_vocabulary():
-    assert "osci" in allowed_products("Cognos Reports: unable to load view")
-    assert "osci" in allowed_products("SCI data source for CPA")
-    assert "labour-management" in allowed_products("payroll rollover incorrect")
-    assert "slotting" in allowed_products("slotting run did not complete")
+    assert "reporting" in allowed_products("Cognos reports will not load", LINKING)
+    assert "workforce" in allowed_products("payroll rollover incorrect", LINKING)
+    assert "layout" in allowed_products("slotting run did not complete", LINKING)
 
 
-def test_allowed_products_ignores_wms_words_that_merely_resemble_a_product():
-    """`pick slot` is WMS vocabulary; it must not reclassify the entry as Slotting."""
-    assert allowed_products("Error pallets in PTS staging pick slot") == {"wms"}
+def test_allowed_products_needs_a_marker_not_a_resemblance():
+    """A word that merely looks related must not open a product up: a misfiled entry is
+    invisible to anyone scoped to the product it actually belongs to."""
+    out = allowed_products("report printing failed on the label printer", LINKING)
+    assert out == {"core"}
+
+
+def test_no_profile_means_do_not_confine_rather_than_permit_nothing():
+    """None is "confinement is not configured". An empty set would mean "no product is
+    permitted", which rejects every candidate and links nothing, and that is
+    indistinguishable from a corpus that simply has no matching cards."""
+    assert allowed_products("anything at all", LinkingProfile()) is None
+
 
 
 def test_relink_does_not_reclassify_without_evidence(tmp_path):
@@ -363,7 +388,12 @@ def test_relink_does_not_reclassify_without_evidence(tmp_path):
             .replace("description: A wave allocation did not release.",
                      "description: The direct integration application was down."))
     llm = FakeLLM(json.dumps({"picks": ["slotting/direct-integration"]}))
-    relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm, workers=1)
+    # Confinement needs a vocabulary: the default product is `wms`, and `slotting` is only
+    # permitted when the entry's own words say so. This entry's words do not.
+    linking = LinkingProfile(default_product="wms",
+                             product_markers={"slotting": {"slotting"}})
+    relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm, workers=1,
+                 linking=linking)
     body = (d / "5-down.md").read_text()
     assert "product: slotting" not in body
     assert "slotting/direct-integration" not in body

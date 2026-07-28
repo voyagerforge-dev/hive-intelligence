@@ -1,46 +1,31 @@
 """Folder path parser, extracts classification hints from directory segments.
 
-SharePoint folder hierarchies for Manhattan WMS documents typically follow
-patterns like:
+Document repositories are commonly organised in hierarchies like:
     ClientName/Product/Version/DocumentCategory/filename.pdf
     General/Product/DocumentCategory/filename.pdf
     Product/ClientName/Version/docs/filename.docx
 
-The parser uses heuristics to identify known products, version patterns,
-and document category keywords from folder names. These hints supplement
-(not replace) LLM classification, they provide a strong prior for the
-80-90% of files with clear folder structure.
+The parser uses heuristics to identify products, version patterns and document
+category keywords from folder names. These hints supplement classification rather
+than replacing it: they provide a strong prior for the majority of files that sit in
+a clear folder structure.
+
+Version and category matching are generic. **Product matching is not**: product names
+are one corpus's vocabulary, so they come from the corpus profile. With no profile,
+product hinting is simply off.
 """
 from __future__ import annotations
 
 import re
 from typing import Optional
 
+from hiveprep.profile import load_product_aliases
 
-# ── Known product names ──────────────────────────────────────────────
 
-# Map of normalized folder names → canonical product codes
-PRODUCT_ALIASES: dict[str, str] = {
-    "wmos": "WMOS",
-    "manhattan wmos": "WMOS",
-    "warehouse management": "WMOS",
-    "wm": "WMOS",
-    "scale": "SCALE",
-    "manhattan scale": "SCALE",
-    "active wms": "ACTIVE_WMS",
-    "activewms": "ACTIVE_WMS",
-    "active": "ACTIVE_WMS",
-    "tms": "TMS",
-    "transportation": "TMS",
-    "transport management": "TMS",
-    "lms": "LMS",
-    "labor management": "LMS",
-    "labour management": "LMS",
-    "yms": "YMS",
-    "yard management": "YMS",
-    "slotting": "SLOTTING",
-    "slotting optimization": "SLOTTING",
-}
+# ── Product names ────────────────────────────────────────────────────
+
+# Populated from the corpus profile at call time, not baked in here. See hiveprep.profile.
+
 
 # ── Version patterns ─────────────────────────────────────────────────
 
@@ -119,10 +104,9 @@ def _normalize(segment: str) -> str:
     return " ".join(segment.lower().strip().split())
 
 
-def _match_product(segment: str) -> Optional[str]:
-    """Try to match a folder segment to a known product."""
-    norm = _normalize(segment)
-    return PRODUCT_ALIASES.get(norm)
+def _match_product(segment: str, aliases: dict[str, str]) -> Optional[str]:
+    """Match a folder segment against the corpus profile's product aliases."""
+    return aliases.get(_normalize(segment))
 
 
 def _match_version(segment: str) -> Optional[str]:
@@ -144,7 +128,8 @@ def _is_general_folder(segment: str) -> bool:
 
 # ── Main parser ──────────────────────────────────────────────────────
 
-def parse_folder_segments(relative_path: str, segments: list[str]) -> dict:
+def parse_folder_segments(relative_path: str, segments: list[str],
+                          product_aliases: dict[str, str] | None = None) -> dict:
     """Parse folder segments into classification hints.
 
     Args:
@@ -160,13 +145,14 @@ def parse_folder_segments(relative_path: str, segments: list[str]) -> dict:
         or is a known general folder sets the context. Remaining segments
         are tested for version, category, and (if not general) client.
     """
+    aliases = load_product_aliases() if product_aliases is None else product_aliases
     hints: dict[str, str] = {}
     client_candidates: list[str] = []
 
     for seg in segments:
         # Try product
         if "product_hint" not in hints:
-            product = _match_product(seg)
+            product = _match_product(seg, aliases)
             if product:
                 hints["product_hint"] = product
                 continue

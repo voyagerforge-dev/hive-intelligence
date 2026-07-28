@@ -53,7 +53,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from hivedbparse.emit import manifest_line, plsql_card, table_card
+from hivedbparse.emit import DEFAULT_PRODUCT, manifest_line, plsql_card, table_card
 from hivedbparse.model import PlsqlObject, Table
 from hivedbparse.parse_aux import _SEQUENCE_DECL, _attach_sequence, apply_aux
 from hivedbparse.parse_plsql import parse_plsql
@@ -414,7 +414,8 @@ def _ordered_plsql(
     return product_units + seed_only
 
 
-def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> RunReport:
+def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None,
+        product: str = DEFAULT_PRODUCT) -> RunReport:
     """Parse+reconcile every WMOS table/PL/SQL object under `src_root`, emit
     one card per object under `out_dir/{tables,plsql}/` plus
     `out_dir/manifest.jsonl`, and return the `RunReport`.
@@ -496,13 +497,13 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None) -> R
     manifest_lines: list[dict] = []
 
     for table in merged_tables:
-        (tables_dir / f"{table.name}.md").write_text(table_card(table))
-        manifest_lines.append(manifest_line(table))
+        (tables_dir / f"{table.name}.md").write_text(table_card(table, product))
+        manifest_lines.append(manifest_line(table, product))
         report.counts["table"]["emitted"] += 1
 
     for obj in merged_plsql:
-        (plsql_dir / f"{obj.name}.md").write_text(plsql_card(obj))
-        manifest_lines.append(manifest_line(obj))
+        (plsql_dir / f"{obj.name}.md").write_text(plsql_card(obj, product))
+        manifest_lines.append(manifest_line(obj, product))
         report.counts["plsql"]["emitted"] += 1
 
     with (out_dir / "manifest.jsonl").open("w") as fh:
@@ -556,6 +557,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--src", required=True, type=Path, help="DDL tree root")
     parser.add_argument("--out", required=True, type=Path, help="cards + manifest output dir")
     parser.add_argument(
+        "--product",
+        default=DEFAULT_PRODUCT,
+        help=(f"product this schema belongs to; sets the card id prefix "
+              f"<product>/db/... and the product facet (default: {DEFAULT_PRODUCT})"),
+    )
+    parser.add_argument(
         "--limit-modules",
         type=int,
         default=None,
@@ -563,7 +570,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    report = run(args.src, args.out, limit_modules=args.limit_modules)
+    report = run(args.src, args.out, limit_modules=args.limit_modules,
+                 product=args.product)
     print(
         json.dumps(
             {

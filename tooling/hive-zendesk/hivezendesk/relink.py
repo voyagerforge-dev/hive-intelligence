@@ -25,21 +25,25 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
-
 from .fm import parse_frontmatter
+from .profile import load_linking_profile
 
 SKIP_NAMES = {"index.md", "log.md"}
 
-# Words that carry no discriminating signal in this corpus: English function words plus
-# terms that appear in nearly every card ("wms", "wmos") or every ticket ("error").
+# Words that carry no discriminating signal: English function words plus generic support
+# vocabulary. Corpus-specific dead words (a vendor name that appears on every card, say)
+# belong in the corpus profile's linking.extra_stopwords, not here.
 STOP = {
     "the", "and", "for", "with", "was", "were", "are", "not", "this", "that", "from",
     "has", "have", "had", "but", "all", "any", "can", "could", "would", "should", "did",
     "does", "when", "which", "into", "onto", "out", "its", "their", "there", "then",
     "than", "them", "they", "been", "being", "you", "your", "our", "his", "her",
-    "wms", "wmos", "manhattan", "card", "issue", "ticket", "error", "please", "request",
+    "card", "issue", "ticket", "error", "please", "request",
     "problem", "user", "system", "data", "one", "two", "new", "old", "via", "per",
 }
+
+# Corpus-specific dead words come from the profile and are folded in at tokenise time.
+STOP |= {w for w in load_linking_profile().extra_stopwords}
 
 MIN_SHARED = 2      # one shared word is a coincidence, not a link
 MIN_SCORE = 0.30    # share of the target's distinctive mass that must be covered
@@ -126,7 +130,7 @@ def suggest(query: str, targets: dict[str, set[str]], idf: dict[str, float],
 # IssueCard and would restamp fields such as `timestamp`, quietly rewriting provenance on
 # 2,292 cards to fix a link. Only the two places a link appears are touched.
 
-_REL_RE = re.compile(r"^related:(?: \[\]\n|\n(?:- [^\n]*\n)*)", re.M)
+_REL_RE = re.compile(r"^related:(?: \[\]\n|\n(?:- [^\n]*\n)*)", re.MULTILINE)
 _SEE_RE = re.compile(r"## See also\n\n(?:- `[^`]*`\n)+")
 
 
@@ -144,7 +148,7 @@ def apply_links(text: str, links: list[str]) -> str:
     return out
 
 
-_PROD_RE = re.compile(r"^product: .*$", re.M)
+_PROD_RE = re.compile(r"^product: .*$", re.MULTILINE)
 
 
 def product_of(card_id: str) -> str:
@@ -152,24 +156,39 @@ def product_of(card_id: str) -> str:
     return card_id.split("/", 1)[0]
 
 
-# Leaving `wms` requires positive evidence in the entry's own words. Inferring product
-# from whichever card the model picked reclassified "WMOS Application is down" as Slotting
-# and a 900-08 PIX ticket as Labour Management. That failure is worse than a bad link: OKF
-# selects on `product`, so a WMS entry stamped `slotting` is invisible to a WMS-scoped
-# consultant. Markers are stored folded because tokenize() folds plurals (cognos -> cogno).
-PRODUCT_MARKERS = {
-    prod: {_fold(m) for m in markers} for prod, markers in {
-        "osci": {"cognos", "osci", "sci"},
-        "labour-management": {"labour", "labor", "payroll", "kvi", "mif"},
-        "slotting": {"slotting"},
-    }.items()
-}
+# Leaving the default product requires positive evidence in the entry's own words.
+#
+# Inferring the product from whichever card the model happened to pick misfiled entries
+# badly: an application-down ticket became a Slotting entry because a Slotting card scored
+# highest. That is worse than a bad link. Retrieval selects on `product`, so an entry
+# stamped with the wrong one is invisible to anyone scoped to the right one.
+#
+# The vocabulary is corpus-specific and comes from the profile. Markers are folded because
+# tokenize() folds plurals.
+def product_vocabulary(linking=None) -> tuple[str, dict[str, set[str]]]:
+    """The default product and its marker vocabulary, folded to match tokenize()."""
+    linking = linking if linking is not None else load_linking_profile()
+    markers = {prod: {_fold(m) for m in ms} for prod, ms in linking.product_markers.items()}
+    return linking.default_product, markers
 
 
-def allowed_products(text: str) -> set[str]:
-    """Which products this entry may be filed under. `wms` is always permitted."""
+def allowed_products(text: str, linking=None) -> set[str] | None:
+    """Which products this entry may be filed under, or None for "do not confine".
+
+    The default product is always permitted; any other needs a marker word present in the
+    entry's own text.
+
+    Returns **None** when the corpus profile defines no product vocabulary at all. That is
+    "confinement is not configured", which is different from "no product is permitted".
+    Returning an empty set here would reject every candidate and silently link nothing,
+    which looks identical to a corpus with no matching cards.
+    """
+    default, markers = product_vocabulary(linking)
+    if not default and not markers:
+        return None
     toks = set(tokenize(text))
-    return {"wms"} | {p for p, markers in PRODUCT_MARKERS.items() if toks & markers}
+    base = {default} if default else set()
+    return base | {p for p, ms in markers.items() if toks & ms}
 
 
 def confine_to_one_product(links: list[str]) -> list[str]:
@@ -195,10 +214,10 @@ def set_product(text: str, product: str) -> str:
     if _PROD_RE.search(text):
         return _PROD_RE.sub(lambda _: f"product: {product}", text, count=1)
     # A card written without the facet still needs one, or it cannot be selected on.
-    return re.sub(r"^(client: .*\n)", rf"\1product: {product}\n", text, count=1, flags=re.M)
+    return re.sub(r"^(client: .*\n)", rf"\1product: {product}\n", text, count=1, flags=re.MULTILINE)
 
 
-_LINKED_BY_RE = re.compile(r"^linked_by: .*\n", re.M)
+_LINKED_BY_RE = re.compile(r"^linked_by: .*\n", re.MULTILINE)
 
 
 def set_linked_by(text: str, model: str) -> str:
@@ -212,7 +231,7 @@ def set_linked_by(text: str, model: str) -> str:
     if _LINKED_BY_RE.search(text):
         return _LINKED_BY_RE.sub(lambda _: line, text, count=1)
     for anchor in (r"^(distilled_by: .*\n)", r"^(status: .*\n)"):
-        out, n = re.subn(anchor, rf"\1{line}", text, count=1, flags=re.M)
+        out, n = re.subn(anchor, rf"\1{line}", text, count=1, flags=re.MULTILINE)
         if n:
             return out
     return text
@@ -299,7 +318,7 @@ class RelinkReport:
 def relink_cards(clients: list[str], clients_dir: str | Path, concepts_dir: str | Path,
                  llm, workers: int = 8, dry_run: bool = False,
                  products: tuple[str, ...] | None = None,
-                 skip_linked: bool = False) -> RelinkReport:
+                 skip_linked: bool = False, linking=None) -> RelinkReport:
     """Derive and write `related:` links for every issue card of these clients.
 
     Candidates are drawn from ALL products; the model's choice then determines the
@@ -335,8 +354,9 @@ def relink_cards(clients: list[str], clients_dir: str | Path, concepts_dir: str 
             # Never offer a product the entry shows no evidence of belonging to: the model
             # picks from what it is shown, so filtering here is what prevents the facet
             # being decided by a lexical coincidence.
-            permitted = allowed_products(query)
-            cands = [c for c in cands if product_of(c) in permitted]
+            permitted = allowed_products(query, linking)
+            if permitted is not None:
+                cands = [c for c in cands if product_of(c) in permitted]
             if not cands:
                 return p, [], False
             links = rerank(str(fm.get("title", "")), str(fm.get("description", "")),

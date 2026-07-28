@@ -51,25 +51,30 @@ def generate_drafts(docs: list[Doc], concepts: list[Concept], assign_llm: ChatLL
 
 def main() -> None:  # pragma: no cover, live wiring (detached)
     from hivegen.config import get_settings
-    from hivegen.load import (AREAS, SUBAREAS, load_area_local, load_docs, load_docs_local,
+    from hivegen.load import (load_area_local, load_docs, load_docs_local,
                              load_subarea_local)
+    from hivegen.profile import load_profile, missing_profile_error
     from hivegen.taxonomy import load_taxonomy, propose_taxonomy, write_taxonomy
 
     s = get_settings()
-    root = Path(__file__).resolve().parents[3]  # okf bundle root (knowledge/okf/)
+    root = Path(__file__).resolve().parents[3]  # corpus root
+    profile = load_profile(atomic_dir=s.atomic_dir or None)
     area = s.slice_area.strip()
-    is_sub = area in SUBAREAS
-    if area and not is_sub and area not in AREAS:
+    is_sub = area in profile.subareas
+    if area and not is_sub and area not in profile.areas:
+        if profile.is_empty:
+            raise SystemExit(missing_profile_error("functional areas", area))
         raise SystemExit(
-            f"unknown SLICE_AREA '{area}'; areas: {sorted(AREAS)}; sub-areas: {sorted(SUBAREAS)}")
-    label = area or "Wave/Replenishment"
+            f"unknown SLICE_AREA '{area}'; {profile.path} defines "
+            f"areas: {sorted(profile.areas)}; sub-areas: {sorted(profile.subareas)}")
+    label = area or "the whole corpus"
     stem = f"taxonomy.{area}" if area else "taxonomy"  # per-area taxonomy, areas never clobber
 
     if s.atomic_dir:
         if is_sub:
-            docs = load_subarea_local(s.atomic_dir, area)
+            docs = load_subarea_local(s.atomic_dir, area, profile)
         elif area:
-            docs = load_area_local(s.atomic_dir, area)
+            docs = load_area_local(s.atomic_dir, area, profile)
         else:
             docs = load_docs_local(s.atomic_dir)
         print(f"loaded {len(docs)} {label} docs from {s.atomic_dir}", flush=True)

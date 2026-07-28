@@ -1,0 +1,124 @@
+# Corpus profile: one corpus's domain vocabulary.
+#
+# This file describes a body of documents, not the software that processes it, so it ships
+# with the corpus rather than with Hive. Copy it into your corpus repository as
+# `corpus-profile.yaml` and fill it in.
+#
+# Found in this order:
+#   1. the CORPUS_PROFILE setting
+#   2. corpus-profile.yaml in the working directory
+#   3. corpus-profile.yaml beside ATOMIC_DIR (hive-gen) or CORPUS_ROOT (hive-prep)
+#
+# Every section is optional. A missing profile is not an error: it becomes one only when
+# something asks for a vocabulary that nothing defines, and that error says so.
+
+# ---------------------------------------------------------------------------
+# products  (hive-prep)
+# ---------------------------------------------------------------------------
+# Folder-segment aliases mapped to a canonical product code. Used to derive a product hint
+# from a directory name during scanning. Keys are matched case-insensitively with internal
+# whitespace collapsed.
+#
+# Hints supplement classification rather than driving it, so leaving this out costs a little
+# accuracy and breaks nothing.
+
+products:
+  widgets: WIDGETS
+  widget management: WIDGETS
+  acme widgets: WIDGETS
+  gadgets: GADGETS
+
+# ---------------------------------------------------------------------------
+# areas  (hive-gen)
+# ---------------------------------------------------------------------------
+# Functional areas mapped to the exact `topic:` values the curation stage assigned.
+#
+# hive-gen runs one area at a time, and each gets its own taxonomy. This exists because a
+# single taxonomy call spanning a whole corpus produces a poor taxonomy: the model has too
+# much to hold and returns something shallow and duplicative.
+#
+# Aim for areas that a person would recognise as "one subject", each covering roughly a few
+# dozen documents. Too large and the taxonomy degrades; too small and you get one concept
+# per document, which is just the corpus again.
+
+areas:
+  intake: [Receiving, Putaway, Inspection]
+  dispatch: [Outbound, Shipping]
+  inventory: [Inventory Management]
+  interfaces: [Interfaces]
+
+# ---------------------------------------------------------------------------
+# subareas  (hive-gen)
+# ---------------------------------------------------------------------------
+# Keyword sub-slices, for when one topic is too large to be a single area.
+#
+# A document matches when its topic is in `topics`, its filename contains one of `include`
+# (or `include` is empty), and its filename contains none of `exclude`.
+#
+# Sub-slices that share a topic must stay DISJOINT, or documents get distilled twice. The
+# pattern that guarantees it: each named family claims its keywords in `include`, and one
+# remainder slice excludes every keyword the others claimed.
+
+subareas:
+  if-carrier:
+    topics: [Interfaces]
+    include: [carrier, parcel]
+
+  if-billing:
+    topics: [Interfaces]
+    include: [billing]
+
+  # The remainder. Everything in Interfaces that the named families did not claim.
+  if-rest:
+    topics: [Interfaces]
+    exclude: [carrier, parcel, billing]
+
+# ---------------------------------------------------------------------------
+# retopic_bucket and guide_topics  (hive-gen retopic)
+# ---------------------------------------------------------------------------
+# Curation often leaves one large catch-all topic that is too coarse to slice on. `retopic`
+# re-classifies the documents in it into a controlled vocabulary by reading their content.
+#
+# `retopic_bucket` names the catch-all. `guide_topics` maps each replacement topic to a
+# description that the classifier uses to decide. Write the descriptions for a reader who
+# has never seen the corpus: they are the entire basis for the classification.
+#
+# Each key here becomes usable as an `areas` value once documents carry it.
+
+retopic_bucket: "general reference"
+
+guide_topics:
+  "Guide: Intake": >-
+    Receiving goods: appointment scheduling, unloading, inspection, putaway strategies,
+    cross-docking on receipt.
+  "Guide: Dispatch": >-
+    Getting goods out: order release, picking strategies, packing, staging, loading,
+    carrier handover.
+
+# ---------------------------------------------------------------------------
+# linking  (hive-zendesk)
+# ---------------------------------------------------------------------------
+# How issue cards are confined to a product when linking them to concept cards.
+#
+# `default_product` is where an entry lands with no other evidence. Any other product needs
+# a marker word present in the entry's OWN text, not merely in whichever concept card scored
+# highest.
+#
+# That rule exists because of a specific failure: inferring the product from the model's
+# best-scoring card misfiled entries, and a misfiled entry is worse than an unlinked one.
+# Retrieval selects on `product`, so an entry stamped with the wrong one is invisible to
+# anyone scoped to the right one.
+#
+# Omit this section entirely and confinement is disabled rather than rejecting everything.
+
+linking:
+  default_product: widgets
+
+  product_markers:
+    gadgets: [gadget, sprocket]
+    reporting: [dashboard, kpi, report-builder]
+
+  # Words that appear on nearly every card in THIS corpus and so carry no signal when
+  # matching an entry to a card. The generic English and support-desk stop words are
+  # built in; these are the corpus-specific additions.
+  extra_stopwords: [widget, acme]

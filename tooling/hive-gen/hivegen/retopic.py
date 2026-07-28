@@ -1,7 +1,12 @@
-"""Re-topic the generic 'WMS reference doc' bucket (WMOS guide chapters).
+"""Re-topic a generic catch-all topic bucket into a controlled guide-topic vocabulary.
 
-Keeps the newest version of each guide (year-collapsed) and classifies each by CONTENT into one
-controlled guide-topic, rewriting the `topic:` frontmatter in place. Dry-run by default.
+Curation often leaves a large "reference doc" style bucket that is too coarse to slice on.
+This keeps the newest version of each document (year-collapsed), classifies each by CONTENT
+into one controlled guide-topic, and rewrites the `topic:` frontmatter in place. Dry run by
+default.
+
+Both the bucket name and the guide-topic vocabulary describe one corpus, so they come from
+the corpus profile rather than from this module.
 
 Usage: python retopic.py [--apply] [--limit N]
 """
@@ -15,25 +20,19 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from hivegen.config import get_settings
 from hivegen.llm import BifrostChat, extract_json
 
-# okf bundle root (knowledge/okf/) / sources/wms-atomic/docs, same convention as run.py.
-DOCS = pathlib.Path(__file__).resolve().parents[3] / "sources" / "wms-atomic" / "docs"
-BUCKET = "WMS reference doc"
+from hivegen.profile import load_profile
 
-# Controlled guide-topic vocabulary. Value = what gets written to `topic:` (and becomes an AREAS key).
-TOPICS = {
-    "Guide: Outbound Fulfillment": "Outbound picking/packing/shipping scenarios and features: order streaming, waving, pick strategies, pack & hold, break pack, put-to-store, loading, shipping execution.",
-    "Guide: Store Assortment": "Store/DC assortment and cross-dock distribution: assortment types (single/mixed/PIPO), carton consolidation (catcon), ship-to-store, ship-to-mark-for.",
-    "Guide: Inventory Counting": "Inventory control and counting: cycle count, physical count/variance, lot/serial tracking, reserve movement, blocked/blind LPN, inventory adjustments.",
-    "Guide: Parcel Carrier": "Small-parcel and carrier integration: FedEx, UPS, USPS, DHL, parcel-select, collate, smartlabel, manifesting, rating.",
-    "Guide: Shipping Documents": "Trade/shipping paperwork and forms: bill of lading, air waybill, commercial invoice, certificate of origin, customs/NAFTA docs, shipper's letter, packing list.",
-    "Guide: Retail Compliance": "Customer/retailer-specific routing and label compliance guides (e.g. named retailers/DCs), instance-specific vendor compliance requirements.",
-    "Guide: Transportation Routing": "Transportation planning, dynamic/advanced routing, appointment scheduling, load/route building, carrier selection.",
-    "Guide: Labor Task": "Labor management and task execution: TLM, task-time estimation, labor standards, paper-based tasking, resource/workload.",
-    "Guide: Platform Admin": "Deployment, installation, system administration, software/hardware requirements, mobile install, portlets, dashboards, e-signature.",
-    "Guide: Integration": "Cross-system integration and higher-order suites: distributed order management (DOM), supply chain intelligence (SCI), extended enterprise, 3PL/billing, external systems.",
-    "Guide: Reports": "Report specifications and their layouts/parameters (by item / by location / summary / detail report definitions).",
-    "Guide: Yard": "Yard management scenarios: graphical yard view, dock/door, trailer/appointment yard operations.",
-}
+_PROFILE = load_profile()
+
+# Where atomic documents live. ATOMIC_DIR is the source of truth; the fallback keeps the
+# script runnable from inside a corpus checkout.
+DOCS = pathlib.Path(get_settings().atomic_dir or
+                    (pathlib.Path(__file__).resolve().parents[3] / "atomic"))
+
+# The catch-all topic this pass re-classifies, and the vocabulary it classifies into. Both
+# are corpus vocabulary: see hivegen.profile.
+BUCKET = _PROFILE.retopic_bucket
+TOPICS: dict[str, str] = dict(_PROFILE.guide_topics)
 
 def frontmatter(text):
     m = re.match(r"^---\n(.*?)\n---\n", text, re.S)

@@ -1,13 +1,165 @@
+"""Slicing a corpus into generatable areas.
+
+These tests use a **synthetic corpus profile** written into ``tmp_path``, not a real one.
+That is the point of the profile: the areas, sub-areas and topics are one corpus's
+vocabulary, and what the product owns is the slicing mechanism. Testing against a real
+vocabulary would assert that a particular YAML file exists, which is not a property of the
+software.
+"""
 import io
+import textwrap
 
-from hivegen.load import Doc, is_wave_replen, load_docs, load_docs_local
+import pytest
+
+from hivegen.load import Doc, load_area_local, load_docs, load_docs_local, load_subarea_local
+from hivegen.profile import load_profile
+
+PROFILE = textwrap.dedent("""
+    areas:
+      intake: [Receiving, Putaway]
+      dispatch: [Outbound]
+    subareas:
+      link-alpha:
+        topics: [Links]
+        include: [alpha]
+      link-beta:
+        topics: [Links]
+        include: [beta]
+        exclude: [legacy]
+      link-rest:
+        topics: [Links]
+        exclude: [alpha, beta]
+    guide_topics:
+      "Guide: Intake": "Everything about receiving goods."
+    retopic_bucket: "generic reference"
+    products:
+      widgets: WIDGETS
+""").strip()
 
 
-def test_is_wave_replen_matches_and_rejects():
-    assert is_wave_replen("example_prefix/docs/wave-template-picking-parameters.md")
-    assert is_wave_replen("example_prefix/docs/activity-tracking-inquiry-fs-300-replenishment.md")
-    assert is_wave_replen("example_prefix/docs/shipping-wave-major-minor.md")
-    assert not is_wave_replen("example_prefix/docs/fedex-express.md")
+@pytest.fixture
+def profile(tmp_path):
+    (tmp_path / "corpus-profile.yaml").write_text(PROFILE)
+    return load_profile(explicit=str(tmp_path / "corpus-profile.yaml"))
+
+
+def _doc(topic: str, body: str = "body") -> str:
+    return f"---\ntitle: T\nslug: s\ntopic: {topic}\n---\n\n{body}\n"
+
+
+# --------------------------------------------------------------------------
+# The profile itself
+# --------------------------------------------------------------------------
+
+
+def test_profile_loads_every_section(profile):
+    assert profile.areas["intake"] == ("Receiving", "Putaway")
+    assert profile.subareas["link-beta"].exclude == ("legacy",)
+    assert profile.guide_topics == {"Guide: Intake": "Everything about receiving goods."}
+    assert profile.retopic_bucket == "generic reference"
+    assert profile.products == {"widgets": "WIDGETS"}
+    assert not profile.is_empty
+
+
+def test_absent_profile_is_empty_rather_than_an_error(tmp_path):
+    """Import time must not depend on a corpus being present. The error belongs at the
+    point something asks for a vocabulary that does not exist."""
+    p = load_profile(explicit=str(tmp_path / "nope.yaml"), atomic_dir=str(tmp_path))
+    assert p.is_empty
+    assert p.areas == {}
+
+
+def test_subarea_without_topics_is_rejected(tmp_path):
+    """A sub-area naming no topics matches nothing, silently. A slice that loads zero
+    documents is indistinguishable from a corpus that has none, so refuse it up front."""
+    f = tmp_path / "corpus-profile.yaml"
+    f.write_text("subareas:\n  broken:\n    include: [x]\n")
+    with pytest.raises(ValueError, match="at least one topic"):
+        load_profile(explicit=str(f))
+
+
+def test_non_mapping_profile_is_rejected(tmp_path):
+    f = tmp_path / "corpus-profile.yaml"
+    f.write_text("- just\n- a\n- list\n")
+    with pytest.raises(TypeError, match="must be a mapping"):
+        load_profile(explicit=str(f))
+
+
+# --------------------------------------------------------------------------
+# Slicing
+# --------------------------------------------------------------------------
+
+
+def test_load_area_selects_by_topic(tmp_path, profile):
+    d = tmp_path / "atomic"; d.mkdir()
+    (d / "a.md").write_text(_doc("Putaway"))
+    (d / "b.md").write_text(_doc("Outbound"))
+    assert [x.name for x in load_area_local(d, "intake", profile)] == ["a.md"]
+
+
+def test_unknown_area_names_what_the_profile_defines(tmp_path, profile):
+    d = tmp_path / "atomic"; d.mkdir()
+    with pytest.raises(KeyError) as e:
+        load_area_local(d, "not-an-area", profile)
+    assert "intake" in str(e.value) and "dispatch" in str(e.value)
+
+
+def test_unknown_area_without_a_profile_says_so(tmp_path):
+    """The failure mode this replaces: 'unknown area X' when the real problem is that no
+    vocabulary was loaded at all."""
+    d = tmp_path / "atomic"; d.mkdir()
+    empty = load_profile(explicit=str(tmp_path / "nope.yaml"), atomic_dir=str(tmp_path))
+    with pytest.raises(KeyError) as e:
+        load_area_local(d, "intake", empty)
+    assert "no corpus profile found" in str(e.value)
+    assert "CORPUS_PROFILE" in str(e.value)
+
+
+def test_subarea_narrows_a_topic_by_filename(tmp_path, profile):
+    d = tmp_path / "atomic"; d.mkdir()
+    (d / "link-alpha-one.md").write_text(_doc("Links"))
+    (d / "link-beta-two.md").write_text(_doc("Links"))
+    (d / "link-beta-legacy.md").write_text(_doc("Links"))
+    (d / "link-gamma.md").write_text(_doc("Links"))
+
+    assert [x.name for x in load_subarea_local(d, "link-alpha", profile)] == ["link-alpha-one.md"]
+    # exclude subtracts from include
+    assert [x.name for x in load_subarea_local(d, "link-beta", profile)] == ["link-beta-two.md"]
+    # the remainder slice sweeps what the named families did not claim
+    assert [x.name for x in load_subarea_local(d, "link-rest", profile)] == ["link-gamma.md"]
+
+
+def test_subareas_sharing_a_topic_stay_disjoint(tmp_path, profile):
+    """The property that makes sub-slicing safe: no document lands in two slices that draw
+    from the same topic, so no document is distilled twice."""
+    d = tmp_path / "atomic"; d.mkdir()
+    for n in ("link-alpha-one", "link-beta-two", "link-gamma"):
+        (d / f"{n}.md").write_text(_doc("Links"))
+
+    seen: list[str] = []
+    for name in ("link-alpha", "link-beta", "link-rest"):
+        seen += [x.name for x in load_subarea_local(d, name, profile)]
+    assert len(seen) == len(set(seen)) == 3
+
+
+def test_load_docs_local_with_no_filters_returns_everything(tmp_path):
+    d = tmp_path / "atomic"; d.mkdir()
+    (d / "a.md").write_text("a")
+    (d / "b.md").write_text("b")
+    (d / "notes.txt").write_text("ignored")
+    assert sorted(x.name for x in load_docs_local(d)) == ["a.md", "b.md"]
+
+
+def test_frontmatter_topic_parses_and_degrades(tmp_path):
+    from hivegen.load import frontmatter_topic
+    assert frontmatter_topic(_doc("Receiving")) == "Receiving"
+    assert frontmatter_topic("no frontmatter here") == ""
+    assert frontmatter_topic("---\n: : broken\n---\nbody") == ""
+
+
+# --------------------------------------------------------------------------
+# Object storage
+# --------------------------------------------------------------------------
 
 
 class FakeS3:
@@ -15,151 +167,21 @@ class FakeS3:
         self._objs = objs
 
     def list_objects_v2(self, Bucket, Prefix):
-        keys = [k for k in self._objs if k.startswith(Prefix)]
-        return {"Contents": [{"Key": k} for k in keys]}
+        return {"Contents": [{"Key": k} for k in self._objs if k.startswith(Prefix)]}
 
     def get_object(self, Bucket, Key):
         return {"Body": io.BytesIO(self._objs[Key].encode())}
 
 
-def test_load_docs_filters_to_wave_replen():
-    s3 = FakeS3({
-        "example_prefix/docs/wave-template.md": "wave body",
-        "example_prefix/docs/fedex-express.md": "carrier body",
-        "example_prefix/_manifest.jsonl": "{}",
-    })
-    docs = load_docs(s3, "b", "example_prefix/")
-    assert [d.name for d in docs] == ["example_prefix/docs/wave-template.md"]
-    assert docs[0].text == "wave body"
+def test_load_docs_reads_markdown_only():
+    s3 = FakeS3({"p/docs/a.md": "body", "p/_manifest.jsonl": "{}"})
+    docs = load_docs(s3, "b", "p/")
+    assert [d.name for d in docs] == ["p/docs/a.md"]
+    assert docs[0].text == "body"
     assert isinstance(docs[0], Doc)
 
 
-def test_load_docs_local_filters_and_reads(tmp_path):
-    d = tmp_path / "atomic"
-    d.mkdir()
-    (d / "shipping-wave-major-minor-order-fs.md").write_text("wave body")
-    (d / "lean-time-replenishment-fs.md").write_text("replen body")
-    (d / "fedex-express-carrier.md").write_text("carrier body")
-    (d / "notes.txt").write_text("ignore me")
-    docs = load_docs_local(d)
-    names = sorted(x.name for x in docs)
-    assert names == ["lean-time-replenishment-fs.md", "shipping-wave-major-minor-order-fs.md"]
-    by_name = {x.name: x for x in docs}
-    assert by_name["shipping-wave-major-minor-order-fs.md"].text == "wave body"
-    assert isinstance(docs[0], Doc)
-
-
-def test_load_docs_local_no_filter_includes_all_md(tmp_path):
-    d = tmp_path / "atomic"
-    d.mkdir()
-    (d / "wave.md").write_text("a")
-    (d / "fedex.md").write_text("b")
-    docs = load_docs_local(d, only_wave_replen=False)
-    assert sorted(x.name for x in docs) == ["fedex.md", "wave.md"]
-
-
-def _atomic_doc(topic: str, body: str = "body") -> str:
-    return f"---\ntitle: T\nslug: s\ntopic: {topic}\nproduct: WMS\n---\n\n{body}\n"
-
-
-def test_load_docs_local_by_topic(tmp_path):
-    from hivegen.load import load_docs_local
-    d = tmp_path / "atomic"; d.mkdir()
-    (d / "a.md").write_text(_atomic_doc("RF Inbound"))
-    (d / "b.md").write_text(_atomic_doc("Receiving"))
-    (d / "c.md").write_text(_atomic_doc("Outbound Distribution"))
-    (d / "e.md").write_text(_atomic_doc("Inventory Management"))
-    docs = load_docs_local(d, topics=["RF Inbound", "Receiving"])
-    assert sorted(x.name for x in docs) == ["a.md", "b.md"]  # topic filter, case-insensitive set
-
-
-def test_load_area_local_inbound(tmp_path):
-    from hivegen.load import AREAS, load_area_local
-    d = tmp_path / "atomic"; d.mkdir()
-    (d / "a.md").write_text(_atomic_doc("Putaway"))
-    (d / "b.md").write_text(_atomic_doc("Outbound Distribution"))
-    docs = load_area_local(d, "inbound")
-    assert [x.name for x in docs] == ["a.md"]     # Putaway ∈ inbound, Outbound ∉
-    assert "Putaway" in AREAS["inbound"]
-
-
-def test_load_area_local_unknown_raises(tmp_path):
-    import pytest
-    from hivegen.load import load_area_local
-    d = tmp_path / "atomic"; d.mkdir()
-    with pytest.raises(KeyError):
-        load_area_local(d, "not-an-area")
-
-
-def test_frontmatter_topic_parses():
-    from hivegen.load import frontmatter_topic
-    assert frontmatter_topic(_atomic_doc("Yard Management")) == "Yard Management"
-    assert frontmatter_topic("no frontmatter here") == ""
-
-
-def test_load_docs_local_name_include_and_exclude(tmp_path):
-    """A sub-slice narrows a topic by filename keyword: include selects, exclude subtracts."""
-    d = tmp_path / "atomic"; d.mkdir()
-    (d / "iface-billing-integration-bm-hook-picking.md").write_text(_atomic_doc("Interfaces"))
-    (d / "iface-labor-management-rf-pack-case.md").write_text(_atomic_doc("Interfaces"))
-    (d / "iface-mhe-pick-to-tote.md").write_text(_atomic_doc("Interfaces"))
-    (d / "iface-xsds-mhe-wcs-hook-oms.md").write_text(_atomic_doc("Interfaces"))
-    # include only: keep filenames containing a keyword
-    docs = load_docs_local(d, topics=["Interfaces"], name_include=["billing-integration"])
-    assert [x.name for x in docs] == ["iface-billing-integration-bm-hook-picking.md"]
-    # include + exclude: 'mhe' selects both mhe docs, exclude 'xsds' drops the mapping sheet
-    docs = load_docs_local(d, topics=["Interfaces"], name_include=["mhe"], name_exclude=["xsds"])
-    assert [x.name for x in docs] == ["iface-mhe-pick-to-tote.md"]
-    # exclude only (remainder): everything in topic minus the claimed families
-    docs = load_docs_local(d, topics=["Interfaces"],
-                           name_exclude=["billing-integration", "labor-management", "mhe"])
-    assert [x.name for x in docs] == []  # all four claimed
-
-
-def test_load_subarea_local(tmp_path):
-    from hivegen.load import SUBAREAS, load_subarea_local
-    d = tmp_path / "atomic"; d.mkdir()
-    (d / "wms-...-interfaces-labor-management-rf-pack-case.md").write_text(_atomic_doc("Interfaces"))
-    (d / "wms-...-interfaces-billing-integration-bm-hook.md").write_text(_atomic_doc("Interfaces"))
-    (d / "wms-...-system-control-purge-system-table-fs-orders.md").write_text(_atomic_doc("System Control"))
-    docs = load_subarea_local(d, "if-lm-hooks")
-    assert [x.name for x in docs] == ["wms-...-interfaces-labor-management-rf-pack-case.md"]
-    assert "if-lm-hooks" in SUBAREAS and "sc-purge" in SUBAREAS
-
-
-def test_load_subarea_local_unknown_raises(tmp_path):
-    import pytest
-    from hivegen.load import load_subarea_local
-    d = tmp_path / "atomic"; d.mkdir()
-    with pytest.raises(KeyError):
-        load_subarea_local(d, "not-a-subarea")
-
-
-def test_subareas_are_disjoint_within_shared_topics():
-    """No atomic filename should fall into two sub-slices that share a parent topic."""
-    from hivegen.load import SUBAREAS
-    # group sub-areas by the topics they draw from
-    by_topic: dict[str, list[str]] = {}
-    for name, sa in SUBAREAS.items():
-        for t in sa.topics:
-            by_topic.setdefault(t, []).append(name)
-    # sanity: the mechanism exposes topics/include/exclude on each sub-area
-    for sa in SUBAREAS.values():
-        assert isinstance(sa.topics, tuple)
-        assert isinstance(sa.include, tuple)
-        assert isinstance(sa.exclude, tuple)
-
-
-from hivegen.load import AREAS, load_area_local
-
-
-def test_osci_areas_registered():
-    for area in ("osci-frameworks", "osci-analytics", "osci-workspaces", "osci-architecture"):
-        assert area in AREAS
-
-
-def test_osci_area_selects_by_topic(tmp_path):
-    (tmp_path / "a.md").write_text("---\ntopic: oSCI Frameworks\n---\n\nx\n")
-    (tmp_path / "b.md").write_text("---\ntopic: oSCI Architecture & Environment\n---\n\ny\n")
-    ids = {d.id for d in load_area_local(tmp_path, "osci-frameworks")}
-    assert ids == {"a.md"}
+def test_load_docs_can_narrow_by_filename_keyword():
+    s3 = FakeS3({"p/alpha-one.md": "a", "p/beta-two.md": "b"})
+    docs = load_docs(s3, "b", "p/", name_keywords=["alpha"])
+    assert [d.name for d in docs] == ["p/alpha-one.md"]
