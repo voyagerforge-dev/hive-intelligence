@@ -163,3 +163,78 @@ def test_content_samples_counts_fixture_corpus(tmp_path):
     out = metrics.content_samples(str(concepts), str(clients), factory)
     assert out["cards"][("wms", "operational")] == 2
     assert out["ledger"] == {"objective": 1, "memory": 1}
+
+
+# --------------------------------------------------------------------------
+# Database-object tier. These cards are the majority of a real corpus and are
+# invisible to okf_corpus_cards by design, so they get their own gauge and the
+# alert watches both.
+# --------------------------------------------------------------------------
+
+
+def test_db_object_samples_counts_the_on_demand_tier(tmp_path):
+    concepts = tmp_path / "concepts"
+    (concepts / "wms" / "db" / "plsql").mkdir(parents=True)
+    (concepts / "wms" / "db" / "tables").mkdir(parents=True)
+    (concepts / "wms" / "db" / "plsql" / "A_VIEW.md").write_text("---\ntype: dbobject\n---\n")
+    (concepts / "wms" / "db" / "tables" / "B_TAB.md").write_text("---\ntype: dbobject\n---\n")
+    # index.md and log.md are bookkeeping, not cards, and must not be counted.
+    (concepts / "wms" / "db" / "index.md").write_text("# index\n")
+    # An ordinary concept sits outside db/ and belongs to the other gauge.
+    (concepts / "wms" / "ordinary.md").write_text("---\ntitle: T\nproduct: wms\n---\n")
+
+    assert metrics.db_object_samples(str(concepts)) == {"wms": 2}
+
+
+def test_db_object_samples_is_empty_when_the_corpus_is_missing(tmp_path):
+    """The mount going stale is the failure this exists to catch, so absence must
+    read as zero rather than raise: a collector that throws takes /metrics with it."""
+    assert metrics.db_object_samples(str(tmp_path / "gone")) == {}
+
+
+def test_db_object_gauge_is_exported_alongside_the_card_gauge(tmp_path):
+    from hiveserve import ledger
+
+    concepts = tmp_path / "concepts"
+    (concepts / "wms" / "db").mkdir(parents=True)
+    (concepts / "wms" / "db" / "T.md").write_text("---\ntype: dbobject\n---\n")
+    (concepts / "wms" / "c.md").write_text("---\ntitle: C\nproduct: wms\n---\n")
+    db = tmp_path / "obj.db"
+
+    def factory():
+        return ledger.session(db)
+
+    with factory() as conn:
+        ledger.start_objective(conn, owner="o", mode="investigate", goal="g")
+
+    collector = metrics.ContentCollector(
+        lambda: metrics.content_samples(str(concepts), str(tmp_path / "clients"), factory))
+    families = {f.name: f for f in collector.collect()}
+
+    assert "okf_corpus_db_objects" in families
+    assert {s.labels["product"]: s.value
+            for s in families["okf_corpus_db_objects"].samples} == {"wms": 1.0}
+    # The db tier must NOT be double-counted into okf_corpus_cards.
+    assert sum(s.value for s in families["okf_corpus_cards"].samples) == 1.0
+
+
+def test_empty_corpus_yields_a_zero_sum_not_a_missing_series(tmp_path):
+    """What the alert keys on. A corpus that has vanished must produce gauges that
+    sum to zero, and must not make the collector raise."""
+    from hiveserve import ledger
+
+    db = tmp_path / "obj.db"
+
+    def factory():
+        return ledger.session(db)
+
+    with factory() as conn:
+        ledger.start_objective(conn, owner="o", mode="investigate", goal="g")
+
+    collector = metrics.ContentCollector(
+        lambda: metrics.content_samples(
+            str(tmp_path / "gone"), str(tmp_path / "gone-too"), factory))
+    families = {f.name: f for f in collector.collect()}
+
+    assert sum(s.value for s in families["okf_corpus_cards"].samples) == 0
+    assert sum(s.value for s in families["okf_corpus_db_objects"].samples) == 0

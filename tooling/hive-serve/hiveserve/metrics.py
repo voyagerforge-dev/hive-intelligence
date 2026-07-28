@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import functools
 import time
+from pathlib import Path
 
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
@@ -107,6 +108,32 @@ class PrometheusHTTPMiddleware:
             ).inc()
 
 
+def db_object_samples(concepts_dir) -> dict[str, int]:
+    """Count the on-demand database-object tier, per product.
+
+    ``load_index`` deliberately skips ``concepts/<product>/db/**`` because those cards are
+    resolved on demand rather than listed. That makes them invisible to okf_corpus_cards,
+    and on a Manhattan-shaped corpus they are the large majority of it: roughly 7,200 of
+    8,200 cards. An alert built only on okf_corpus_cards would therefore report a healthy
+    corpus while almost all of it was missing.
+
+    Counted by directory walk rather than by parsing frontmatter: this is a presence
+    signal, and parsing 7,000 files on a 30s cache refresh would not earn its cost.
+    """
+    root = Path(concepts_dir)
+    counts: dict[str, int] = {}
+    if not root.is_dir():
+        return counts
+    for product_dir in sorted(p for p in root.iterdir() if p.is_dir()):
+        db_dir = product_dir / "db"
+        if not db_dir.is_dir():
+            continue
+        n = sum(1 for p in db_dir.rglob("*.md") if p.name not in ("index.md", "log.md"))
+        if n:
+            counts[product_dir.name] = n
+    return counts
+
+
 def content_samples(concepts_dir, clients_dir, conn_factory) -> dict:
     cards: dict[tuple, int] = {}
     for c in load_index(concepts_dir, clients_dir):
@@ -115,7 +142,8 @@ def content_samples(concepts_dir, clients_dir, conn_factory) -> dict:
     with conn_factory() as conn:
         obj = conn.execute("SELECT COUNT(*) FROM objective").fetchone()[0]
         mem = conn.execute("SELECT COUNT(*) FROM memory").fetchone()[0]
-    return {"cards": cards, "ledger": {"objective": obj, "memory": mem}}
+    return {"cards": cards, "db_objects": db_object_samples(concepts_dir),
+            "ledger": {"objective": obj, "memory": mem}}
 
 
 class ContentCollector:
@@ -139,7 +167,7 @@ class ContentCollector:
                 # down the whole /metrics endpoint. Fall back to last-known-good,
                 # or an empty-but-valid shape if we have no prior sample at all.
                 if self._cache is None:
-                    self._cache = {"cards": {}, "ledger": {}}
+                    self._cache = {"cards": {}, "db_objects": {}, "ledger": {}}
             # Always advance _last, even on failure, so a hard-failing sample_fn
             # is retried at most once per TTL window instead of on every scrape.
             self._last = now
@@ -156,6 +184,13 @@ class ContentCollector:
                                            key=lambda kv: (str(kv[0][0]), str(kv[0][1]))):
             cards.add_metric([str(product), str(regime)], n)
         yield cards
+        db = GaugeMetricFamily(
+            "okf_corpus_db_objects",
+            "OKF database-object cards on disk by product (the on-demand tier, "
+            "excluded from okf_corpus_cards)", labels=["product"])
+        for product, n in sorted(data.get("db_objects", {}).items()):
+            db.add_metric([str(product)], n)
+        yield db
         rows = GaugeMetricFamily(
             "okf_ledger_rows", "OKF ledger row counts by table", labels=["table"])
         for table, n in sorted(data["ledger"].items()):
