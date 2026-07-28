@@ -120,10 +120,15 @@ def test_memory_qa_wellformed():
     assert rows, "memory_qa.jsonl must be non-empty"
     for r in rows:
         assert "id" in r and "question" in r and "expected_card_ids" in r
-    # at least one in-scope hit, one isolation case, one cross-client case
-    assert any(r.get("client") == "alpha" and r.get("expects_memory") for r in rows)
-    assert any(r.get("client") in (None, "") for r in rows)
-    assert any(r.get("client") == "acme" for r in rows)
+    # The three cases the dataset has to cover, asserted structurally. Naming a client
+    # here would couple a product-side test to one corpus's customers, and would break the
+    # moment a deployment has different ones.
+    assert any(r.get("client") and r.get("expects_memory") for r in rows), \
+        "need an in-scope hit: a client-scoped question that should reach a memory card"
+    assert any(r.get("client") in (None, "") for r in rows), \
+        "need an unscoped question, to prove shared cards are reachable without a client"
+    assert len({r.get("client") for r in rows if r.get("client")}) >= 2, \
+        "need two distinct clients, or isolation is untested"
 
 
 @needs_live_corpus
