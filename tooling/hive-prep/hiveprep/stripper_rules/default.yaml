@@ -1,7 +1,8 @@
 product: default
 # Generic boilerplate stripped from any converted markdown. Each rule is a line-oriented
 # regex; matches are deleted, then blank-line runs are collapsed. Tune per product in a
-# <product>.yaml file (see wmos.yaml).
+# <product>.yaml file beside this one; vendor rule sets are corpus-specific and
+# are supplied by the deployment, so the product ships only this generic set.
 patterns:
   # "Page 3 of 10" footers
   - type: regex

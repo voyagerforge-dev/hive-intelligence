@@ -27,8 +27,8 @@ def test_build_index_md(tmp_path):
     (tmp_path / "beta.md").write_text(BETA)
     md = build_index_md(tmp_path)
     assert md.startswith("# Index")
-    assert "- [Alpha](./alpha.md) — the alpha card" in md
-    assert "- [Beta](./beta.md) — beta" in md
+    assert "- [Alpha](./alpha.md), the alpha card" in md
+    assert "- [Beta](./beta.md), beta" in md
 
 
 def test_render_crosslinks_adds_related_section():
@@ -89,7 +89,7 @@ def test_build_index_md_includes_subfolder_card_with_path_id(tmp_path):
     (sub / "omni-framework.md").write_text(
         "---\ntitle: Omni\ndescription: the omni card\nrelated: []\n---\n\nbody\n")
     md = build_index_md(tmp_path)
-    assert "- [Omni](./osci/omni-framework.md) — the omni card" in md
+    assert "- [Omni](./osci/omni-framework.md), the omni card" in md
 
 
 def test_apply_format_pass_updates_subfolder_cards_and_skips_reserved(tmp_path):

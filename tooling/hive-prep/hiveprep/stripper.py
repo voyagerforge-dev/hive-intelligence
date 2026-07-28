@@ -1,4 +1,4 @@
-"""Boilerplate stripper — scrub copyright / trademark / confidentiality / page-number noise
+"""Boilerplate stripper, scrub copyright / trademark / confidentiality / page-number noise
 from converted markdown, via product-tunable YAML regex rules.
 
 Ported (the Layer-2 regex layer) from the retired gwen-platform ingestion `stripper.py`. The
@@ -61,10 +61,10 @@ def _apply(text: str, patterns: list[re.Pattern]) -> tuple[str, int]:
     return text.strip(), total
 
 
-def strip_boilerplate(markdown_text: str, product: str = "wmos",
+def strip_boilerplate(markdown_text: str, product: str = "default",
                       rules_dir: Path | None = None) -> StrippingResult:
     """Strip product-specific boilerplate (copyright / trademark / confidentiality / page-number
-    lines) from markdown via YAML regex rules. A pure text transform — safe on any markdown."""
+    lines) from markdown via YAML regex rules. A pure text transform, safe on any markdown."""
     original = len(markdown_text)
     patterns = load_stripping_rules(product, rules_dir)
     cleaned, matches = _apply(markdown_text, patterns)

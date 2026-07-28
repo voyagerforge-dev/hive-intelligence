@@ -81,7 +81,7 @@ def test_transform_plan_skips_path_less_include_without_crashing(tmp_path):
     plan = Plan(
         scope="unit-test", corpus_root=str(corpus_root), subtree="",
         include=[
-            {"product": "WMS"},                          # missing "path" — must not crash the batch
+            {"product": "WMS"},                          # missing "path", must not crash the batch
             {"path": "notes.txt", "product": "WMS"},      # valid passthrough entry
         ],
         exclude=[], dedup_groups=[], supersedes=[],

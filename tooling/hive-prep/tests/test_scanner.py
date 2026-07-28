@@ -118,7 +118,7 @@ class TestScanDirectory:
         f = d / "locked.pdf"
         f.write_text("data")
 
-        # Monkeypatch os.walk doesn't help — patch Path.stat via scanner
+        # Monkeypatch os.walk doesn't help, patch Path.stat via scanner
         import hiveprep.scanner as scanner_mod
         original_stat = Path.stat
 

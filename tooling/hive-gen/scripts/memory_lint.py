@@ -1,6 +1,6 @@
 """Lint OKF client-memory cards. Structural errors (exit 1): bad client/product, dangling
 related target, bad supersedes, status inconsistency. Also emits conflict CANDIDATES (same
-client + shared related/tag) for the LLM conflict scorer to judge — candidates do NOT fail.
+client + shared related/tag) for the LLM conflict scorer to judge, candidates do NOT fail.
 Usage: python scripts/memory_lint.py <clients_dir> <concepts_dir>"""
 import glob
 import os
@@ -87,7 +87,7 @@ def lint(clients_dir, concepts_dir):
 if __name__ == "__main__":  # pragma: no cover
     errs, cands = lint(sys.argv[1], sys.argv[2])
     for a, b in cands:
-        print(f"CANDIDATE {a} <> {b} (same client, shared subject) — score for conflict")
+        print(f"CANDIDATE {a} <> {b} (same client, shared subject), score for conflict")
     for e in errs:
         print(f"ERROR {e}")
     print(f"memory_lint: {len(errs)} errors, {len(cands)} conflict candidates")

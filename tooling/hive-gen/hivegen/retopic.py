@@ -15,7 +15,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from hivegen.config import get_settings
 from hivegen.llm import BifrostChat, extract_json
 
-# okf bundle root (knowledge/okf/) / sources/wms-atomic/docs — same convention as run.py.
+# okf bundle root (knowledge/okf/) / sources/wms-atomic/docs, same convention as run.py.
 DOCS = pathlib.Path(__file__).resolve().parents[3] / "sources" / "wms-atomic" / "docs"
 BUCKET = "WMS reference doc"
 
@@ -26,7 +26,7 @@ TOPICS = {
     "Guide: Inventory Counting": "Inventory control and counting: cycle count, physical count/variance, lot/serial tracking, reserve movement, blocked/blind LPN, inventory adjustments.",
     "Guide: Parcel Carrier": "Small-parcel and carrier integration: FedEx, UPS, USPS, DHL, parcel-select, collate, smartlabel, manifesting, rating.",
     "Guide: Shipping Documents": "Trade/shipping paperwork and forms: bill of lading, air waybill, commercial invoice, certificate of origin, customs/NAFTA docs, shipper's letter, packing list.",
-    "Guide: Retail Compliance": "Customer/retailer-specific routing and label compliance guides (e.g. named retailers/DCs) — instance-specific vendor compliance requirements.",
+    "Guide: Retail Compliance": "Customer/retailer-specific routing and label compliance guides (e.g. named retailers/DCs), instance-specific vendor compliance requirements.",
     "Guide: Transportation Routing": "Transportation planning, dynamic/advanced routing, appointment scheduling, load/route building, carrier selection.",
     "Guide: Labor Task": "Labor management and task execution: TLM, task-time estimation, labor standards, paper-based tasking, resource/workload.",
     "Guide: Platform Admin": "Deployment, installation, system administration, software/hardware requirements, mobile install, portlets, dashboards, e-signature.",

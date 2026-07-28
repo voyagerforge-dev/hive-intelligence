@@ -24,7 +24,7 @@ from hivedbparse.model import Column, PlsqlObject, Table
 _DIALECT_ORDER = ("oracle", "db2")
 _DIALECT_DIR = {"oracle": "Oracle", "db2": "DB2"}
 
-_MISSING_TYPE = "—"  # em dash: column absent from that dialect
+_MISSING_TYPE = "n/a"  # column absent from that dialect
 
 
 def card_id(obj: Table | PlsqlObject) -> str:
@@ -56,7 +56,7 @@ def _esc_cell(text: str) -> str:
 
 
 def _table_title(t: Table) -> str:
-    return f"{t.name} — {t.comment}" if t.comment else t.name
+    return f"{t.name}: {t.comment}" if t.comment else t.name
 
 
 def _table_tags(t: Table) -> list[str]:
@@ -201,10 +201,10 @@ def _plsql_header_text(o: PlsqlObject) -> str:
 
 
 def _plsql_title(o: PlsqlObject) -> str:
-    """`NAME — <comment>` when a header comment exists, else `NAME (<kind>)`.
+    """`NAME: <comment>` when a header comment exists, else `NAME (<kind>)`.
     Never embeds the raw signature/DDL text (search-field hygiene)."""
     if o.comment:
-        return f"{o.name} — {o.comment}"
+        return f"{o.name}: {o.comment}"
     return f"{o.name} ({o.kind})"
 
 

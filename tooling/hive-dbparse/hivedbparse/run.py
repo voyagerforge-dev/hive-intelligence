@@ -551,7 +551,7 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(
         prog="hivedbparse",
-        description="Parse WMOS Oracle/DB2 DDL into OKF dbobject cards + manifest.",
+        description="Parse Oracle and DB2 DDL into OKF dbobject cards plus a manifest.",
     )
     parser.add_argument("--src", required=True, type=Path, help="DDL tree root")
     parser.add_argument("--out", required=True, type=Path, help="cards + manifest output dir")

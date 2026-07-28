@@ -1,7 +1,7 @@
 """LLM-free keyword search over per-product WMOS db-object manifests.
 
 The parser (hive-dbparse) emits one manifest per product at
-`concepts/<product>/db/manifest.jsonl` — one JSON object per line with
+`concepts/<product>/db/manifest.jsonl`, one JSON object per line with
 {id, kind, module, product, title, description, tags}. Task 7 excluded these
 rows from the concept index (they're schema-level, not narrative cards), so
 this module + the `find_db_objects` MCP tool is the only path back to them.

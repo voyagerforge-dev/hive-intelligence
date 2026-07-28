@@ -20,7 +20,7 @@ packages = ["hiveauthor"]
 
 # hivegen is a DEV-ONLY dep: the round-trip tests load the hive-gen Issue-Form parsers to
 # prove hive-author's issue bodies parse back losslessly. Portable relative source (mirrors
-# hive-serve) so it survives worktree removal / any checkout — never an absolute path.
+# hive-serve) so it survives worktree removal / any checkout, never an absolute path.
 [tool.uv.sources]
 vf-hive-gen = { path = "../hive-gen", editable = true }
 

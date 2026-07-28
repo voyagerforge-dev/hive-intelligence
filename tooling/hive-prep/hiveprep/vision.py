@@ -1,6 +1,6 @@
 """Qwen3.6-27B vision client (Host-D, OpenAI-compatible). Renders a document page image to
 clean markdown; describes figures/diagrams that text extraction drops. Replaces the retired
-GLM-4.1V tier — same OpenAI /v1/chat/completions image_url shape."""
+GLM-4.1V tier, same OpenAI /v1/chat/completions image_url shape."""
 from __future__ import annotations
 
 import base64
@@ -12,7 +12,7 @@ PAGE_PROMPT = (
     "Convert THIS single page of a Manhattan WMS document to clean GitHub-flavored Markdown. "
     "Preserve tables as markdown tables; keep headings and lists. For any figure/diagram/screenshot, "
     "insert a concise factual description in italics, e.g. *Figure: <what is visibly shown>*. "
-    "Output ONLY the markdown for this page — no preamble, no commentary."
+    "Output ONLY the markdown for this page, no preamble, no commentary."
 )
 
 _THINK = re.compile(r"<think>.*?</think>", re.DOTALL)

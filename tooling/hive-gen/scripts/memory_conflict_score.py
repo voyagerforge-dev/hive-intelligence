@@ -1,5 +1,4 @@
-"""LLM conflict-probability gate over memory_lint's candidate pairs (CI/authoring-side only —
-never the serving connector). For each same-client candidate pair, ask an injected ChatLLM
+"""LLM conflict-probability gate over memory_lint's candidate pairs (CI/authoring-side only, never the serving connector). For each same-client candidate pair, ask an injected ChatLLM
 whether the two memories make mutually incompatible claims; a high probability blocks the PR.
 Fail-safe: any LLM error/unparseable reply scores 1.0 (block, human review)."""
 from __future__ import annotations
@@ -7,7 +6,7 @@ from __future__ import annotations
 from hivegen.llm import extract_json
 
 _SYS = (
-    "You judge whether two client-memory notes about the SAME client CONFLICT — i.e. make "
+    "You judge whether two client-memory notes about the SAME client CONFLICT, i.e. make "
     "mutually incompatible claims about how that client's system behaves. Overlapping topic is "
     "NOT conflict; only contradiction is. Reply with ONLY "
     '{"probability": <0..1>, "rationale": "<short>"}.'
@@ -25,11 +24,11 @@ def score_pair(fa: dict, fb: dict, llm) -> dict:
     except Exception:
         data = None
     if not data or "probability" not in data:
-        return {"probability": 1.0, "rationale": "unscored — fail-safe block"}
+        return {"probability": 1.0, "rationale": "unscored, fail-safe block"}
     try:
         p = float(data["probability"])
     except (TypeError, ValueError):
-        return {"probability": 1.0, "rationale": "unscored — fail-safe block"}
+        return {"probability": 1.0, "rationale": "unscored, fail-safe block"}
     return {"probability": max(0.0, min(1.0, p)),
             "rationale": str(data.get("rationale", ""))}
 
@@ -65,7 +64,7 @@ if __name__ == "__main__":  # pragma: no cover
     key = os.environ.get("BIFROST_API_KEY")
     base = os.environ.get("BIFROST_BASE")
     if not key or not base:
-        print(f"memory_conflict_score: {len(candidates)} candidate(s), no LLM key set — ADVISORY only:")
+        print(f"memory_conflict_score: {len(candidates)} candidate(s), no LLM key set, ADVISORY only:")
         for a, b in candidates:
             print(f"  CANDIDATE {a} <> {b}")
         sys.exit(0)
@@ -73,7 +72,7 @@ if __name__ == "__main__":  # pragma: no cover
     llm = BifrostChat(base, key, os.environ.get("CONFLICT_MODEL", "minimax-m3"))
     blocking, review = gate(candidates, mems, llm)
     for a, b in review:
-        print(f"REVIEW {a} <> {b} — human check")
+        print(f"REVIEW {a} <> {b}, human check")
     for a, b in blocking:
-        print(f"CONFLICT {a} <> {b} — resolve (supersede/reconcile/reject) before merge")
+        print(f"CONFLICT {a} <> {b}, resolve (supersede/reconcile/reject) before merge")
     sys.exit(1 if blocking else 0)

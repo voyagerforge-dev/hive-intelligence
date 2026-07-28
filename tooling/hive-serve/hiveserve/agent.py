@@ -11,17 +11,17 @@ _SELECT_SYS = (
     "Some cards are tagged with a product like {osci} (Supply Chain Intelligence), {slotting}, "
     "{labour-management}, or {wms}. First decide which product the QUESTION is about, then pick "
     "ONLY cards of that product plus any untagged (product-neutral) cards; never mix products. "
-    "Some cards are tagged with a regime — [ops] (OPS / Order Planning Strategy) or [traditional] "
+    "Some cards are tagged with a regime, [ops] (OPS / Order Planning Strategy) or [traditional] "
     "(standalone replenishment/tasking/fulfilment). OPS and traditional are MUTUALLY EXCLUSIVE by "
     "site configuration: first decide which regime the QUESTION is about, then pick ONLY cards of "
-    "that regime plus untagged (regime-neutral) cards. Never pick a card tagged the other regime — "
+    "that regime plus untagged (regime-neutral) cards. Never pick a card tagged the other regime, "
     "e.g. for an OPS question do not pick [traditional] cards even if their keywords match. "
     "Some cards are tagged with a release version like (v2020). If the QUESTION names a release, "
     "PREFER cards for that release plus version-neutral (untagged) cards, and avoid cards tagged only "
-    "for a different release — but a version-neutral card always applies, and do not exclude a "
+    "for a different release, but a version-neutral card always applies, and do not exclude a "
     "different-release card if nothing better answers the question. "
     "Some cards are client-specific MEMORY, tagged like <client:alpha>. Memory applies ONLY to that "
-    "client — it records how THAT client's system was modified, not vanilla product behaviour. Pick a "
+    "client, it records how THAT client's system was modified, not vanilla product behaviour. Pick a "
     "client-memory card ONLY when the QUESTION is about that same client; never pick another client's "
     "memory, and never use memory as general product knowledge. "
     'Reply with ONLY {"card_ids": ["<id>", ...]} using ids from the index verbatim.'
@@ -48,7 +48,7 @@ def _index_text(index: list[dict]) -> str:
         r = f"[{c['regime']}] " if c.get("regime") else ""
         v = f"(v{','.join(c['version'])}) " if c.get("version") else ""
         return cl + p + r + v
-    return "\n".join(f"- {c['id']}: {tag(c)}{c['title']} — {c['description']}" for c in index)
+    return "\n".join(f"- {c['id']}: {tag(c)}{c['title']}, {c['description']}" for c in index)
 
 
 def select_ids(index, question: str, llm, *, known_ids: set[str]) -> list[str]:

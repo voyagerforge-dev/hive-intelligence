@@ -1,6 +1,6 @@
 """Slug helpers for the atomic-markdown corpus (ported from gwen_prep.manifest).
 
-Only the slug-identity cluster lives here — no R2/manifest-record/convert-routing
+Only the slug-identity cluster lives here, no R2/manifest-record/convert-routing
 logic. See hiveprep.validate for slug *uniqueness* validation across the corpus.
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ def doc_slug(product: str, rel_path: str) -> str:
     """Folder-qualified slug from the corpus-relative path (extension dropped).
 
     Unlike `slugify` (basename only), this includes the folder path, so same-named docs in
-    different module folders get distinct slugs — preventing silent atomic/R2 overwrites.
+    different module folders get distinct slugs, preventing silent atomic/R2 overwrites.
     Same-folder .doc/.docx pairs still collapse to one slug (extension dropped); those are
     format-duplicates resolved by curation dedup.
     """
@@ -34,7 +34,7 @@ def doc_slug(product: str, rel_path: str) -> str:
 
 
 def passthrough_slug(product: str, rel_path: str) -> str:
-    """Slug for a passthrough file — folder-qualified AND extension-tagged, so a .xsd schema never
+    """Slug for a passthrough file, folder-qualified AND extension-tagged, so a .xsd schema never
     collides with a same-stem .xlsx/.docx (whose ext-less slug would otherwise be identical)."""
     return f"{doc_slug(product, rel_path)}-{Path(rel_path).suffix.lower().lstrip('.')}"
 

@@ -44,7 +44,7 @@ def generate(concepts_dir):
         lines = [f"# {name}", "",
                  f"{len(cards)} concepts.", ""]
         for cid, title, desc in sorted(cards, key=lambda c: c[1].lower()):
-            suffix = f" — {desc}" if desc else ""
+            suffix = f", {desc}" if desc else ""
             lines.append(f"- [{title}](/{cid}.md){suffix}")
         open(f"{concepts_dir}/{product}/index.md", "w").write("\n".join(lines) + "\n")
     # root index
@@ -55,7 +55,7 @@ def generate(concepts_dir):
             "## Products", ""]
     for product in sorted(by_product, key=lambda k: -len(by_product[k])):
         name = PRODUCT_NAMES.get(product, product)
-        root.append(f"- [{name}](/{product}/index.md) — {len(by_product[product])} concepts")
+        root.append(f"- [{name}](/{product}/index.md), {len(by_product[product])} concepts")
     open(f"{concepts_dir}/index.md", "w").write("\n".join(root) + "\n")
     print(f"wrote root index + {len(by_product)} product indexes ({total} concepts)")
 

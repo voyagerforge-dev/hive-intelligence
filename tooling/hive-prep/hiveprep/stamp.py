@@ -79,8 +79,7 @@ def _yaml_scalar(v):
 def stamp_from_plan(atomic_dir: Path, plan, only_missing: bool = True) -> dict:
     """Stamp invariant frontmatter fields into each .md from its matching plan include entry.
 
-    Matches on the folder-qualified `slug` (unique per include), NOT the filename basename —
-    many WMS docs share a basename across module folders, so basename matching would stamp the
+    Matches on the folder-qualified `slug` (unique per include), NOT the filename basename, many WMS docs share a basename across module folders, so basename matching would stamp the
     wrong metadata onto all but one of them."""
     from hiveprep.slugs import assign_slugs
 

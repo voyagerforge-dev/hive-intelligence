@@ -8,7 +8,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     github_token: str = ""
-    github_repo: str = "example-org/project-hive"
+    # No default. This names the corpus repository that card submissions are filed
+    # against, which is deployment-specific, and a wrong-but-plausible default files
+    # issues into someone else's repository.
+    github_repo: str = ""
     github_api: str = "https://api.github.com"
     host: str = "127.0.0.1"
     port: int = 8000

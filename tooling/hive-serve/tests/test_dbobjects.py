@@ -8,7 +8,7 @@ def _seed(tmp_path):
     d.mkdir(parents=True)
     rows = [
         {"id": "wms/db/tables/ALLOCATION", "kind": "table", "module": "WM", "product": "wms",
-         "title": "ALLOCATION — order allocation records",
+         "title": "ALLOCATION, order allocation records",
          "description": "Holds allocation of inventory to orders", "tags": ["table", "WM"]},
         {"id": "wms/db/tables/MASTER_STAGING_DATA", "kind": "table", "module": "DOM", "product": "wms",
          "title": "MASTER_STAGING_DATA", "description": "Stage inbound inventory events",

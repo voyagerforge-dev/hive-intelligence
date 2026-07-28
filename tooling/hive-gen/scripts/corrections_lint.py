@@ -45,7 +45,7 @@ def lint(concepts_dir):
     for tgt, ids in active_by_target.items():
         live = [i for i in ids if i not in superseded_targets]
         if len(live) > 1:
-            warnings.append(f"{tgt}: {len(live)} active corrections ({', '.join(live)}) — review for conflict")
+            warnings.append(f"{tgt}: {len(live)} active corrections ({', '.join(live)}), review for conflict")
     return errors, warnings
 
 

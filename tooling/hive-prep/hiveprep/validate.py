@@ -108,7 +108,7 @@ def validate_atomic_dir(atomic_dir: Path) -> ValidationReport:
         if sup:
             tgt = _strip_version(sup)
             if tgt not in docs:
-                # superseded target may be intentionally absent (old doc not ingested) — warn-as-edge only
+                # superseded target may be intentionally absent (old doc not ingested), warn-as-edge only
                 report.relations["edges"].append({"from": slug, "to": sup, "type": "supersedes"})
             else:
                 report.relations["edges"].append({"from": slug, "to": sup, "type": "supersedes"})

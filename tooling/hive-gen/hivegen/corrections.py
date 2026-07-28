@@ -19,7 +19,7 @@ def record_to_correction(record: dict) -> str:
         "supersedes": record.get("supersedes", []),
         "tags": record.get("tags", []),
         "product": record["product"],
-        "resource": "",   # empty placeholder — conformance_pass fills it from the file path
+        "resource": "",   # empty placeholder, conformance_pass fills it from the file path
         "sources": [{"kind": "correction-source", "ref": r} for r in record.get("citations", [])],
         "timestamp": record.get("timestamp", ""),
         "status": record.get("status", "approved"),

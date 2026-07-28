@@ -1,4 +1,4 @@
-"""hiveprep CLI — sovereign WMS doc-prep: inventory → curate (agent) → validate → normalize →
+"""hiveprep CLI, sovereign WMS doc-prep: inventory → curate (agent) → validate → normalize →
 transform (Docling/Qwen) → stamp → validate-atomic → hivegen. No R2/Dify staging."""
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ console = Console()
 @click.group()
 @click.version_option()
 def cli():
-    """hiveprep: sovereign WMS doc-prep CLI."""
+    """hiveprep: turn a tree of source documents into atomic markdown."""
 
 
 # --- scan / validate-plan / dedup-formats: recovered verbatim from gwen-prep cli.py (import-renamed) ---
@@ -40,7 +40,7 @@ def scan(path: str, output: str, include_hidden: bool, all_types: bool, no_progr
     """
     from hiveprep.scanner import scan_directory, write_inventory_csv
 
-    # Try to load folder_parser (optional — works without it)
+    # Try to load folder_parser (optional, works without it)
     folder_parser_fn = None
     try:
         from hiveprep.folder_parser import parse_folder_segments
@@ -119,7 +119,7 @@ def _print_stats(csv_path: Path):
 @click.argument("plan_path", type=click.Path(exists=True, dir_okay=False))
 @click.option("--corpus-root", default="", help="Override corpus_root from the plan")
 def validate_plan_cmd(plan_path: str, corpus_root: str):
-    """Validate a wms-curation.yaml before execution."""
+    """Validate a curation plan before execution."""
     from hiveprep.curation_plan import load_plan, validate_plan
 
     plan = load_plan(Path(plan_path))

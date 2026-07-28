@@ -2,7 +2,7 @@
 
 Two slice mechanisms:
   - Legacy: ``is_wave_replen`` filename-keyword match (the original Wave/Replenishment slice).
-  - Preferred: ``topics=`` — filter on the curator-assigned ``topic:`` frontmatter, so hivegen
+  - Preferred: ``topics=``, filter on the curator-assigned ``topic:`` frontmatter, so hivegen
     can be run one functional area at a time. ``AREAS`` groups the corpus's ~30 topics into
     coherent areas; ``load_area_local`` resolves an area name to its docs.
 """
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-# Wave/Replenishment functional area — name-keyword match (the original slice).
+# Wave/Replenishment functional area, name-keyword match (the original slice).
 _WAVE_REPLEN = ("wave", "replen", "replenishment", "shipping-wave", "pre-wave",
                 "fs-300", "fs300", "outbound-planning", "wave-inquiry")
 
@@ -49,17 +49,17 @@ AREAS: dict[str, tuple[str, ...]] = {
     "guide-transportation": ("Guide: Transportation Routing",),
     "guide-yard": ("Guide: Yard",),
     "guide-reports": ("Guide: Reports",),
-    # oSCI (Supply Chain Intelligence) — Cognos-based analytics repurposed for WMOS.
+    # oSCI (Supply Chain Intelligence), Cognos-based analytics repurposed for WMOS.
     "osci-frameworks": ("oSCI Frameworks",),
     "osci-analytics": ("oSCI Analytics Deliverables",),
     "osci-workspaces": ("oSCI Workspaces & Reports",),
     "osci-architecture": ("oSCI Architecture & Environment",),
-    # Slotting Optimization — warehouse slot-optimization product on SCPP.
+    # Slotting Optimization, warehouse slot-optimization product on SCPP.
     "slotting-algorithms": ("Slotting Algorithms & Analysis",),
     "slotting-config": ("Slotting Configuration & Setup",),
     "slotting-integration": ("Slotting Integration",),
     "slotting-overview": ("Slotting Overview & Release Notes",),
-    # Labour Management — workforce performance-management product on SCPP.
+    # Labour Management, workforce performance-management product on SCPP.
     "lm-employee-reports": ("LM Employee & Job-Function Reports",),
     "lm-team-standards": ("LM Team Standards & Quality",),
     "lm-payroll-scheduling": ("LM Payroll, Scheduling & Staffing",),
@@ -99,7 +99,7 @@ SUBAREAS: dict[str, SubArea] = {
     "if-host-data": SubArea(_IFACE_HOST, exclude=(
         "labor-management", "mhe", "billing-integration", "voice",
         "newgistics", "dynamic-routing", "xsds-and-mapping-sheets")),
-    # System Control (111) — sc-purge claims all purge/archive; siblings exclude it.
+    # System Control (111), sc-purge claims all purge/archive; siblings exclude it.
     "sc-purge": SubArea(_SYSCTL, include=("purge", "archive")),
     "sc-print-label": SubArea(_SYSCTL, include=(
         "print-queue", "printer", "barcode", "smartlabel", "label-translation"),
@@ -165,7 +165,7 @@ def load_docs_local(root, *, only_wave_replen: bool = True,
     ``topic:`` frontmatter is in that set (case-insensitive), ignoring the wave/replen keyword
     filter. ``name_include``/``name_exclude`` further narrow by filename substring (lower-cased):
     a doc is kept only if its filename contains an ``include`` keyword (when any are given) and no
-    ``exclude`` keyword — this is how sub-slices carve one topic. Without ``topics`` we fall back to
+    ``exclude`` keyword, this is how sub-slices carve one topic. Without ``topics`` we fall back to
     the legacy ``only_wave_replen`` filename filter."""
     root = Path(root)
     want = {t.strip().lower() for t in topics} if topics is not None else None

@@ -15,7 +15,7 @@ def build(product: str, target_id: str, title: str, *, out_dir, timestamp: str) 
     record = {
         "corrects": target_id, "title": title, "description": "",
         "correction": "<state the corrected fact here>",
-        "rationale": "<why — cite the source doc/section>",
+        "rationale": "<why, cite the source doc/section>",
         "citations": [], "supersedes": [], "product": product,
         "status": "draft", "timestamp": timestamp,
     }

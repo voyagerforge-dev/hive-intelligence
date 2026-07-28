@@ -1,4 +1,4 @@
-"""Filesystem scanner — walks a directory tree and catalogs every file.
+"""Filesystem scanner, walks a directory tree and catalogs every file.
 
 Produces a streaming CSV inventory with file metadata and parsed folder
 segments as classification hints. Memory-efficient: never loads the full
@@ -115,7 +115,7 @@ def scan_directory(
             if supported_only and ext not in SUPPORTED_EXTENSIONS:
                 continue
 
-            # Stat the file — skip on permission error
+            # Stat the file, skip on permission error
             try:
                 st = filepath.stat()
             except (PermissionError, OSError) as exc:

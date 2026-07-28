@@ -38,7 +38,7 @@ def test_distill_concept_emits_draft_card():
 
 
 def test_distill_concept_related_bogus_id_filtered():
-    """LLM returns an id not in related_ids — it must be stripped out."""
+    """LLM returns an id not in related_ids, it must be stripped out."""
     concept = Concept(id="wave-template", title="Wave Template")
     docs = [Doc("example_prefix/docs/wave-template.md", "example_prefix/docs/wave-template.md", "raw")]
     # FakeLLM returns related:["replenishment"] but allowed ids = ["cartonization"] only

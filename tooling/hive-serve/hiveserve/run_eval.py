@@ -16,7 +16,7 @@ def main() -> None:
     mode = sys.argv[1] if len(sys.argv) > 1 else "progressive"
     if mode not in ("progressive", "ceiling"):
         raise SystemExit(f"unknown mode {mode!r}; use 'progressive' or 'ceiling'")
-    # 2nd arg: qa set — a bare name resolved under data/, or a path to a .jsonl.
+    # 2nd arg: qa set, a bare name resolved under data/, or a path to a .jsonl.
     # No default: QA sets are corpus-side and ship with the corpus, not the product.
     if len(sys.argv) < 3:
         raise SystemExit(

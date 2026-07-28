@@ -1,4 +1,4 @@
-"""Docling client — document bytes → clean markdown via the Host-A Docling gateway."""
+"""Docling client, document bytes → clean markdown via the Host-A Docling gateway."""
 import httpx
 
 
@@ -7,7 +7,7 @@ class DoclingError(RuntimeError):
 
 
 class EmptyConversion(DoclingError):
-    """Docling responded 200 OK but produced no md_content — retryable / route-to-fallback."""
+    """Docling responded 200 OK but produced no md_content, retryable / route-to-fallback."""
 
 
 class DoclingClient:

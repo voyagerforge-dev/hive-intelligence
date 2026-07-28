@@ -1,4 +1,4 @@
-"""Folder path parser — extracts classification hints from directory segments.
+"""Folder path parser, extracts classification hints from directory segments.
 
 SharePoint folder hierarchies for Manhattan WMS documents typically follow
 patterns like:
@@ -8,7 +8,7 @@ patterns like:
 
 The parser uses heuristics to identify known products, version patterns,
 and document category keywords from folder names. These hints supplement
-(not replace) LLM classification — they provide a strong prior for the
+(not replace) LLM classification, they provide a strong prior for the
 80-90% of files with clear folder structure.
 """
 from __future__ import annotations
@@ -185,7 +185,7 @@ def parse_folder_segments(relative_path: str, segments: list[str]) -> dict:
                 hints["category_hint"] = category
                 continue
 
-        # Not product, version, or category — could be client or noise
+        # Not product, version, or category, could be client or noise
         if not _is_general_folder(seg):
             client_candidates.append(seg)
 

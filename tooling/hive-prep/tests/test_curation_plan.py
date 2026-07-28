@@ -14,7 +14,7 @@ def test_dedup_format_variants_keeps_richest_and_records_drop():
     paths = {e["path"] for e in out.include}
     # .docx wins over .doc for the same folder+stem; the .doc is dropped
     assert "wmos/a/Spec FS.docx" in paths and "wmos/a/Spec FS.doc" not in paths
-    # cross-folder same-stem (Overview in a/ vs b/) are NOT merged — both kept
+    # cross-folder same-stem (Overview in a/ vs b/) are NOT merged, both kept
     assert "wmos/a/Overview.docx" in paths and "wmos/b/Overview.docx" in paths
     assert "wmos/b/Other.pdf" in paths
     assert len(out.include) == 4
@@ -24,7 +24,7 @@ def test_dedup_format_variants_keeps_richest_and_records_drop():
 
 
 def test_dedup_format_variants_keeps_cross_family_distinct():
-    """A .xsd schema beside a same-stem .xlsx mapping sheet are DIFFERENT artifacts — keep both."""
+    """A .xsd schema beside a same-stem .xlsx mapping sheet are DIFFERENT artifacts, keep both."""
     inc = [
         {"path": "x/Foo.xlsx", "product": "WMS"},
         {"path": "x/Foo.xls", "product": "WMS"},   # same XLS family as .xlsx → dropped

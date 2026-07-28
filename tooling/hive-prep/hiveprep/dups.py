@@ -1,4 +1,4 @@
-"""Content-SHA duplicate grouping — provable byte-identical dupes for the curator."""
+"""Content-SHA duplicate grouping, provable byte-identical dupes for the curator."""
 from __future__ import annotations
 import hashlib
 from pathlib import Path

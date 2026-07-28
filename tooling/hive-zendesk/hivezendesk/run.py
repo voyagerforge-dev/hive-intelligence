@@ -167,7 +167,11 @@ def main() -> int:
     # surfaces as an opaque connection error a long way from the cause.
     if not s.connector_base:
         ap.error("CONNECTOR_BASE is not set. It is deployment-specific: point it at your "
-                 "Zendesk connector, in the environment or a .env file.")
+                 "ticket connector, in the environment or a .env file.")
+    if not (args.model or s.distill_model):
+        ap.error("DISTILL_MODEL is not set. It has no default on purpose: distilling a whole "
+                 "run with an unintended model is silent, and the cards do not record it. "
+                 "Set it in the environment, or pass --model.")
     connector = ConnectorClient(s.connector_base, s.connector_api_key,
                                 s.connector_page_cap, s.cap_warn_ratio)
     llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.distill_model,

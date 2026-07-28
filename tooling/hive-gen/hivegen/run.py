@@ -49,7 +49,7 @@ def generate_drafts(docs: list[Doc], concepts: list[Concept], assign_llm: ChatLL
     return sorted(written)
 
 
-def main() -> None:  # pragma: no cover — live wiring (detached)
+def main() -> None:  # pragma: no cover, live wiring (detached)
     from hivegen.config import get_settings
     from hivegen.load import (AREAS, SUBAREAS, load_area_local, load_docs, load_docs_local,
                              load_subarea_local)
@@ -63,7 +63,7 @@ def main() -> None:  # pragma: no cover — live wiring (detached)
         raise SystemExit(
             f"unknown SLICE_AREA '{area}'; areas: {sorted(AREAS)}; sub-areas: {sorted(SUBAREAS)}")
     label = area or "Wave/Replenishment"
-    stem = f"taxonomy.{area}" if area else "taxonomy"  # per-area taxonomy — areas never clobber
+    stem = f"taxonomy.{area}" if area else "taxonomy"  # per-area taxonomy, areas never clobber
 
     if s.atomic_dir:
         if is_sub:

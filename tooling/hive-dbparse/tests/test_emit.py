@@ -105,7 +105,7 @@ def test_table_card_comment_with_colon_stays_valid_yaml():
     assert fm["description"] == "Ratio: quantity per unit"
 
 
-def test_table_card_column_missing_in_one_dialect_renders_em_dash():
+def test_table_card_column_missing_in_one_dialect_is_marked_not_blank():
     t = Table(
         "T",
         "DOM",
@@ -113,7 +113,8 @@ def test_table_card_column_missing_in_one_dialect_renders_em_dash():
         dialects={"oracle", "db2"},
     )
     md = table_card(t)
-    assert "| A | NUMBER(20,0) | — |" in md
+    # A blank cell would read as "no type recorded"; this says "not in this dialect".
+    assert "| A | NUMBER(20,0) | n/a |" in md
 
 
 def test_table_card_sections_render_pk_fk_index_sequence_trigger():
@@ -230,7 +231,7 @@ def test_plsql_with_comment_title_uses_comment():
         dialects={"oracle"},
     )
     fm = _frontmatter_dict(plsql_card(o))
-    assert fm["title"] == "DOM_ALLOC — Allocation engine"
+    assert fm["title"] == "DOM_ALLOC: Allocation engine"
     assert fm["description"] == "Allocation engine"
 
 

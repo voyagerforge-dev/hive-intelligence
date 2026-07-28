@@ -67,7 +67,7 @@ def _pymupdf4llm_markdown(pdf: Path) -> str:
 
 def extract_text_markdown(pdf: Path, *, docling=None) -> str:
     """Text tier: prefer Docling (better tables/layout); fall back to local pymupdf4llm on any
-    Docling failure or empty conversion — so the pipeline still runs with no GPU/Docling."""
+    Docling failure or empty conversion, so the pipeline still runs with no GPU/Docling."""
     if docling is not None:
         try:
             return _clean_text_md(docling.to_markdown(pdf.name, pdf.read_bytes()))
@@ -150,7 +150,7 @@ def transform_pdf(pdf: Path, source_doc: str, product: str, atomic_dir: Path, *,
         body = "\n\n".join(vision.describe_image(p.read_bytes()) for p in pages)
         out = _write_atomic(atomic_dir, source_doc, slug, "vision", _strip(body, strip_product))
         return TransformResult(source_doc, ok=True, md_path=out, pages=len(pages), tier="vision")
-    except Exception as e:  # noqa: BLE001 — flag, never crash the batch
+    except Exception as e:  # noqa: BLE001, flag, never crash the batch
         return TransformResult(source_doc, ok=False, error=str(e))
 
 

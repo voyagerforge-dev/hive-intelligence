@@ -13,7 +13,10 @@ class Settings(BaseSettings):
     connector_api_key: str = ""
     bifrost_base: str = ""
     bifrost_api_key: str = ""
-    distill_model: str = "minimax-m3"
+    # No default. An environment that fails to load .env would otherwise distil an
+    # entire run with a different model than intended, silently, and the cards would
+    # carry no sign of it.
+    distill_model: str = ""
     # Linking is a separate job from distilling and is measured separately. On a 16-item
     # labelled set Qwen, minimax-m3 and deepseek all scored ~80% and kept the SAME wrong
     # links, while claude-opus-4-8 scored 92% - a capability cliff, not a gradient. So the

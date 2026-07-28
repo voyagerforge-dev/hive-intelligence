@@ -48,7 +48,7 @@ def test_promote_writes_into_product_subfolder(tmp_path):
     promoted, invalid = promote(drafts, concepts, "slotting")
     assert promoted == ["wave.md"]
     assert (concepts / "slotting" / "wave.md").exists()
-    assert not (concepts / "wave.md").exists()  # not flat — namespaced under product
+    assert not (concepts / "wave.md").exists()  # not flat, namespaced under product
     assert invalid == {}
 
 

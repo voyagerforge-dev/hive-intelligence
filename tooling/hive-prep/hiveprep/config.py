@@ -9,17 +9,17 @@ class Settings(BaseSettings):
 
     # Filesystem: raw corpus in, work intermediates, atomic markdown out.
     corpus_root: str = ""
-    work_dir: str = "./wms-work"
-    atomic_dir: str = "./wms-work/atomic"
+    work_dir: str = "./hive-work"
+    atomic_dir: str = "./hive-work/atomic"
 
-    # Docling (Host-A GPU) — preferred text-tier converter. Empty base → pymupdf4llm only.
+    # Docling (Host-A GPU), preferred text-tier converter. Empty base → pymupdf4llm only.
     docling_base: str = ""
     docling_api_key: str = ""
     docling_timeout_s: int = 300
     docling_ca_bundle: str = ""
     prefer_docling: bool = True
 
-    # Qwen3.6-27B (Host-D) — vision tier (OpenAI-compatible /v1/chat/completions with image_url).
+    # Qwen3.6-27B (Host-D), vision tier (OpenAI-compatible /v1/chat/completions with image_url).
     qwen_base: str = ""
     qwen_api_key: str = ""
     qwen_model: str = "qwen3.6-27b"
@@ -30,11 +30,14 @@ class Settings(BaseSettings):
     # LibreOffice parallel workers for normalize.
     lo_jobs: int = 8
 
-    # Boilerplate stripping — scrub copyright/trademark/confidentiality/page-number noise from
+    # Boilerplate stripping, scrub copyright/trademark/confidentiality/page-number noise from
     # converted markdown before it is written as an atomic doc. strip_product selects the
     # <product>.yaml ruleset (falls back to default.yaml). Set strip_boilerplate=false to disable.
     strip_boilerplate: bool = True
-    strip_product: str = "wmos"
+    # "default" is the generic rule set. Vendor-specific rules live in a
+    # <product>.yaml beside it and are opt-in: a rule set tuned for one vendor's
+    # boilerplate will happily delete another's prose.
+    strip_product: str = "default"
 
 
 @lru_cache

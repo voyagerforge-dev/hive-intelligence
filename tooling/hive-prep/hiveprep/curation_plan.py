@@ -1,4 +1,4 @@
-"""Load + validate wms-curation.yaml. Validation is deterministic; a bad plan refuses to run."""
+"""Load and validate the curation plan. Validation is deterministic; a bad plan refuses to run."""
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,7 +57,7 @@ def validate_plan(plan: Plan, corpus_root: Path | None = None) -> list[str]:
 
 # A doc is only a "format variant" of another when they're the SAME application format FAMILY (e.g.
 # .doc/.docx, .ppt/.pptx, .xls/.xlsx). Same-stem files of DIFFERENT families (a .xsd schema next to a
-# .xlsx mapping sheet, a .vm template next to a .docx) are DISTINCT artifacts — never collapse them.
+# .xlsx mapping sheet, a .vm template next to a .docx) are DISTINCT artifacts, never collapse them.
 _FMT_FAMILY = {".doc": "word", ".docx": "word", ".docm": "word", ".rtf": "word",
                ".ppt": "ppt", ".pptx": "ppt",
                ".xls": "xls", ".xlsx": "xls"}
@@ -77,7 +77,7 @@ def _fmt_rank(path: str) -> int:
 
 
 def dedup_format_variants(plan: Plan) -> Plan:
-    """Collapse same-document format variants — same folder + stem AND same format family — keeping
+    """Collapse same-document format variants, same folder + stem AND same format family, keeping
     the richest format and recording the rest as dedup_groups. Same-stem files of different families
     (e.g. a .xsd schema beside a .xlsx mapping sheet) are kept as distinct includes; cross-folder
     same-name docs are never merged."""

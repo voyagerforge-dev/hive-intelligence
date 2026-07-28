@@ -19,7 +19,7 @@ def build_index_md(concepts_dir) -> str:
     for c in load_index(concepts_dir):
         tag = f" _(regime: {c['regime']})_" if c.get("regime") else ""
         ver = f" _(v{','.join(c['version'])})_" if c.get("version") else ""
-        lines.append(f"- [{c['title']}](./{c['id']}.md){tag}{ver} — {c['description']}")
+        lines.append(f"- [{c['title']}](./{c['id']}.md){tag}{ver}, {c['description']}")
     return "\n".join(lines) + "\n"
 
 
