@@ -20,6 +20,7 @@ Task-shaped. Each one is something you actually want to do.
 | | |
 |---|---|
 | [Getting started](guides/getting-started.md) | serve the fixture corpus and query it |
+| [Alongside an existing RAG system](guides/alongside-rag.md) | use Hive as an ingestion stage, and measure whether your problem is recall or ranking |
 | [Building a corpus](guides/building-a-corpus.md) | documents to cards, through three human gates |
 | [Serving cards](guides/serving-cards.md) | running `hive-serve`, identity, client isolation |
 | [Corrections and memory](guides/corrections-and-memory.md) | keeping a corpus true over time |

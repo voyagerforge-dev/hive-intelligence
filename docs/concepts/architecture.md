@@ -128,6 +128,10 @@ Consequences worth naming:
 The reasoning is the agent's job. Hive's job is deciding what the agent is allowed to reason over,
 and that decision was made by a person, earlier, on the record.
 
+If you want semantic search as well, the corpus is plain markdown: embed the cards into your own
+index and run both paths against the same content. See
+[alongside an existing RAG system](../guides/alongside-rag.md).
+
 ## The write path
 
 `hive-serve` holds no credentials, which is deliberate: the read path is the part exposed to the

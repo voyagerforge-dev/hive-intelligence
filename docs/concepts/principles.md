@@ -81,7 +81,9 @@ endpoint. None requires the named product. Renaming them is a breaking change fo
 deployment, so it belongs with a major version. See
 [configuration](../reference/configuration.md#names-that-mention-a-vendor).
 
-**Retrieval is lexical.** Covered above. Fix descriptions, not the ranker.
+**Retrieval is lexical.** Covered above. Fix descriptions, not the ranker. If you need semantic
+search over the same content, embed the cards and keep your own index: see
+[alongside an existing RAG system](../guides/alongside-rag.md).
 
 **Client isolation is enforced at serving, not at rest.** Memory and issue cards for every client
 sit in one repository, separated by directory and by resolver logic. Whoever can read the

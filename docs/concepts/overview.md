@@ -6,11 +6,11 @@ An organisation's working knowledge is scattered across vendor manuals, release 
 tickets, database schemas and the heads of the people who have been there longest. When someone
 needs an answer, they ask a colleague, or they search, or they guess.
 
-Handing that pile to a language model does not fix it. Retrieval-augmented generation answers a
-question the organisation did not ask: *which passages resemble this query*. Resemblance is not
-truth. A passage can be perfectly on-topic and three years out of date, or contradicted by a later
-decision nobody wrote down, or correct for one client and wrong for another. The model has no way
-to tell, so it answers confidently either way.
+Handing that pile to a language model does not fix it. **Retrieval-augmented generation (RAG)**
+answers a question the organisation did not ask: *which passages resemble this query*. Resemblance
+is not truth. A passage can be perfectly on-topic and three years out of date, or contradicted by a
+later decision nobody wrote down, or correct for one client and wrong for another. The model has no
+way to tell, so it answers confidently either way.
 
 The failure is not the model. It is that nothing in the pipeline ever asserted that a given
 statement was true, current, and applicable here.
@@ -42,6 +42,26 @@ reranker. The only model calls in the whole system happen during content creatio
 
 **It degrades honestly.** If a card is missing, the agent gets nothing rather than something
 plausible. That is the intended behaviour: a gap you can see beats an answer you cannot check.
+
+## Two ways to use it
+
+Hive is usually read as an alternative to RAG. It is also useful as a stage in front of one, and
+that is the smaller commitment.
+
+**As the system.** Cards are served directly to an agent by id, with corrections attached. No
+embeddings, no vector store, no ranking. Deterministic and auditable.
+
+**In front of an existing RAG system.** Hive replaces ingestion and leaves retrieval alone. A card
+is already a chunk: one reviewed concept, deduplicated, with boilerplate stripped and no accidental
+split mid-idea. Your embedder and index stay exactly as they are.
+
+The second mode matters because RAG systems usually underperform for reasons ranking cannot fix. In
+one measured baseline over 40 labelled questions, adding a reranker changed hit-rate by **zero**,
+while **27.5% of expected documents were never retrieved at all**, at any depth. That is a corpus
+problem, and it is upstream of anything a ranker can influence.
+
+Whether it is *your* problem is measurable in an afternoon, before you change anything. See
+[using Hive alongside an existing RAG system](../guides/alongside-rag.md).
 
 ## Who this is for
 

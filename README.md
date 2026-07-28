@@ -10,12 +10,12 @@ allowed to reason over.
 **OKF is the format. Hive is the system.** Cards on disk carry `okf_version: "0.1"`; the tooling
 that produces and serves them is Hive.
 
-## Why cards instead of retrieval
+## Why cards instead of chunks
 
-Retrieval answers "which chunks look similar to this question". That is a different question from
-"what is true here", and the gap between them is where confident wrong answers come from. A chunk
-is an accident of where a document happened to be split, and it carries no claim that anyone has
-ever checked it.
+**Retrieval-augmented generation (RAG)** answers "which chunks look similar to this question". That
+is a different question from "what is true here", and the gap between them is where confident wrong
+answers come from. A chunk is an accident of where a document happened to be split, and it carries
+no claim that anyone has ever checked it.
 
 A card is the opposite. One concept, written once, reviewed by a person, versioned in git, and
 addressable by a stable id. When it goes out of date it is corrected in the open by a card that
@@ -23,6 +23,12 @@ overlays it, leaving the original readable. What the agent sees is what a human 
 
 The cost is honest: someone has to curate. Hive's job is to make that cheap enough to sustain, by
 putting a model in front of every stage and a human gate behind it.
+
+**You do not have to choose.** Hive also works as an ingestion stage *in front of* an existing RAG
+system, because a card is already a chunk: one reviewed concept, no boilerplate, no accidental
+split. If your RAG system underperforms, the cause is more often the corpus than the ranker, and
+that is measurable before you change anything. See
+[using Hive alongside an existing RAG system](docs/guides/alongside-rag.md).
 
 ## What is here
 
