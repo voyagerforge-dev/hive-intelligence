@@ -1,4 +1,4 @@
-"""End-to-end runner: WMOS Oracle/DB2 DDL tree -> OKF `dbobject` cards + manifest.
+"""End-to-end runner: an Oracle and DB2 DDL tree -> OKF `dbobject` cards + manifest.
 
 Walks three locations per dialect: `DBScripts/Product/*.sql` (module files,
 non-recursive), the `DBScripts/Seed/Product/<module>/` base-schema catalogs
@@ -416,7 +416,7 @@ def _ordered_plsql(
 
 def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None,
         product: str = DEFAULT_PRODUCT) -> RunReport:
-    """Parse+reconcile every WMOS table/PL/SQL object under `src_root`, emit
+    """Parse and reconcile every table and PL/SQL object under `src_root`, emit
     one card per object under `out_dir/{tables,plsql}/` plus
     `out_dir/manifest.jsonl`, and return the `RunReport`.
 

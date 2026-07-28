@@ -50,7 +50,7 @@ def test_transform_pdf_text_tier_writes_atomic(tmp_path, monkeypatch):
     pdf = tmp_path / "s.pdf"; pdf.write_bytes(b"%PDF-1.4")
     monkeypatch.setattr(tf, "pdf_text_profile", lambda p: {"pages": 3, "avg_chars": 800.0, "img_page_frac": 0.0})
     dc, vc = FakeDocling(), FakeVision()
-    res = tf.transform_pdf(pdf, "s.pdf", "WMS", tmp_path / "atomic", docling=dc,
+    res = tf.transform_pdf(pdf, "s.pdf", "WIDGETS", tmp_path / "atomic", docling=dc,
                            vision=vc, render_dir=tmp_path / "_pages")
     assert res.ok and res.tier == "text" and vc.calls == 0
     body = (tmp_path / "atomic" / f"{res.md_path.stem}.md").read_text()
@@ -68,7 +68,7 @@ def test_transform_pdf_vision_tier_uses_qwen(tmp_path, monkeypatch):
         return paths
     monkeypatch.setattr(tf, "render_pdf_pages", _fake_render)
     dc, vc = FakeDocling(), FakeVision()
-    res = tf.transform_pdf(pdf, "scan.pdf", "WMS", tmp_path / "atomic", docling=dc,
+    res = tf.transform_pdf(pdf, "scan.pdf", "WIDGETS", tmp_path / "atomic", docling=dc,
                            vision=vc, render_dir=tmp_path / "_pages")
     assert res.ok and res.tier == "vision" and vc.calls == 2
     assert "extracted_via: vision" in (res.md_path).read_text()
@@ -81,8 +81,8 @@ def test_transform_plan_skips_path_less_include_without_crashing(tmp_path):
     plan = Plan(
         scope="unit-test", corpus_root=str(corpus_root), subtree="",
         include=[
-            {"product": "WMS"},                          # missing "path", must not crash the batch
-            {"path": "notes.txt", "product": "WMS"},      # valid passthrough entry
+            {"product": "WIDGETS"},                          # missing "path", must not crash the batch
+            {"path": "notes.txt", "product": "WIDGETS"},      # valid passthrough entry
         ],
         exclude=[], dedup_groups=[], supersedes=[],
     )
@@ -98,13 +98,13 @@ def test_transform_pdf_strips_boilerplate_when_enabled(tmp_path, monkeypatch):
     pdf = tmp_path / "s.pdf"; pdf.write_bytes(b"%PDF-1.4")
     monkeypatch.setattr(tf, "pdf_text_profile",
                         lambda p: {"pages": 1, "avg_chars": 800.0, "img_page_frac": 0.0})
-    md = ("# Replen\n\nCopyright 2013 Manhattan Associates. All Rights Reserved.\n"
+    md = ("# Replen\n\nCopyright 2013 Acme Corporation. All Rights Reserved.\n"
           "Page 2 of 9\n\nWM triggers replenishment below minimum.\n")
-    res = tf.transform_pdf(pdf, "s.pdf", "WMS", tmp_path / "atomic", docling=FakeDocling(md),
+    res = tf.transform_pdf(pdf, "s.pdf", "WIDGETS", tmp_path / "atomic", docling=FakeDocling(md),
                            vision=FakeVision(), render_dir=tmp_path / "_pages",
-                           strip_product="wmos")
+                           strip_product="bench")
     body = res.md_path.read_text()
-    assert "Copyright" not in body and "Manhattan Associates" not in body
+    assert "Copyright" not in body and "Acme Corporation" not in body
     assert "All Rights Reserved" not in body and "Page 2 of 9" not in body
     assert "WM triggers replenishment below minimum." in body   # content kept
 
@@ -124,9 +124,9 @@ def test_transform_pdf_keeps_boilerplate_when_disabled(tmp_path, monkeypatch):
     pdf = tmp_path / "s.pdf"; pdf.write_bytes(b"%PDF-1.4")
     monkeypatch.setattr(tf, "pdf_text_profile",
                         lambda p: {"pages": 1, "avg_chars": 800.0, "img_page_frac": 0.0})
-    md = "# Replen\n\nCopyright 2013 Manhattan Associates.\n\nReal content.\n"
-    res = tf.transform_pdf(pdf, "s.pdf", "WMS", tmp_path / "atomic", docling=FakeDocling(md),
+    md = "# Replen\n\nCopyright 2013 Acme Corporation.\n\nReal content.\n"
+    res = tf.transform_pdf(pdf, "s.pdf", "WIDGETS", tmp_path / "atomic", docling=FakeDocling(md),
                            vision=FakeVision(), render_dir=tmp_path / "_pages",
                            strip_product=None)
     body = res.md_path.read_text()
-    assert "Copyright 2013 Manhattan Associates." in body   # untouched when disabled
+    assert "Copyright 2013 Acme Corporation." in body   # untouched when disabled

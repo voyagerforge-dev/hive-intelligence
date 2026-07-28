@@ -68,10 +68,15 @@ schema change, which makes it a usable review artifact in a way an LLM-generated
 A manifest is written alongside the cards recording what was parsed, and a conflicts log records
 duplicate object definitions across source files.
 
-## A known limitation
+## Naming the product
 
-Card ids and the `product` facet are currently hardcoded to one product name in
-`hivedbparse/emit.py`. Parsing a schema for a differently-named product means editing that file.
+`--product` sets the card id prefix and the `product` facet:
 
-Making it a parameter is tracked work. See
-[known limitations](../concepts/principles.md#known-limitations).
+```
+hivedbparse --src <ddl> --out <dir> --product widgets
+#   -> widgets/db/tables/ORDERS, product: widgets
+```
+
+It defaults to the neutral `db`. Set it: the value threads into foreign-key and trigger links as
+well as the ids, so a schema parsed under the wrong product produces cards whose links resolve to
+nothing.

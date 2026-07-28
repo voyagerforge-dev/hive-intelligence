@@ -80,10 +80,10 @@ model-generated diff never is.
 
 There is no service and no deployment directory. This runs once, or when the schema changes.
 
-## A known limitation
+## Naming the product
 
-Card ids and the `product` facet are hardcoded to one product name in `emit.py`. Parsing a schema
-for a differently-named product means editing that file.
+`--product` sets the card id prefix and the `product` facet, defaulting to the neutral `db`.
 
-Making it a parameter is tracked work. See
-[known limitations](../concepts/principles.md#known-limitations).
+The value threads through everything rendered, not just the ids: foreign-key links, trigger links
+and the facet. A schema parsed under the wrong product produces cards whose links point at ids that
+do not exist, so set it explicitly.

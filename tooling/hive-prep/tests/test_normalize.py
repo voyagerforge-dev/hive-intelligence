@@ -79,8 +79,8 @@ def test_failure_is_flagged_not_raised(tmp_path, monkeypatch):
 
 def _mk_plan(root, *names):
     from hiveprep.curation_plan import Plan
-    return Plan(scope="WMS", corpus_root=str(root), subtree=".",
-                include=[{"path": n, "product": "WMS"} for n in names],
+    return Plan(scope="WIDGETS", corpus_root=str(root), subtree=".",
+                include=[{"path": n, "product": "WIDGETS"} for n in names],
                 exclude=[], dedup_groups=[], supersedes=[])
 
 

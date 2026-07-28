@@ -1,4 +1,4 @@
-"""Parse `CREATE TABLE` statements from WMOS Oracle/DB2 DDL into `Table` objects.
+"""Parse `CREATE TABLE` statements from Oracle and DB2 DDL into `Table` objects.
 
 Uses sqlglot's AST exclusively (tokenizer + parser) -- never regex -- so that
 messy real-world DDL (nested type parens like NUMBER(20,0), quoted identifiers,

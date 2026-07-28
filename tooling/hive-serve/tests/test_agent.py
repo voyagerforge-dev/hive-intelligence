@@ -36,7 +36,7 @@ title: Pre-Wave
 description: preview wave
 related: []
 sources:
-- kind: wms-doc
+- kind: widgets-doc
   ref: pre-wave-fs.md
 status: approved
 ---
@@ -81,8 +81,8 @@ def test_index_text_shows_version():
 
 
 def test_index_text_renders_product_tag():
-    line = _index_text([{"id": "c", "title": "C", "description": "d", "product": "osci"}])
-    assert "{osci}" in line
+    line = _index_text([{"id": "c", "title": "C", "description": "d", "product": "gadgets"}])
+    assert "{gadgets}" in line
 
 
 def test_select_sys_has_product_rule():
@@ -99,22 +99,22 @@ def test_answer_sys_has_correction_precedence():
 
 def test_answer_excludes_corrections_from_selection(tmp_path, monkeypatch):
     from hiveserve import agent
-    (tmp_path / "wms").mkdir(); (tmp_path / "wms" / "corrections").mkdir()
-    (tmp_path / "wms" / "c.md").write_text("---\ntitle: C\ntype: concept\nrelated: []\n---\n\nbody\n")
-    (tmp_path / "wms" / "corrections" / "fix.md").write_text(
-        "---\ntitle: Fix\ntype: correction\ncorrects: wms/c\nstatus: approved\n---\n\n## Correction\n\nfix\n")
+    (tmp_path / "widgets").mkdir(); (tmp_path / "widgets" / "corrections").mkdir()
+    (tmp_path / "widgets" / "c.md").write_text("---\ntitle: C\ntype: concept\nrelated: []\n---\n\nbody\n")
+    (tmp_path / "widgets" / "corrections" / "fix.md").write_text(
+        "---\ntitle: Fix\ntype: correction\ncorrects: widgets/c\nstatus: approved\n---\n\n## Correction\n\nfix\n")
     seen = {}
     class Sel:
         def complete(self, system, user):
             seen["known"] = user
-            return '{"card_ids": ["wms/c"]}'
+            return '{"card_ids": ["widgets/c"]}'
     class Ans:
         def complete(self, system, user): return "ok"
     res = agent.answer_question(tmp_path, "q?", select_llm=Sel(), answer_llm=Ans())
     # the correction id must NOT be offered to the selector...
-    assert "wms/corrections/fix" not in seen["known"]
+    assert "widgets/corrections/fix" not in seen["known"]
     # ...but it IS co-pulled into the bundle
-    assert "wms/corrections/fix" in res["bundle_ids"]
+    assert "widgets/corrections/fix" in res["bundle_ids"]
 
 
 def test_select_sys_has_client_rule():
@@ -140,8 +140,8 @@ def test_answer_question_client_scoped_selection(tmp_path):
     from hiveserve import agent
     concepts = tmp_path / "concepts"
     clients = tmp_path / "clients"
-    (concepts / "wms").mkdir(parents=True)
-    (concepts / "wms" / "a.md").write_text("---\ntitle: A\ndescription: d\nrelated: []\n---\n\nbody\n")
+    (concepts / "widgets").mkdir(parents=True)
+    (concepts / "widgets" / "a.md").write_text("---\ntitle: A\ndescription: d\nrelated: []\n---\n\nbody\n")
     (clients / "alpha" / "memory").mkdir(parents=True)
     (clients / "alpha" / "memory" / "m.md").write_text(
         "---\ntitle: M\ndescription: d\ntype: memory\nclient: alpha\nrelated: []\n---\n\nalpha mem\n")

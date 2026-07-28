@@ -66,7 +66,7 @@ IN DOM_DT_TBS;
 '''
 
 
-# --- Real-corpus fixtures (WMOS Oracle/DB2 DDL) -- Task 9 hardening ---------
+# --- Real-corpus fixtures (BENCH Oracle/DB2 DDL) -- Task 9 hardening ---------
 # Real snippet: Oracle/DBScripts/Product/CBO.sql, table RULES. Oracle's
 # constraint-state suffix `ENABLE` (appended by the DB export tool after every
 # `NOT NULL`) is not modeled by sqlglot's oracle grammar and must be tolerated
@@ -129,7 +129,7 @@ def test_not_null_enable_with_default_and_tablespace_tail():
     assert cols["RULE_HDR_ID"].not_null is False
 
 
-# Real snippet: Oracle/DBScripts/Product/SCPP.sql, tables MMC_AUDIT_HDR/DTL --
+# Real snippet: Oracle/DBScripts/Product/PLATFORM.sql, tables MMC_AUDIT_HDR/DTL --
 # a TABLE-LEVEL (not column-level) `CONSTRAINT ... PRIMARY KEY (...) ENABLE`
 # and `... FOREIGN KEY (...) REFERENCES ... ENABLE`: here `ENABLE` trails a
 # `)` rather than `NOT NULL`, so the fix must not assume NOT NULL precedes it.
@@ -273,7 +273,7 @@ def test_db2_bare_current_timestamp_default_is_tolerated():
     assert cols["LAST_UPDATED_DTTM"].not_null is True
 
 
-# Real snippet: Oracle/DBScripts/Product/SCPP.sql -- CREATE SEQUENCE whose
+# Real snippet: Oracle/DBScripts/Product/PLATFORM.sql -- CREATE SEQUENCE whose
 # name happens to contain the substring "TABLE" (SEQ_XTABLE_ID). Must never be
 # mistaken for a (failed) CREATE TABLE and logged as unparsed.
 SEQUENCE_REAL = "CREATE SEQUENCE SEQ_XTABLE_ID START WITH 1 INCREMENT BY 1;\n"

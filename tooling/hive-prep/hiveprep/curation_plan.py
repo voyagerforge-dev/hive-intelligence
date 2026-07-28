@@ -3,10 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import yaml
+from hiveprep.profile import load_curation_vocabulary
 from hiveprep.validate import DOC_TYPES   # DRY: single source of doc-type enum
 
-PLATFORMS = {"SCPP", "SCALE", "Active"}
-PRODUCTS = {"WMS", "LMS", "Slotting", "Omni", "OMS", "Billing Management", "oSCI"}
+# Values a curation plan may assign. These are one corpus's vocabulary, so they come from
+# the corpus profile. An empty set disables the check rather than rejecting every value:
+# a validator that fails closed on valid data is worse than no validator.
+_CURATION = load_curation_vocabulary()
+PLATFORMS: set[str] = set(_CURATION.get("platforms", ()))
+PRODUCTS: set[str] = set(_CURATION.get("products", ()))
 
 @dataclass
 class Plan:
@@ -37,9 +42,9 @@ def validate_plan(plan: Plan, corpus_root: Path | None = None) -> list[str]:
         p = e.get("path")
         if not p or not (root / p).exists():
             errors.append(f"include path missing on disk: '{p}'")
-        if e.get("platform") not in PLATFORMS:
+        if PLATFORMS and e.get("platform") not in PLATFORMS:
             errors.append(f"{p}: invalid platform '{e.get('platform')}'")
-        if e.get("product") not in PRODUCTS:
+        if PRODUCTS and e.get("product") not in PRODUCTS:
             errors.append(f"{p}: invalid product '{e.get('product')}'")
         if e.get("doc_type") not in DOC_TYPES:
             errors.append(f"{p}: invalid doc_type '{e.get('doc_type')}'")

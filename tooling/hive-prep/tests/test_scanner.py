@@ -15,12 +15,12 @@ from hiveprep.scanner import (
 def sample_tree(tmp_path):
     """Create a sample directory tree for testing."""
     # Client/Product/Version/Category structure
-    d1 = tmp_path / "ACME" / "WMOS" / "v2024" / "Config Guides"
+    d1 = tmp_path / "ACME" / "BENCH" / "v2024" / "Config Guides"
     d1.mkdir(parents=True)
     (d1 / "picking-config.pdf").write_text("content")
     (d1 / "screenshot.png").write_text("image data")
 
-    d2 = tmp_path / "ACME" / "WMOS" / "v2024" / "Training"
+    d2 = tmp_path / "ACME" / "BENCH" / "v2024" / "Training"
     d2.mkdir(parents=True)
     (d2 / "basics.docx").write_text("training content")
 
@@ -35,7 +35,7 @@ def sample_tree(tmp_path):
     (hd / "secret.pdf").write_text("hidden")
 
     # Unsupported extension
-    (tmp_path / "ACME" / "WMOS" / "v2024" / "Thumbs.db").write_text("thumbs")
+    (tmp_path / "ACME" / "BENCH" / "v2024" / "Thumbs.db").write_text("thumbs")
 
     # Empty directory
     (tmp_path / "EmptyDir").mkdir()
@@ -77,7 +77,7 @@ class TestScanDirectory:
         assert pdf.modified_iso  # non-empty ISO timestamp
         assert pdf.folder_depth == 4
         assert "ACME" in pdf.folder_segments
-        assert "WMOS" in pdf.folder_segments
+        assert "BENCH" in pdf.folder_segments
 
     def test_folder_segments_pipe_separated(self, sample_tree):
         records = list(scan_directory(sample_tree))
@@ -92,11 +92,11 @@ class TestScanDirectory:
     def test_folder_parser_integration(self, sample_tree):
         """When a folder_parser is provided, hint columns are populated."""
         def mock_parser(rel_path, segments):
-            return {"product_hint": "WMOS", "client_hint": "ACME"}
+            return {"product_hint": "BENCH", "client_hint": "ACME"}
 
         records = list(scan_directory(sample_tree, folder_parser=mock_parser))
         for rec in records:
-            assert rec.product_hint == "WMOS"
+            assert rec.product_hint == "BENCH"
             assert rec.client_hint == "ACME"
 
     def test_folder_parser_error_non_fatal(self, sample_tree):

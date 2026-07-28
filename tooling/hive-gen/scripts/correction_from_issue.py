@@ -7,8 +7,12 @@ from datetime import date
 from pathlib import Path
 
 from hivegen.corrections import record_to_correction
+from hivegen.profile import load_profile
 
-ALLOWED_PRODUCTS = {"wms", "osci", "slotting", "labour-management"}
+# Valid `product:` facet values, from the corpus profile. An empty set means the profile
+# does not declare them, and the check is skipped: a hardcoded list rejects every product
+# that exists in some other corpus, which is a validator that fails closed on valid data.
+ALLOWED_PRODUCTS = set(load_profile().card_products)
 
 
 def _field(body: str, heading: str) -> str:
@@ -43,7 +47,7 @@ def validate_record(rec: dict) -> None:
     product = rec.get("product", "")
     if "/" not in corrects:
         raise ValueError(f"invalid Target concept id '{corrects}': expected '<product>/<concept>'")
-    if product not in ALLOWED_PRODUCTS:
+    if ALLOWED_PRODUCTS and product not in ALLOWED_PRODUCTS:
         raise ValueError(f"unknown product '{product}': must be one of {sorted(ALLOWED_PRODUCTS)}")
     # defense in depth: no traversal / absolute segments anywhere in the id
     if ".." in corrects.split("/") or corrects.startswith("/"):

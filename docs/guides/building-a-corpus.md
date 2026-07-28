@@ -144,16 +144,18 @@ Then check isolation before you serve anything:
 cd ../hive-serve && uv run python -m hiveserve.run_eval progressive <your-qa-set>
 ```
 
-## A note on functional areas
+## The corpus profile
 
-`hive-gen` slices work by functional area, and the area map lives in `hivegen/load.py` as `AREAS`
-and `SUBAREAS`.
+Everything Hive needs to know that is true of *your* corpus and false of every other one lives in a
+single `corpus-profile.yaml`: the functional areas, the sub-slices, the guide-topic vocabulary, the
+product folder aliases, and the facet values the validators gate on.
 
-**This is currently source code, not configuration**, and the shipped map describes the corpus Hive
-was first built against. Pointing Hive at a different body of documents means editing that map.
-Making it configuration is tracked work; see
-[known limitations](../concepts/principles.md#known-limitations). The same applies to the
-guide-topic vocabulary in `hivegen/retopic.py`.
+It ships with the corpus, not with Hive, and is found via `CORPUS_PROFILE`, the working directory,
+or beside `ATOMIC_DIR`. `corpus-profile.example.yaml` in the product repository documents every
+section and, more usefully, how to get each one wrong.
+
+A missing profile is not an error. It becomes one only when something asks for a vocabulary that
+nothing defines, and that error names the setting rather than saying "unknown area".
 
 ## Keeping it true
 

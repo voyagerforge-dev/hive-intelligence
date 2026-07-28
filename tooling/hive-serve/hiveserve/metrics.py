@@ -113,8 +113,8 @@ def db_object_samples(concepts_dir) -> dict[str, int]:
 
     ``load_index`` deliberately skips ``concepts/<product>/db/**`` because those cards are
     resolved on demand rather than listed. That makes them invisible to okf_corpus_cards,
-    and on a Manhattan-shaped corpus they are the large majority of it: roughly 7,200 of
-    8,200 cards. An alert built only on okf_corpus_cards would therefore report a healthy
+    and on a corpus with a real schema behind it they are the large majority of it:
+    commonly several thousand of a few thousand more. An alert built only on okf_corpus_cards would therefore report a healthy
     corpus while almost all of it was missing.
 
     Counted by directory walk rather than by parsing frontmatter: this is a presence

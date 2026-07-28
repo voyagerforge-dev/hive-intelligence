@@ -5,7 +5,7 @@ from hivezendesk.model import IssueCard
 def _card(**kw):
     base = dict(ticket_id=14872, client="alpha", title="Wave allocation stalls",
                 description="d", module="allocation",
-                related=["wms/allocation/wave-replen-lag"], tags=["allocation"],
+                related=["widgets/allocation/wave-replen-lag"], tags=["allocation"],
                 what_happened="w", how_it_closed="h", closed_at="2026-03-14")
     base.update(kw)
     return IssueCard(**base)
@@ -20,7 +20,7 @@ def test_render_has_required_frontmatter_and_sections():
     assert "## What happened" in out
     assert "## How it closed" in out
     # a journal entry points at the explanation instead of restating it
-    assert "## See also" in out and "wms/allocation/wave-replen-lag" in out
+    assert "## See also" in out and "widgets/allocation/wave-replen-lag" in out
 
 
 def test_write_is_idempotent(tmp_path):

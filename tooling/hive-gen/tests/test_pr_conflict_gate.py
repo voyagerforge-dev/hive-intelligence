@@ -24,7 +24,7 @@ class FakeLLM:
 
 def test_pr_touches_memory():
     assert pcg.pr_touches_memory(["knowledge/okf/clients/alpha/memory/x.md"]) is True
-    assert pcg.pr_touches_memory(["knowledge/okf/concepts/wms/a.md"]) is False
+    assert pcg.pr_touches_memory(["knowledge/okf/concepts/widgets/a.md"]) is False
     assert pcg.pr_touches_memory(["README.md"]) is False
 
 
@@ -40,14 +40,14 @@ def test_verdict_to_status():
 def _tree(tmp_path):
     concepts = tmp_path / "concepts"
     clients = tmp_path / "clients"
-    (concepts / "wms").mkdir(parents=True)
-    (concepts / "wms" / "alloc.md").write_text("---\ntitle: A\ntype: concept\n---\n\nbody\n")
+    (concepts / "widgets").mkdir(parents=True)
+    (concepts / "widgets" / "alloc.md").write_text("---\ntitle: A\ntype: concept\n---\n\nbody\n")
     md = clients / "alpha" / "memory"
     md.mkdir(parents=True)
     for s in ("m1", "m2"):
         (md / f"{s}.md").write_text(
-            "---\ntype: memory\nclient: alpha\nproduct: wms\nstatus: approved\n"
-            "related: [wms/alloc]\n---\n\n## Memory\n\n" + s + " note\n")
+            "---\ntype: memory\nclient: alpha\nproduct: widgets\nstatus: approved\n"
+            "related: [widgets/alloc]\n---\n\n## Memory\n\n" + s + " note\n")
     return concepts, clients
 
 

@@ -9,7 +9,7 @@ import re
 import httpx
 
 PAGE_PROMPT = (
-    "Convert THIS single page of a Manhattan WMS document to clean GitHub-flavored Markdown. "
+    "Convert THIS single page of a document to clean GitHub-flavored Markdown. "
     "Preserve tables as markdown tables; keep headings and lists. For any figure/diagram/screenshot, "
     "insert a concise factual description in italics, e.g. *Figure: <what is visibly shown>*. "
     "Output ONLY the markdown for this page, no preamble, no commentary."

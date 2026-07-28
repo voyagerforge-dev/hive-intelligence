@@ -5,11 +5,11 @@ from hivezendesk.orgs import load_org_ids
 YAML = """
 customers:
   - code: alpha
-    platform: WMOS
+    platform: BENCH
     zendesk_orgs:
       - id: 10000000000001
   - code: beta
-    platform: WMOS
+    platform: BENCH
     zendesk_orgs:
       - id: 10000000002
         umbrella: true

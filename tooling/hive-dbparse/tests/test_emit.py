@@ -277,4 +277,6 @@ def test_product_reaches_every_rendered_reference():
     assert "widgets/db/tables/CUSTOMER" in md
     assert "widgets/db/plsql/ORDERS_AI" in md
     assert _frontmatter_dict(md)["product"] == "widgets"
-    assert "wms/" not in md
+    # No other product's prefix leaks in: every reference in the card must belong to the
+    # product it was rendered for, or the links resolve to nothing.
+    assert "gadgets/" not in md and "db/db/" not in md

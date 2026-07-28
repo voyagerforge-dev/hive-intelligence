@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Local atomic-markdown source (scpp-prep never writes markdown to R2, so the
+    # Local atomic-markdown source (hive-prep never writes markdown to object storage, so the
     # curated atomic markdown lives on disk). When set, it is the source of truth
     # and R2 is not read. Leave empty to fall back to the R2 reader.
     atomic_dir: str = ""

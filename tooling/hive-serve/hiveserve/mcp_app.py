@@ -55,7 +55,7 @@ def build_mcp(settings, conn_factory) -> FastMCP:
     @track_tool("find_db_objects")
     def find_db_objects(query: str, kind: str | None = None, module: str | None = None,
                         limit: int = 20) -> list[dict]:
-        """Search WMOS database objects (tables, packages, procedures, …) by name or by what
+        """Search database objects (tables, packages, procedures, …) by name or by what
         they mean. Use for schema-level questions (specific tables/columns/keys/logic); then
         load the returned ids with `resolve`/`get_card`."""
         return dbobjects.search(cdir, query, kind=kind, module=module, limit=limit)

@@ -8,8 +8,8 @@ from hivegen.taxonomy import Concept
 def test_build_okf_card_frontmatter_and_body():
     md = build_okf_card({
         "type": "concept", "title": "Wave Template", "description": "d",
-        "tags": ["waving"], "resource": "wmos",
-        "sources": [{"kind": "wms-doc", "ref": "example_prefix/docs/wave-template.md"}],
+        "tags": ["waving"], "resource": "bench",
+        "sources": [{"kind": "source-doc", "ref": "example_prefix/docs/wave-template.md"}],
         "related": ["cartonization"], "distilled_at": "2026-06-29", "status": "draft",
     }, "Body prose.")
     assert md.startswith("---\n")
@@ -31,7 +31,9 @@ def test_distill_concept_emits_draft_card():
     md = distill_concept(concept, docs, FakeLLM(), max_chars=1000, today="2026-06-29",
                          related_ids=["replenishment"])
     fm = yaml.safe_load(md.split("---")[1])
-    assert fm["status"] == "draft" and fm["type"] == "concept" and fm["resource"] == "wmos"
+    # `resource` stays empty until conformance_pass writes the served-card URI. A
+    # placeholder there reads like a real value and survives into a shipped card.
+    assert fm["status"] == "draft" and fm["type"] == "concept" and fm["resource"] == ""
     assert fm["sources"][0]["ref"] == "example_prefix/docs/wave-template.md"
     assert "Curated prose." in md
     assert fm["related"] == ["replenishment"]

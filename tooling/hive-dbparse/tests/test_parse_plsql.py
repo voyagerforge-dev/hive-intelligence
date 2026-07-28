@@ -109,7 +109,7 @@ def test_schema_qualified_name_is_captured_whole():
     assert objs[0].name == "app.calc"
 
 
-# --- Real-corpus fixtures (WMOS Oracle/DB2 DDL) -- Task 9 hardening ---------
+# --- Real-corpus fixtures (BENCH Oracle/DB2 DDL) -- Task 9 hardening ---------
 # Real snippet: Oracle/DBScripts/Product/PLSQL_Objects/ACCESSORIAL_RATE_VIEW.sql
 # -- Oracle's `FORCE` view modifier sits between `CREATE OR REPLACE` and the
 # `VIEW` keyword, so the kind-keyword match must skip past it.

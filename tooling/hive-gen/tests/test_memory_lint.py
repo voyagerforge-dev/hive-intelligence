@@ -25,28 +25,42 @@ def _mem(d, client, slug, **fm):
 def test_lint_clean(tmp_path):
     concepts = tmp_path / "concepts"
     clients = tmp_path / "clients"
-    _concept(concepts, "wms/alloc")
-    _mem(clients, "alpha", "m1", product="wms", status="approved", related="[wms/alloc]", tags="[a]")
+    _concept(concepts, "widgets/alloc")
+    _mem(clients, "alpha", "m1", product="widgets", status="approved", related="[widgets/alloc]", tags="[a]")
     errors, candidates = lint(clients, concepts)
     assert errors == [] and candidates == []
 
 
-def test_lint_dangling_related_and_bad_product(tmp_path):
+def test_lint_dangling_related_and_bad_product(tmp_path, monkeypatch):
+    monkeypatch.setattr(mod, "ALLOWED_PRODUCTS", {"widgets"})
     concepts = tmp_path / "concepts"
     clients = tmp_path / "clients"
     concepts.mkdir()
-    _mem(clients, "alpha", "m1", product="evil", status="approved", related="[wms/missing]")
+    _mem(clients, "alpha", "m1", product="evil", status="approved",
+         related="[widgets/missing]")
     errors, _ = lint(clients, concepts)
     assert any("product" in e for e in errors)
-    assert any("wms/missing" in e for e in errors)
+    assert any("widgets/missing" in e for e in errors)
+
+
+def test_lint_skips_the_product_check_when_the_profile_declares_none(tmp_path, monkeypatch):
+    """Empty means "not configured". Rejecting every product would make the linter
+    unusable against any corpus whose vocabulary is not baked into the product."""
+    monkeypatch.setattr(mod, "ALLOWED_PRODUCTS", set())
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    concepts.mkdir()
+    _mem(clients, "alpha", "m1", product="anything", status="approved", related="[]")
+    errors, _ = lint(clients, concepts)
+    assert not any("product" in e for e in errors)
 
 
 def test_lint_conflict_candidate_same_client_shared_related(tmp_path):
     concepts = tmp_path / "concepts"
     clients = tmp_path / "clients"
-    _concept(concepts, "wms/alloc")
-    a = _mem(clients, "alpha", "m1", product="wms", status="approved", related="[wms/alloc]")
-    b = _mem(clients, "alpha", "m2", product="wms", status="approved", related="[wms/alloc]")
-    _mem(clients, "acme", "m3", product="wms", status="approved", related="[wms/alloc]")  # other client
+    _concept(concepts, "widgets/alloc")
+    a = _mem(clients, "alpha", "m1", product="widgets", status="approved", related="[widgets/alloc]")
+    b = _mem(clients, "alpha", "m2", product="widgets", status="approved", related="[widgets/alloc]")
+    _mem(clients, "acme", "m3", product="widgets", status="approved", related="[widgets/alloc]")  # other client
     _, candidates = lint(clients, concepts)
     assert {frozenset(c) for c in candidates} == {frozenset((a, b))}   # same client only

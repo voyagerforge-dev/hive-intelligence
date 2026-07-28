@@ -28,7 +28,7 @@ def _sample(name, labels):
 
 def test_endpoint_label_normalizes_and_skips_mcp():
     assert metrics._endpoint_label("/healthz") == "/healthz"
-    assert metrics._endpoint_label("/card/osci/omni-framework") == "/card/{id}"
+    assert metrics._endpoint_label("/card/gadgets/omni-framework") == "/card/{id}"
     assert metrics._endpoint_label("/mcp") is None       # skipped: measured at tool layer
     assert metrics._endpoint_label("/mcp/anything") is None
     assert metrics._endpoint_label("/metrics") is None   # skipped: self-scrape pollution
@@ -79,7 +79,7 @@ def test_content_collector_caches_within_ttl():
 
     def sample():
         calls["n"] += 1
-        return {"cards": {("wms", "operational"): 3, ("osci", None): 1},
+        return {"cards": {("widgets", "operational"): 3, ("gadgets", None): 1},
                 "ledger": {"objective": 2, "memory": 5}}
 
     coll = metrics.ContentCollector(sample, ttl_s=30.0, clock=lambda: clock["t"])
@@ -94,7 +94,7 @@ def test_content_collector_caches_within_ttl():
 
 def test_content_collector_emits_gauges():
     def sample():
-        return {"cards": {("wms", "operational"): 3},
+        return {"cards": {("widgets", "operational"): 3},
                 "ledger": {"objective": 2, "memory": 5}}
     coll = metrics.ContentCollector(sample, ttl_s=30.0, clock=lambda: 0.0)
     families = {m.name: m for m in coll.collect()}
@@ -102,7 +102,7 @@ def test_content_collector_emits_gauges():
     assert "okf_ledger_rows" in families
     card_samples = {(s.labels["product"], s.labels["regime"]): s.value
                     for s in families["okf_corpus_cards"].samples}
-    assert card_samples[("wms", "operational")] == 3
+    assert card_samples[("widgets", "operational")] == 3
     ledger_samples = {s.labels["table"]: s.value
                       for s in families["okf_ledger_rows"].samples}
     assert ledger_samples == {"objective": 2, "memory": 5}
@@ -130,7 +130,7 @@ def test_content_collector_survives_sample_failure():
         calls["n"] += 1
         if calls["fail"]:
             raise RuntimeError("transient ledger read error")
-        return {"cards": {("wms", "operational"): 3}, "ledger": {"objective": 2, "memory": 5}}
+        return {"cards": {("widgets", "operational"): 3}, "ledger": {"objective": 2, "memory": 5}}
 
     coll2 = metrics.ContentCollector(flaky_sample, ttl_s=30.0, clock=lambda: clock["t"])
     list(coll2.collect())  # primes good cache
@@ -139,7 +139,7 @@ def test_content_collector_survives_sample_failure():
     families2 = {m.name: m for m in coll2.collect()}
     card_samples = {(s.labels["product"], s.labels["regime"]): s.value
                     for s in families2["okf_corpus_cards"].samples}
-    assert card_samples[("wms", "operational")] == 3
+    assert card_samples[("widgets", "operational")] == 3
     ledger_samples = {s.labels["table"]: s.value
                       for s in families2["okf_ledger_rows"].samples}
     assert ledger_samples == {"objective": 2, "memory": 5}
@@ -148,11 +148,11 @@ def test_content_collector_survives_sample_failure():
 def test_content_samples_counts_fixture_corpus(tmp_path):
     from hiveserve import ledger
     concepts = tmp_path / "concepts"; clients = tmp_path / "clients"
-    (concepts / "wms").mkdir(parents=True)
-    (concepts / "wms" / "a.md").write_text(
-        "---\ntitle: A\ndescription: d\nproduct: wms\nregime: operational\n---\nbody\n")
-    (concepts / "wms" / "b.md").write_text(
-        "---\ntitle: B\ndescription: d\nproduct: wms\nregime: operational\n---\nbody\n")
+    (concepts / "widgets").mkdir(parents=True)
+    (concepts / "widgets" / "a.md").write_text(
+        "---\ntitle: A\ndescription: d\nproduct: widgets\nregime: operational\n---\nbody\n")
+    (concepts / "widgets" / "b.md").write_text(
+        "---\ntitle: B\ndescription: d\nproduct: widgets\nregime: operational\n---\nbody\n")
     db = tmp_path / "obj.db"
 
     def factory():
@@ -161,7 +161,7 @@ def test_content_samples_counts_fixture_corpus(tmp_path):
         ledger.start_objective(conn, owner="o", mode="investigate", goal="g")
         ledger.remember(conn, owner="o", text="t")
     out = metrics.content_samples(str(concepts), str(clients), factory)
-    assert out["cards"][("wms", "operational")] == 2
+    assert out["cards"][("widgets", "operational")] == 2
     assert out["ledger"] == {"objective": 1, "memory": 1}
 
 
@@ -174,16 +174,16 @@ def test_content_samples_counts_fixture_corpus(tmp_path):
 
 def test_db_object_samples_counts_the_on_demand_tier(tmp_path):
     concepts = tmp_path / "concepts"
-    (concepts / "wms" / "db" / "plsql").mkdir(parents=True)
-    (concepts / "wms" / "db" / "tables").mkdir(parents=True)
-    (concepts / "wms" / "db" / "plsql" / "A_VIEW.md").write_text("---\ntype: dbobject\n---\n")
-    (concepts / "wms" / "db" / "tables" / "B_TAB.md").write_text("---\ntype: dbobject\n---\n")
+    (concepts / "widgets" / "db" / "plsql").mkdir(parents=True)
+    (concepts / "widgets" / "db" / "tables").mkdir(parents=True)
+    (concepts / "widgets" / "db" / "plsql" / "A_VIEW.md").write_text("---\ntype: dbobject\n---\n")
+    (concepts / "widgets" / "db" / "tables" / "B_TAB.md").write_text("---\ntype: dbobject\n---\n")
     # index.md and log.md are bookkeeping, not cards, and must not be counted.
-    (concepts / "wms" / "db" / "index.md").write_text("# index\n")
+    (concepts / "widgets" / "db" / "index.md").write_text("# index\n")
     # An ordinary concept sits outside db/ and belongs to the other gauge.
-    (concepts / "wms" / "ordinary.md").write_text("---\ntitle: T\nproduct: wms\n---\n")
+    (concepts / "widgets" / "ordinary.md").write_text("---\ntitle: T\nproduct: widgets\n---\n")
 
-    assert metrics.db_object_samples(str(concepts)) == {"wms": 2}
+    assert metrics.db_object_samples(str(concepts)) == {"widgets": 2}
 
 
 def test_db_object_samples_is_empty_when_the_corpus_is_missing(tmp_path):
@@ -196,9 +196,9 @@ def test_db_object_gauge_is_exported_alongside_the_card_gauge(tmp_path):
     from hiveserve import ledger
 
     concepts = tmp_path / "concepts"
-    (concepts / "wms" / "db").mkdir(parents=True)
-    (concepts / "wms" / "db" / "T.md").write_text("---\ntype: dbobject\n---\n")
-    (concepts / "wms" / "c.md").write_text("---\ntitle: C\nproduct: wms\n---\n")
+    (concepts / "widgets" / "db").mkdir(parents=True)
+    (concepts / "widgets" / "db" / "T.md").write_text("---\ntype: dbobject\n---\n")
+    (concepts / "widgets" / "c.md").write_text("---\ntitle: C\nproduct: widgets\n---\n")
     db = tmp_path / "obj.db"
 
     def factory():
@@ -213,7 +213,7 @@ def test_db_object_gauge_is_exported_alongside_the_card_gauge(tmp_path):
 
     assert "okf_corpus_db_objects" in families
     assert {s.labels["product"]: s.value
-            for s in families["okf_corpus_db_objects"].samples} == {"wms": 1.0}
+            for s in families["okf_corpus_db_objects"].samples} == {"widgets": 1.0}
     # The db tier must NOT be double-counted into okf_corpus_cards.
     assert sum(s.value for s in families["okf_corpus_cards"].samples) == 1.0
 

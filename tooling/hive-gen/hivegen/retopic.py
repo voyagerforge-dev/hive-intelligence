@@ -43,7 +43,13 @@ def get_field(fm, key):
     return m.group(1).strip() if m else ""
 
 def basename(stem):
-    s = re.sub(r"^wms-wmos-warehouse-management-for-open-systems-", "", stem)
+    # Long shared filename prefixes carry no signal and crowd the model's view of the
+    # title. The prefix itself is corpus naming, so it comes from the profile.
+    s = stem
+    for prefix in _PROFILE.filename_prefixes:
+        if s.startswith(prefix):
+            s = s[len(prefix):]
+            break
     return re.sub(r"^20\d\d-", "", s)
 
 def newest_docs():
@@ -60,7 +66,7 @@ def newest_docs():
     return [v[1] for v in best.values()]
 
 _SYSTEM = (
-    "You classify a Manhattan WMOS guide/reference document into exactly ONE topic from the list. "
+    "You classify a guide or reference document into exactly ONE topic from the list. "
     "Base it on the document's SUBJECT, not incidental mentions. Reply ONLY {\"topic\": \"<exact topic string>\"}."
 )
 

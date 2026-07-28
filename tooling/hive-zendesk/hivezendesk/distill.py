@@ -1,7 +1,7 @@
 """Scrubbed ticket thread -> a thin JOURNAL ENTRY.
 
 Deliberately NOT a knowledge card. The concept corpus (996 cards) and the db-object tier
-already explain how WMOS behaves; re-stating that per ticket would duplicate it at scale
+already explain how the product behaves; re-stating that per ticket would duplicate it at scale
 and dilute retrieval. A journal entry exists to make a consultant *aware* that this area
 has bitten this client before, and to point at the concept card that explains why.
 
@@ -22,14 +22,14 @@ from .scrub import scrub_text
 REQUIRED = ("what_happened", "module")
 
 SYSTEM = (
-    "You write a one-entry incident JOURNAL line for a Manhattan WMOS consultancy, from a "
+    "You write a one-entry incident JOURNAL line from a "
     "resolved support ticket. Reply with ONE JSON object and nothing else.\n"
     "Keys: what_happened (one sentence), how_it_closed (one sentence, empty string if the "
-    "ticket does not say), module (the WMOS functional area, lowercase, e.g. allocation, "
+    "ticket does not say), module (the functional area, lowercase, e.g. allocation, "
     "replenishment, inbound, cycle-count, interfaces, wave), tags (array of short "
     "lowercase keywords), routine (true if this is a routine scheduled request rather "
     "than a fault).\n"
-    "DO NOT explain how WMOS works - that is documented elsewhere and repeating it is "
+    "DO NOT explain how the product works. That is documented elsewhere and repeating it is "
     "worse than useless. Record only what happened at this site and how it ended.\n"
     "Write generic, reusable text. STRIP ALL PII: no person names, email addresses, phone "
     "numbers, ID numbers or account identifiers - refer to roles instead (for example "

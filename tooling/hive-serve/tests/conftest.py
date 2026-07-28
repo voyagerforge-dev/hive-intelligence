@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from hiveserve.config import Settings
 from hiveserve.server import build_http_app
 
-CARD = "---\ntitle: Wave Replen\ndescription: replen feeds waves\nrelated: []\nsources: [wms.md]\n---\nBody.\n"
+CARD = "---\ntitle: Wave Replen\ndescription: replen feeds waves\nrelated: []\nsources: [widgets.md]\n---\nBody.\n"
 
 
 @pytest.fixture

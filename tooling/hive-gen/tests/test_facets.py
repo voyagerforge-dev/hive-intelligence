@@ -11,8 +11,8 @@ def test_read_facets_and_regime():
 
 
 def test_stamp_is_idempotent_and_preserves_body():
-    once = stamp_facets(CARD, {"regime": "ops", "product": "wms"})
-    twice = stamp_facets(once, {"regime": "ops", "product": "wms"})
+    once = stamp_facets(CARD, {"regime": "ops", "product": "widgets"})
+    twice = stamp_facets(once, {"regime": "ops", "product": "widgets"})
     assert once == twice                      # idempotent
     assert once.count("regime:") == 1
     assert once.endswith("Body.\n")           # body untouched
@@ -35,11 +35,11 @@ def test_cross_facet_edges_flags_crossing():
 
 
 _GUIDE = ("---\ntitle: X\nsources:\n"
-          "- kind: wms-doc\n  ref: wms-wmos-warehouse-management-for-open-systems-2020-x-guide.md\n"
-          "- kind: wms-doc\n  ref: wms-wmos-warehouse-management-for-open-systems-2018-x-guide.md\n"
+          "- kind: widgets-doc\n  ref: widgets-bench-warehouse-management-for-open-systems-2020-x-guide.md\n"
+          "- kind: widgets-doc\n  ref: widgets-bench-warehouse-management-for-open-systems-2018-x-guide.md\n"
           "---\nbody\n")
 _FS = ("---\ntitle: Y\nsources:\n"
-       "- kind: wms-doc\n  ref: wms-wmos-functional-specification-50000-outbound-distribution-y-fs.md\n"
+       "- kind: widgets-doc\n  ref: widgets-bench-functional-specification-50000-outbound-distribution-y-fs.md\n"
        "---\nbody\n")
 
 

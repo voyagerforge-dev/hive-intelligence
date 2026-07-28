@@ -19,8 +19,10 @@ def _frontmatter(card: IssueCard, version: str) -> dict:
         "title": card.title,
         "description": card.description,
         "client": card.client,
-        "product": "wms",
-        "platform": "wmos",
+        # Set by relink from the entry's own evidence. Omitted rather than written empty
+        # when undecided: a card claiming product "" is worse than one claiming nothing.
+        **({"product": card.product} if card.product else {}),
+        **({"platform": card.platform} if card.platform else {}),
         "module": card.module,
         "related": card.related,
         "tags": card.tags,

@@ -11,9 +11,9 @@ build = mod.build
 
 
 def test_build_scaffolds_draft(tmp_path):
-    p = build("alpha", "wms", "Second scan at confirm", out_dir=tmp_path, timestamp="2026-07-12")
+    p = build("alpha", "widgets", "Second scan at confirm", out_dir=tmp_path, timestamp="2026-07-12")
     assert p == tmp_path / "alpha" / "memory" / "second-scan-at-confirm.md"
     rec = memory_to_record(p.read_text())
-    assert rec["client"] == "alpha" and rec["product"] == "wms"
+    assert rec["client"] == "alpha" and rec["product"] == "widgets"
     assert rec["status"] == "draft"
     assert rec["title"] == "Second scan at confirm"

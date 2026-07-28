@@ -15,7 +15,7 @@ def test_cli_lists_sovereign_commands():
 
 def test_validate_atomic_on_fixture(tmp_path):
     d = tmp_path / "atomic"; d.mkdir()
-    (d / "a.md").write_text('---\ntitle: "A"\nslug: a\nplatform: SCPP\nproduct: WMS\n'
+    (d / "a.md").write_text('---\ntitle: "A"\nslug: a\nplatform: PLATFORM\nproduct: WIDGETS\n'
                             'version: "2013"\ndoc_type: functional-flow\nstatus: active\n---\n\nBody\n')
     r = CliRunner().invoke(cli, ["validate-atomic", str(d)])
     assert r.exit_code == 0 and "0 errors" in r.output

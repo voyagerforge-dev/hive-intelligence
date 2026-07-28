@@ -50,8 +50,9 @@ def distill_concept(concept: Concept, docs: list[Doc], llm: ChatLLM, *,
         "tags": data.get("tags", []),
         # `resource` is upgraded to the served-card URI, and `## Related`/`# Citations`
         # body sections are generated, by scripts/conformance_pass.py after promote+facet.
-        "resource": "wmos",
-        "sources": [{"kind": "wms-doc", "ref": d.name} for d in docs],
+        # Empty until then rather than a placeholder that reads like a real value.
+        "resource": "",
+        "sources": [{"kind": "source-doc", "ref": d.name} for d in docs],
         "related": related,
         "distilled_at": today,
         "timestamp": today,  # OKF-recommended last-change field

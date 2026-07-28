@@ -75,11 +75,6 @@ genuinely runnable by someone who has never seen the estate it was built in.
 
 Stated here rather than discovered later.
 
-**Vendor coupling remains in three places.** `hive-gen`'s functional-area map, its guide-topic
-vocabulary, and `hive-dbparse`'s card id prefix are still specific to the corpus Hive was first
-built against. They work, and they are configurable only by editing source. Making them
-configuration is tracked work.
-
 **Several settings are named after products rather than roles.** `BIFROST_*` means any
 OpenAI-compatible gateway, `DOCLING_*` means the document converter, `QWEN_*` means the vision
 endpoint. None requires the named product. Renaming them is a breaking change for every existing

@@ -122,3 +122,36 @@ linking:
   # matching an entry to a card. The generic English and support-desk stop words are
   # built in; these are the corpus-specific additions.
   extra_stopwords: [widget, acme]
+
+# ---------------------------------------------------------------------------
+# facets  (hive-gen validators, index generation)
+# ---------------------------------------------------------------------------
+# The canonical `product:` values a card may carry, and their display titles.
+#
+# The card validators gate on this list. Leave it out and the product check is SKIPPED
+# rather than failing: a validator holding a hardcoded vocabulary rejects every product
+# that is valid in some other corpus, which fails closed on good data.
+
+facets:
+  product: [widgets, gadgets]
+  titles:
+    widgets: "Widget Manufacturing"
+    gadgets: "Gadget Assembly"
+
+# ---------------------------------------------------------------------------
+# curation  (hive-prep plan validation)
+# ---------------------------------------------------------------------------
+# Values a curation plan may assign. Same rule: omit to skip the check.
+
+curation:
+  products: [Widgets, Gadgets, Sprockets]
+  platforms: [Bench, Line]
+
+# ---------------------------------------------------------------------------
+# filename_prefixes  (hive-gen retopic)
+# ---------------------------------------------------------------------------
+# Long prefixes shared by most filenames, stripped before a title is shown to a model.
+# They carry no signal and crowd out the part of the name that does.
+
+filename_prefixes:
+  - acme-widgets-manufacturing-

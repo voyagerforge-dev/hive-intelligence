@@ -12,12 +12,11 @@ import sys
 
 import yaml
 
-PRODUCT_NAMES = {
-    "wms": "Warehouse Management for Open Systems (WMOS)",
-    "osci": "Supply Chain Intelligence (oSCI)",
-    "slotting": "Slotting Optimization",
-    "labour-management": "Labour Management",
-}
+from hivegen.profile import load_profile
+
+# Display titles for product facets. Corpus vocabulary, so it comes from the profile; a
+# product with no declared title falls back to its facet value, which reads acceptably.
+PRODUCT_NAMES = load_profile().product_titles
 
 
 def _cards_by_product(concepts_dir):
@@ -50,8 +49,8 @@ def generate(concepts_dir):
     # root index
     root = ['---', 'okf_version: "0.1"', '---', "",
             "# Knowledge Bundle Index", "",
-            "Curated OKF knowledge for the Manhattan Supply Chain Platform (SCPP), "
-            f"organized by product. {total} concepts across {len(by_product)} products.", "",
+            f"Curated OKF knowledge, organised by product. {total} concepts across "
+            f"{len(by_product)} products.", "",
             "## Products", ""]
     for product in sorted(by_product, key=lambda k: -len(by_product[k])):
         name = PRODUCT_NAMES.get(product, product)

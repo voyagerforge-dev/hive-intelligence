@@ -53,13 +53,13 @@ def test_external_ref_roundtrip(tmp_path):
 
 def test_memory_remember_roundtrip(tmp_path):
     c = _conn(tmp_path)
-    m = ledger.remember(c, owner="alice", text="ALPHA pick-confirm needs a second scan",
-                        tags=["alpha", "pick-confirm"], card_ids=["wms/pick-confirm"],
+    m = ledger.remember(c, owner="alice", text="Alpha pick-confirm needs a second scan",
+                        tags=["alpha", "pick-confirm"], card_ids=["widgets/pick-confirm"],
                         external_ref={"provider": "zendesk", "id": "1421"}, client="alpha")
     assert m["owner"] == "alice" and m["client"] == "alpha"
-    assert m["text"] == "ALPHA pick-confirm needs a second scan"
+    assert m["text"] == "Alpha pick-confirm needs a second scan"
     assert m["tags"] == ["alpha", "pick-confirm"]
-    assert m["card_ids"] == ["wms/pick-confirm"]
+    assert m["card_ids"] == ["widgets/pick-confirm"]
     assert m["external_ref"] == {"provider": "zendesk", "id": "1421"}
     assert m["visibility"] == "private"
     got = ledger.get_memory(c, owner="alice", memory_id=m["id"])
@@ -75,24 +75,24 @@ def test_memory_defaults_minimal(tmp_path):
 
 def test_memory_recall_filters(tmp_path):
     c = _conn(tmp_path)
-    ledger.remember(c, owner="alice", text="ALPHA wave replen is nightly",
-                    tags=["alpha", "replen"], card_ids=["wms/replenishment"], client="alpha")
-    ledger.remember(c, owner="alice", text="ACME slotting uses zones",
-                    tags=["acme", "slotting"], card_ids=["slotting/zones"], client="acme")
+    ledger.remember(c, owner="alice", text="Alpha wave replen is nightly",
+                    tags=["alpha", "replen"], card_ids=["widgets/replenishment"], client="alpha")
+    ledger.remember(c, owner="alice", text="ACME sprockets uses zones",
+                    tags=["acme", "sprockets"], card_ids=["sprockets/zones"], client="acme")
     ledger.remember(c, owner="alice", text="generic ops note", tags=["ops"])
 
     assert {m["text"] for m in ledger.recall(c, owner="alice")} == {
-        "ALPHA wave replen is nightly", "ACME slotting uses zones", "generic ops note"}
+        "Alpha wave replen is nightly", "ACME sprockets uses zones", "generic ops note"}
     assert [m["text"] for m in ledger.recall(c, owner="alice", query="replen")] == \
-        ["ALPHA wave replen is nightly"]
+        ["Alpha wave replen is nightly"]
     assert [m["text"] for m in ledger.recall(c, owner="alice", query="alpha")] == \
-        ["ALPHA wave replen is nightly"]  # matches a tag
+        ["Alpha wave replen is nightly"]  # matches a tag
     assert [m["text"] for m in ledger.recall(c, owner="alice", client="acme")] == \
-        ["ACME slotting uses zones"]
-    assert [m["text"] for m in ledger.recall(c, owner="alice", card_id="wms/replenishment")] == \
-        ["ALPHA wave replen is nightly"]
+        ["ACME sprockets uses zones"]
+    assert [m["text"] for m in ledger.recall(c, owner="alice", card_id="widgets/replenishment")] == \
+        ["Alpha wave replen is nightly"]
     assert [m["text"] for m in ledger.recall(c, owner="alice", tags=["alpha", "replen"])] == \
-        ["ALPHA wave replen is nightly"]
+        ["Alpha wave replen is nightly"]
     assert ledger.recall(c, owner="alice", tags=["alpha", "missing"]) == []
     assert len(ledger.recall(c, owner="alice", limit=1)) == 1
 
@@ -114,18 +114,18 @@ def test_memory_recall_tag_branch_isolated(tmp_path):
 
 def test_memory_recall_and_combination_and_subset(tmp_path):
     c = _conn(tmp_path)
-    ledger.remember(c, owner="alice", text="ALPHA wave replen is nightly",
+    ledger.remember(c, owner="alice", text="Alpha wave replen is nightly",
                     tags=["replen", "wave"], client="alpha")
-    ledger.remember(c, owner="alice", text="ACME slotting uses zones",
-                    tags=["slotting"], client="acme")
+    ledger.remember(c, owner="alice", text="ACME sprockets uses zones",
+                    tags=["sprockets"], client="acme")
     # AND: client matches the alpha row but query does not -> empty
     assert ledger.recall(c, owner="alice", client="alpha", query="acme") == []
     # AND: both filters match the same row
     assert [m["text"] for m in ledger.recall(c, owner="alice", client="alpha", query="replen")] == \
-        ["ALPHA wave replen is nightly"]
+        ["Alpha wave replen is nightly"]
     # subset: requesting a proper subset of a row's tags still matches
     assert [m["text"] for m in ledger.recall(c, owner="alice", tags=["replen"])] == \
-        ["ALPHA wave replen is nightly"]
+        ["Alpha wave replen is nightly"]
 
 
 def test_memory_recall_orders_newest_first(tmp_path):
@@ -159,14 +159,14 @@ def test_memory_visibility_flip(tmp_path):
 
 def test_promotion_record_shape(tmp_path):
     c = _conn(tmp_path)
-    m = ledger.remember(c, owner="alice", text="ALPHA mod: second scan on pick-confirm",
-                        tags=["alpha", "pick-confirm"], card_ids=["wms/pick-confirm"],
+    m = ledger.remember(c, owner="alice", text="Alpha mod: second scan on pick-confirm",
+                        tags=["alpha", "pick-confirm"], card_ids=["widgets/pick-confirm"],
                         external_ref={"provider": "zendesk", "id": "1421"}, client="alpha")
     rec = ledger.promotion_record(m, owner="alice")
     assert rec == {
         "client": "alpha", "product": "", "title": "",
-        "memory": "ALPHA mod: second scan on pick-confirm", "context": "",
-        "platform": "", "related": ["wms/pick-confirm"], "tags": ["alpha", "pick-confirm"],
+        "memory": "Alpha mod: second scan on pick-confirm", "context": "",
+        "platform": "", "related": ["widgets/pick-confirm"], "tags": ["alpha", "pick-confirm"],
         "citations": [], "supersedes": [],
         "external_ref": {"provider": "zendesk", "id": "1421"},
         "submitted_by": "alice", "status": "approved",
@@ -180,7 +180,7 @@ def test_promote_memory_guards(tmp_path):
     assert ledger.promote_memory(c, owner="alice", memory_id=m0["id"]) == {"error": "client_required"}
     assert ledger.get_memory(c, owner="alice", memory_id=m0["id"])["visibility"] == "private"
     m1 = ledger.remember(c, owner="alice", text="alpha note", tags=["alpha"],
-                         card_ids=["wms/pick-confirm"], client="alpha")
+                         card_ids=["widgets/pick-confirm"], client="alpha")
     out = ledger.promote_memory(c, owner="alice", memory_id=m1["id"])
     assert out["memory_id"] == m1["id"]
     assert out["record"]["client"] == "alpha" and out["record"]["submitted_by"] == "alice"

@@ -8,7 +8,7 @@ CARD = """---
 title: Wave Replen
 description: replen feeds waves
 related: []
-sources: [wms.md]
+sources: [widgets.md]
 ---
 Body.
 """
@@ -37,7 +37,7 @@ def test_resolve(tmp_path):
 
 
 def test_card_route_accepts_path_id_with_slash(tmp_path):
-    sub = tmp_path / "osci"
+    sub = tmp_path / "gadgets"
     sub.mkdir()
     (sub / "omni-framework.md").write_text(
         "---\ntitle: Omni\ndescription: d\nrelated: []\nsources: []\n---\n\nOmni body.\n")
@@ -45,7 +45,7 @@ def test_card_route_accepts_path_id_with_slash(tmp_path):
     app = FastAPI()
     app.include_router(build_rest_router(s))
     c = TestClient(app)
-    r = c.get("/card/osci/omni-framework")
+    r = c.get("/card/gadgets/omni-framework")
     assert r.status_code == 200
     assert "Omni body." in r.json()["markdown"]
-    assert r.json()["id"] == "osci/omni-framework"
+    assert r.json()["id"] == "gadgets/omni-framework"

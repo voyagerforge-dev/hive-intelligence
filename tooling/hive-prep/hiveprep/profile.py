@@ -53,3 +53,31 @@ def load_product_aliases(explicit: str | None = None,
         products = raw.get("products") or {}
         return {str(k).lower().strip(): str(v) for k, v in products.items()}
     return {}
+
+
+def load_curation_vocabulary(explicit: str | None = None,
+                             corpus_root: str | None = None) -> dict[str, list[str]]:
+    """Values a curation plan may assign, from the profile's ``curation`` section.
+
+    Returns ``{"products": [...], "platforms": [...]}``, empty when undeclared. Empty means
+    the corresponding check is skipped: a validator holding a hardcoded vocabulary rejects
+    every value that is valid in some other corpus, which fails closed on good data.
+    """
+    if explicit is None:
+        explicit = os.environ.get("CORPUS_PROFILE") or None
+    if corpus_root is None:
+        corpus_root = os.environ.get("CORPUS_ROOT") or None
+
+    for path in _candidates(explicit, corpus_root):
+        if not path.is_file():
+            continue
+        raw = yaml.safe_load(path.read_text()) or {}
+        if not isinstance(raw, dict):
+            raise TypeError(
+                f"{path}: corpus profile must be a mapping, got {type(raw).__name__}")
+        cur = raw.get("curation") or {}
+        return {
+            "products": [str(x) for x in (cur.get("products") or [])],
+            "platforms": [str(x) for x in (cur.get("platforms") or [])],
+        }
+    return {"products": [], "platforms": []}

@@ -8,8 +8,12 @@ from datetime import date
 from pathlib import Path
 
 from hivegen.memory import record_to_memory
+from hivegen.profile import load_profile
 
-ALLOWED_PRODUCTS = {"wms", "osci", "slotting", "labour-management"}
+# Valid `product:` facet values, from the corpus profile. An empty set means the profile
+# does not declare them, and the check is skipped: a hardcoded list rejects every product
+# that exists in some other corpus, which is a validator that fails closed on valid data.
+ALLOWED_PRODUCTS = set(load_profile().card_products)
 BASE_URL = "https://hive.example.com/card"
 _CLIENT_RE = re.compile(r"\A[a-z0-9-]+\Z")  # \A..\Z (not ^..$): reject a trailing newline too
 
@@ -52,7 +56,7 @@ def parse_issue(body: str) -> dict:
 def validate_record(rec: dict) -> None:
     client = rec.get("client", "")
     product = rec.get("product", "")
-    if product not in ALLOWED_PRODUCTS:
+    if ALLOWED_PRODUCTS and product not in ALLOWED_PRODUCTS:
         raise ValueError(f"unknown product '{product}': must be one of {sorted(ALLOWED_PRODUCTS)}")
     if not _CLIENT_RE.match(client) or client in ("..", ""):
         raise ValueError(f"unsafe client '{client}': must match [a-z0-9-]+")

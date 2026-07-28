@@ -1,4 +1,4 @@
-"""LLM-free keyword search over per-product WMOS db-object manifests.
+"""LLM-free keyword search over per-product database-object manifests.
 
 The parser (hive-dbparse) emits one manifest per product at
 `concepts/<product>/db/manifest.jsonl`, one JSON object per line with

@@ -59,9 +59,9 @@ Reprocessed.
 
 
 def _targets(tmp_path):
-    (tmp_path / "wms").mkdir(parents=True)
-    (tmp_path / "wms" / "wave-allocation-process.md").write_text(CONCEPT)
-    (tmp_path / "wms" / "ALLOC_PARM.md").write_text(DBOBJECT)
+    (tmp_path / "widgets").mkdir(parents=True)
+    (tmp_path / "widgets" / "wave-allocation-process.md").write_text(CONCEPT)
+    (tmp_path / "widgets" / "ALLOC_PARM.md").write_text(DBOBJECT)
     return load_targets(tmp_path)
 
 
@@ -74,15 +74,15 @@ def test_tokenize_drops_stopwords_and_short_tokens():
 def test_load_targets_excludes_dbobject_cards(tmp_path):
     """A journal entry should point at behaviour, not at a raw table definition."""
     targets = _targets(tmp_path)
-    assert "wms/wave-allocation-process" in targets
-    assert "wms/ALLOC_PARM" not in targets
+    assert "widgets/wave-allocation-process" in targets
+    assert "widgets/ALLOC_PARM" not in targets
 
 
 def test_suggest_finds_the_obvious_concept(tmp_path):
     targets = _targets(tmp_path)
     idf = build_idf(targets)
     hits = suggest("wave allocation did not release", targets, idf)
-    assert hits == ["wms/wave-allocation-process"]
+    assert hits == ["widgets/wave-allocation-process"]
 
 
 def test_suggest_returns_nothing_when_overlap_is_not_distinctive(tmp_path):
@@ -100,17 +100,17 @@ def test_suggest_requires_more_than_one_shared_token(tmp_path):
 
 
 def test_apply_links_sets_frontmatter_and_see_also():
-    out = apply_links(CARD, ["wms/wave-allocation-process"])
-    assert "related:\n- wms/wave-allocation-process\n" in out
-    assert "## See also\n\n- `wms/wave-allocation-process`" in out
+    out = apply_links(CARD, ["widgets/wave-allocation-process"])
+    assert "related:\n- widgets/wave-allocation-process\n" in out
+    assert "## See also\n\n- `widgets/wave-allocation-process`" in out
     # everything else survives untouched
     assert "ref: '123'" in out and "routine: false" in out
     assert "## What happened\n\nA wave did not release." in out
 
 
 def test_apply_links_is_idempotent():
-    once = apply_links(CARD, ["wms/wave-allocation-process"])
-    assert apply_links(once, ["wms/wave-allocation-process"]) == once
+    once = apply_links(CARD, ["widgets/wave-allocation-process"])
+    assert apply_links(once, ["widgets/wave-allocation-process"]) == once
 
 
 def test_apply_links_with_no_links_leaves_card_unchanged():
@@ -118,10 +118,10 @@ def test_apply_links_with_no_links_leaves_card_unchanged():
 
 
 def test_apply_links_replaces_an_existing_link_block():
-    once = apply_links(CARD, ["wms/a"])
-    twice = apply_links(once, ["wms/b"])
-    assert "wms/a" not in twice
-    assert "related:\n- wms/b\n" in twice
+    once = apply_links(CARD, ["widgets/a"])
+    twice = apply_links(once, ["widgets/b"])
+    assert "widgets/a" not in twice
+    assert "related:\n- widgets/b\n" in twice
     assert twice.count("## See also") == 1
 
 
@@ -139,13 +139,13 @@ class FakeLLM:
         return self.reply
 
 
-CANDS = ["wms/carton-lock-unlock", "wms/olpn-content-report"]
+CANDS = ["widgets/carton-lock-unlock", "widgets/olpn-content-report"]
 
 
 def test_rerank_keeps_only_ids_that_were_offered():
     """A model that invents an id would create a link to a card that does not exist."""
-    llm = FakeLLM(json.dumps({"picks": ["wms/carton-lock-unlock", "wms/made-up-card"]}))
-    assert rerank("lock added", "a lock was added", CANDS, {}, llm) == ["wms/carton-lock-unlock"]
+    llm = FakeLLM(json.dumps({"picks": ["widgets/carton-lock-unlock", "widgets/made-up-card"]}))
+    assert rerank("lock added", "a lock was added", CANDS, {}, llm) == ["widgets/carton-lock-unlock"]
 
 
 def test_rerank_accepts_a_refusal():
@@ -161,8 +161,8 @@ def test_rerank_fails_closed_on_unparsable_reply():
 
 
 def test_rerank_caps_the_number_of_links():
-    llm = FakeLLM(json.dumps({"picks": CANDS + ["wms/a"]}))
-    assert len(rerank("x", "y", CANDS + ["wms/a"], {}, llm)) <= 2
+    llm = FakeLLM(json.dumps({"picks": CANDS + ["widgets/a"]}))
+    assert len(rerank("x", "y", CANDS + ["widgets/a"], {}, llm)) <= 2
 
 
 def test_rerank_makes_no_call_without_candidates():
@@ -174,7 +174,7 @@ def test_rerank_makes_no_call_without_candidates():
 # --- orchestration -------------------------------------------------------------------
 
 def _corpus(tmp_path):
-    con = tmp_path / "concepts" / "wms"
+    con = tmp_path / "concepts" / "widgets"
     con.mkdir(parents=True)
     (con / "wave-allocation-process.md").write_text(CONCEPT)
     (con / "ALLOC_PARM.md").write_text(DBOBJECT)
@@ -186,18 +186,18 @@ def _corpus(tmp_path):
 
 def test_relink_cards_writes_the_model_choice(tmp_path):
     d = _corpus(tmp_path)
-    llm = FakeLLM(json.dumps({"picks": ["wms/wave-allocation-process"]}))
+    llm = FakeLLM(json.dumps({"picks": ["widgets/wave-allocation-process"]}))
     rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm, workers=1)
     assert rep.linked == 1
     body = (d / "123-fc-wave.md").read_text()
-    assert "related:\n- wms/wave-allocation-process\n" in body
+    assert "related:\n- widgets/wave-allocation-process\n" in body
     assert "## See also" in body
 
 
 def test_relink_cards_dry_run_writes_nothing(tmp_path):
     d = _corpus(tmp_path)
     before = (d / "123-fc-wave.md").read_text()
-    llm = FakeLLM(json.dumps({"picks": ["wms/wave-allocation-process"]}))
+    llm = FakeLLM(json.dumps({"picks": ["widgets/wave-allocation-process"]}))
     rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm,
                        workers=1, dry_run=True)
     assert rep.linked == 1
@@ -215,11 +215,11 @@ def test_relink_cards_leaves_declined_entries_untouched(tmp_path):
 
 # --- a decline must retract a stale link, not preserve it -----------------------------
 
-LINKED_CARD = CARD.replace("related: []\n", "related:\n- osci/performance-tuning\n")
+LINKED_CARD = CARD.replace("related: []\n", "related:\n- gadgets/performance-tuning\n")
 
 
 def test_clear_links_empties_frontmatter_and_drops_see_also():
-    linked = apply_links(CARD, ["wms/wave-allocation-process"])
+    linked = apply_links(CARD, ["widgets/wave-allocation-process"])
     out = clear_links(linked)
     assert "related: []" in out
     assert "## See also" not in out
@@ -233,7 +233,7 @@ def test_clear_links_is_a_noop_on_an_already_empty_card():
 def test_declining_retracts_an_existing_link(tmp_path):
     """The old links came from slug matching that produced cross-product errors. A model
     that declines is saying no candidate fits, which counts against the old link too."""
-    con = tmp_path / "concepts" / "wms"
+    con = tmp_path / "concepts" / "widgets"
     con.mkdir(parents=True)
     (con / "wave-allocation-process.md").write_text(CONCEPT)
     d = tmp_path / "clients" / "alpha" / "issues"
@@ -244,12 +244,12 @@ def test_declining_retracts_an_existing_link(tmp_path):
                        FakeLLM(json.dumps({"picks": []})), workers=1)
     assert rep.cleared == 1
     body = (d / "123-fc-wave.md").read_text()
-    assert "osci/performance-tuning" not in body
+    assert "gadgets/performance-tuning" not in body
     assert "related: []" in body
 
 
 def test_declining_does_not_rewrite_a_card_that_had_no_links(tmp_path):
-    con = tmp_path / "concepts" / "wms"
+    con = tmp_path / "concepts" / "widgets"
     con.mkdir(parents=True)
     (con / "wave-allocation-process.md").write_text(CONCEPT)
     d = tmp_path / "clients" / "alpha" / "issues"
@@ -263,9 +263,9 @@ def test_declining_does_not_rewrite_a_card_that_had_no_links(tmp_path):
 
 # --- product facet: OKF mandates 0 cross-product bleed (docs/architecture/pipeline.md) ---------
 
-OSCI = """---
+GADGET_CARD = """---
 type: concept
-product: osci
+product: gadgets
 title: Database Performance Tuning
 ---
 body
@@ -281,26 +281,26 @@ def test_tokenize_folds_plurals():
 
 
 def test_product_of_returns_the_owning_product():
-    assert product_of("osci/performance-tuning") == "osci"
-    assert product_of("wms/allocation-process") == "wms"
+    assert product_of("gadgets/performance-tuning") == "gadgets"
+    assert product_of("widgets/allocation-process") == "widgets"
 
 
 def test_links_are_confined_to_one_product():
     """Two picks from different products would be exactly the bleed OKF forbids."""
-    assert confine_to_one_product(["osci/perf", "wms/alloc", "osci/other"]) == \
-        ["osci/perf", "osci/other"]
+    assert confine_to_one_product(["gadgets/perf", "widgets/alloc", "gadgets/other"]) == \
+        ["gadgets/perf", "gadgets/other"]
     assert confine_to_one_product([]) == []
 
 
 def test_set_product_rewrites_the_facet():
-    out = set_product(CARD, "osci")
-    assert "product: osci" in out and "product: wms" not in out
+    out = set_product(CARD, "gadgets")
+    assert "product: gadgets" in out and "product: widgets" not in out
     assert "## What happened" in out
 
 
 def test_relink_stamps_the_product_of_the_card_it_linked(tmp_path):
-    (tmp_path / "concepts" / "osci").mkdir(parents=True)
-    (tmp_path / "concepts" / "osci" / "performance-tuning.md").write_text(OSCI)
+    (tmp_path / "concepts" / "gadgets").mkdir(parents=True)
+    (tmp_path / "concepts" / "gadgets" / "performance-tuning.md").write_text(GADGET_CARD)
     d = tmp_path / "clients" / "alpha" / "issues"
     d.mkdir(parents=True)
     card = CARD.replace("title: FC Wave failed to release",
@@ -308,24 +308,24 @@ def test_relink_stamps_the_product_of_the_card_it_linked(tmp_path):
     card = card.replace("description: A wave allocation did not release.",
                         "description: Cognos database performance was slow and needed tuning.")
     (d / "9-db.md").write_text(card)
-    llm = FakeLLM(json.dumps({"picks": ["osci/performance-tuning"]}))
+    llm = FakeLLM(json.dumps({"picks": ["gadgets/performance-tuning"]}))
     rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm, workers=1)
     assert rep.linked == 1
     body = (d / "9-db.md").read_text()
-    assert "product: osci" in body
-    assert "related:\n- osci/performance-tuning\n" in body
+    assert "product: gadgets" in body
+    assert "related:\n- gadgets/performance-tuning\n" in body
 
 
 def test_skip_linked_leaves_already_linked_cards_alone(tmp_path):
     """The monthly run only needs to consider entries that have no link yet."""
-    con = tmp_path / "concepts" / "wms"
+    con = tmp_path / "concepts" / "widgets"
     con.mkdir(parents=True)
     (con / "wave-allocation-process.md").write_text(CONCEPT)
     d = tmp_path / "clients" / "alpha" / "issues"
     d.mkdir(parents=True)
-    (d / "1-linked.md").write_text(apply_links(CARD, ["wms/wave-allocation-process"]))
+    (d / "1-linked.md").write_text(apply_links(CARD, ["widgets/wave-allocation-process"]))
     (d / "2-bare.md").write_text(CARD)
-    llm = FakeLLM(json.dumps({"picks": ["wms/wave-allocation-process"]}))
+    llm = FakeLLM(json.dumps({"picks": ["widgets/wave-allocation-process"]}))
     rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm,
                        workers=1, skip_linked=True)
     assert rep.scanned == 1 and rep.linked == 1
@@ -345,7 +345,7 @@ LINKING = LinkingProfile(
     product_markers={
         "reporting": {"cognos", "dashboard", "kpi"},
         "workforce": {"payroll", "roster", "timesheet"},
-        "layout": {"slotting"},
+        "layout": {"sprockets"},
     },
 )
 
@@ -357,7 +357,7 @@ def test_allowed_products_always_includes_the_default():
 def test_allowed_products_opens_up_on_distinctive_vocabulary():
     assert "reporting" in allowed_products("Cognos reports will not load", LINKING)
     assert "workforce" in allowed_products("payroll rollover incorrect", LINKING)
-    assert "layout" in allowed_products("slotting run did not complete", LINKING)
+    assert "layout" in allowed_products("sprockets run did not complete", LINKING)
 
 
 def test_allowed_products_needs_a_marker_not_a_resemblance():
@@ -376,32 +376,32 @@ def test_no_profile_means_do_not_confine_rather_than_permit_nothing():
 
 
 def test_relink_does_not_reclassify_without_evidence(tmp_path):
-    """A WMS ticket stamped `slotting` disappears when a consultant scopes to WMS."""
-    (tmp_path / "concepts" / "slotting").mkdir(parents=True)
-    (tmp_path / "concepts" / "slotting" / "direct-integration.md").write_text(
-        CONCEPT.replace("product: osci", "product: slotting")
+    """A WIDGETS ticket stamped `sprockets` disappears when a consultant scopes to WIDGETS."""
+    (tmp_path / "concepts" / "sprockets").mkdir(parents=True)
+    (tmp_path / "concepts" / "sprockets" / "direct-integration.md").write_text(
+        CONCEPT.replace("product: gadgets", "product: sprockets")
         .replace("Wave Allocation Process", "Direct Integration Application"))
     d = tmp_path / "clients" / "alpha" / "issues"
     d.mkdir(parents=True)
     (d / "5-down.md").write_text(
-        CARD.replace("title: FC Wave failed to release", "title: WMOS Application is down")
+        CARD.replace("title: FC Wave failed to release", "title: BENCH Application is down")
             .replace("description: A wave allocation did not release.",
                      "description: The direct integration application was down."))
-    llm = FakeLLM(json.dumps({"picks": ["slotting/direct-integration"]}))
-    # Confinement needs a vocabulary: the default product is `wms`, and `slotting` is only
+    llm = FakeLLM(json.dumps({"picks": ["sprockets/direct-integration"]}))
+    # Confinement needs a vocabulary: the default product is `widgets`, and `sprockets` is only
     # permitted when the entry's own words say so. This entry's words do not.
-    linking = LinkingProfile(default_product="wms",
-                             product_markers={"slotting": {"slotting"}})
+    linking = LinkingProfile(default_product="widgets",
+                             product_markers={"sprockets": {"sprockets"}})
     relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm, workers=1,
                  linking=linking)
     body = (d / "5-down.md").read_text()
-    assert "product: slotting" not in body
-    assert "slotting/direct-integration" not in body
+    assert "product: sprockets" not in body
+    assert "sprockets/direct-integration" not in body
 
 
 def test_results_are_written_as_they_complete_not_at_the_end(tmp_path):
     """A 1h50m run with a single end-of-client flush loses everything if it dies."""
-    con = tmp_path / "concepts" / "wms"
+    con = tmp_path / "concepts" / "widgets"
     con.mkdir(parents=True)
     (con / "wave-allocation-process.md").write_text(CONCEPT)
     d = tmp_path / "clients" / "alpha" / "issues"
@@ -415,11 +415,11 @@ def test_results_are_written_as_they_complete_not_at_the_end(tmp_path):
         def complete(self, system, user):
             # by the time the 3rd card is asked for, earlier ones must already be on disk
             written.append(sorted(p.name for p in d.glob("*.md")
-                                  if "wms/wave-allocation-process" in p.read_text()))
+                                  if "widgets/wave-allocation-process" in p.read_text()))
             return super().complete(system, user)
 
     relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts",
-                 WatchingLLM(json.dumps({"picks": ["wms/wave-allocation-process"]})),
+                 WatchingLLM(json.dumps({"picks": ["widgets/wave-allocation-process"]})),
                  workers=1)
     assert written[-1], "no card was persisted before the final model call"
 

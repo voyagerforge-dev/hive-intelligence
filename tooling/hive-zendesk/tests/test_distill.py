@@ -25,7 +25,7 @@ def _ticket():
 GOOD = json.dumps({"what_happened": "Morning wave did not allocate; replen lagged demand.",
                    "how_it_closed": "Reran replenishment; wave allocated.",
                    "module": "allocation", "tags": ["allocation", "replenishment"],
-                   "related_candidates": ["wms/allocation/wave-replen-lag"],
+                   "related_candidates": ["widgets/allocation/wave-replen-lag"],
                    "routine": False})
 
 

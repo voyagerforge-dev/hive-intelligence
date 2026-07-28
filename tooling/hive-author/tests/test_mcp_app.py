@@ -14,8 +14,8 @@ def test_tools_registered():
 
 def test_hard_separation_of_build_helpers():
     # memory always labels okf-memory + needs a client; correction always labels okf-correction
-    m = build_memory_submission(owner="o", client="alpha", product="wms", title="t", lesson="l")
-    c = build_correction_submission(owner="o", target_concept_id="wms/x",
+    m = build_memory_submission(owner="o", client="alpha", product="widgets", title="t", lesson="l")
+    c = build_correction_submission(owner="o", target_concept_id="widgets/x",
                                     corrected_fact="f", rationale="r")
     assert m["labels"] == ["okf-memory"] and c["labels"] == ["okf-correction"]
     assert "Client" in m["body"] and "Target concept id" in c["body"]

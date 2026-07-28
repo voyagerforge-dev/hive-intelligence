@@ -159,7 +159,7 @@ def product_of(card_id: str) -> str:
 # Leaving the default product requires positive evidence in the entry's own words.
 #
 # Inferring the product from whichever card the model happened to pick misfiled entries
-# badly: an application-down ticket became a Slotting entry because a Slotting card scored
+# badly: an application-down ticket was refiled under an unrelated product because one of
 # highest. That is worse than a bad link. Retrieval selects on `product`, so an entry
 # stamped with the wrong one is invisible to anyone scoped to the right one.
 #
@@ -195,7 +195,7 @@ def confine_to_one_product(links: list[str]) -> list[str]:
     """Keep only the links belonging to the first pick's product.
 
     OKF requires 0 cross-product bleed (docs/architecture/pipeline.md). An entry linking to both
-    an osci card and a wms card would be exactly that, so the first pick wins the product
+    cards from two different products would be exactly that, so the first pick wins the product
     and any pick from another product is dropped.
     """
     if not links:
@@ -208,7 +208,7 @@ def set_product(text: str, product: str) -> str:
     """Stamp the entry's product facet.
 
     `emit.py` hardcodes `product: wms` on every issue card, so a ticket about database
-    performance or labour management was stamped wms, restricted to wms targets, and
+    another product was stamped with the default, restricted to that product's targets, and
     could never link to the card that actually explains it.
     """
     if _PROD_RE.search(text):
@@ -323,7 +323,7 @@ def relink_cards(clients: list[str], clients_dir: str | Path, concepts_dir: str 
 
     Candidates are drawn from ALL products; the model's choice then determines the
     entry's own product facet, and `confine_to_one_product` keeps the resulting edges
-    inside it. That is what lets an oSCI performance ticket reach `osci/performance-tuning`
+    inside it. That is what lets an entry about a secondary product reach that product's cards
     without ever creating the cross-product edge OKF forbids.
     """
     targets = load_targets(concepts_dir)

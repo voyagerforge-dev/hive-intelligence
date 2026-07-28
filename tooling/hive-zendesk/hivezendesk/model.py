@@ -63,6 +63,10 @@ class IssueCard:
     routine: bool = False
     status: str = "distilled"
     model: str = ""   # which LLM produced this entry
+    # Facets. Empty until relink decides them from the entry's own evidence, since which
+    # products exist is corpus vocabulary rather than something this package can know.
+    product: str = ""
+    platform: str = ""
 
     def filename(self) -> str:
         return f"{self.ticket_id}-{slugify(self.title)}.md"

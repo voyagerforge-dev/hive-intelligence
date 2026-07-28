@@ -52,12 +52,12 @@ def test_list_concepts_tool_client_scoped(tmp_path):
     from hiveserve import tools
     concepts = tmp_path / "concepts"
     clients = tmp_path / "clients"
-    (concepts / "wms").mkdir(parents=True)
-    (concepts / "wms" / "a.md").write_text("---\ntitle: A\ndescription: d\n---\n\nbody\n")
+    (concepts / "widgets").mkdir(parents=True)
+    (concepts / "widgets" / "a.md").write_text("---\ntitle: A\ndescription: d\n---\n\nbody\n")
     (clients / "alpha" / "memory").mkdir(parents=True)
     (clients / "alpha" / "memory" / "m.md").write_text(
         "---\ntitle: M\ndescription: d\ntype: memory\nclient: alpha\n---\n\nmem\n")
     # exercise the underlying tool wiring the MCP closure calls (closures need a request ctx to invoke)
-    assert {c["id"] for c in tools.list_concepts(concepts, clients, client=None)} == {"wms/a"}
+    assert {c["id"] for c in tools.list_concepts(concepts, clients, client=None)} == {"widgets/a"}
     assert {c["id"] for c in tools.list_concepts(concepts, clients, client="alpha")} == {
-        "wms/a", "clients/alpha/memory/m"}
+        "widgets/a", "clients/alpha/memory/m"}

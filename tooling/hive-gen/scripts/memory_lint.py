@@ -8,7 +8,12 @@ import sys
 
 import yaml
 
-ALLOWED_PRODUCTS = {"wms", "osci", "slotting", "labour-management"}
+from hivegen.profile import load_profile
+
+# Valid `product:` facet values, from the corpus profile. An empty set means the profile
+# does not declare them, and the check is skipped: a hardcoded list rejects every product
+# that exists in some other corpus, which is a validator that fails closed on valid data.
+ALLOWED_PRODUCTS = set(load_profile().card_products)
 
 
 def _fm(p):
@@ -50,7 +55,7 @@ def lint(clients_dir, concepts_dir):
     errors = []
     superseded = set()
     for cid, fm in mems.items():
-        if fm.get("product") not in ALLOWED_PRODUCTS:
+        if ALLOWED_PRODUCTS and fm.get("product") not in ALLOWED_PRODUCTS:
             errors.append(f"{cid}: bad or missing product '{fm.get('product')}'")
         for rid in _as_list(fm.get("related")):
             if rid not in concept_ids:

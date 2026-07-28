@@ -7,7 +7,7 @@ from hivegen.llm import ChatLLM, extract_json
 _LABELS = {"traditional", "ops", "none"}
 
 _SYSTEM = (
-    "You classify a Manhattan WMOS knowledge card by ORDER-FULFILMENT REGIME. When OPS (Order "
+    "You classify a knowledge card by ORDER-FULFILMENT REGIME. When OPS (Order "
     "Planning Strategy / DC Order Planning) is active, standalone traditional replenishment, tasking, "
     "and wave/fulfilment are superseded by OPS-orchestrated Wave/Stream runs, and vice-versa. Label:\n"
     "- 'ops': the card describes OPS / DC Order Planning / Wave-Stream-run orchestration itself.\n"

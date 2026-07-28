@@ -11,7 +11,7 @@ from .model import Ticket
 
 _EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 # Phone and SA-ID patterns carried over from the retired zendesk-ingest-svc, which ran
-# against this exact ticket corpus. ALPHA and BETA are South African, so 13-digit national
+# against this exact ticket corpus. Alpha and Beta are South African, so 13-digit national
 # ID numbers are a real presence and a real DPA exposure.
 _PHONE = re.compile(
     r"(?<!\d)(?:\+\d[\d\s\-]{6,}\d|\(?\d{2,4}\)?[\s\-]\d{3}[\s\-]?\d{2,4})(?!\d)"

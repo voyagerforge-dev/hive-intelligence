@@ -2,7 +2,7 @@
 """Stamp product/platform/version facets on promoted cards, deterministically.
 version = union of each card's source docs' folder-year (`version:` in the atomic md
 frontmatter). product/platform are supplied by the caller (generalized from
-osci_facet_apply.py, which hardcoded product="osci"/platform="open-systems").
+an earlier per-product script that hardcoded one product and platform).
 Usage: python scripts/product_facet_apply.py <concepts_dir> <atomic_dir> <product> <platform>"""
 import glob
 import os

@@ -8,9 +8,9 @@ from hiveserve.resolver import load_index, resolve
 _SELECT_SYS = (
     "You are given an INDEX of knowledge-card ids with titles and descriptions, and a QUESTION. "
     "Choose the card id(s) whose content best answers the question. "
-    "Some cards are tagged with a product like {osci} (Supply Chain Intelligence), {slotting}, "
-    "{labour-management}, or {wms}. First decide which product the QUESTION is about, then pick "
-    "ONLY cards of that product plus any untagged (product-neutral) cards; never mix products. "
+    "Some cards carry a product facet, shown as {product}. First decide which product the "
+    "QUESTION is about, then pick ONLY cards of that product plus any untagged "
+    "(product-neutral) cards; never mix products. "
     "Some cards are tagged with a regime, [ops] (OPS / Order Planning Strategy) or [traditional] "
     "(standalone replenishment/tasking/fulfilment). OPS and traditional are MUTUALLY EXCLUSIVE by "
     "site configuration: first decide which regime the QUESTION is about, then pick ONLY cards of "

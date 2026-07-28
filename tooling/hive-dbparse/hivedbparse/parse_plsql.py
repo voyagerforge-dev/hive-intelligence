@@ -1,4 +1,4 @@
-"""Split `CREATE OR REPLACE` PL/SQL units from WMOS Oracle/DB2 source into `PlsqlObject`s.
+"""Split `CREATE OR REPLACE` PL/SQL units from Oracle and DB2 source into `PlsqlObject`s.
 
 PL/SQL package/procedure/function/trigger/view bodies are NOT standard SQL --
 sqlglot's AST parser doesn't (and shouldn't) model their internals (`BEGIN...END`

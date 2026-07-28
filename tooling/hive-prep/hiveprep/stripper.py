@@ -7,7 +7,7 @@ DoclingDocument model; hive-prep's converter returns markdown text (not the doc 
 layer is a documented follow-up (it would need `DoclingClient` to also return the doc JSON).
 
 Public API:
-    strip_boilerplate(markdown_text, product="wmos", rules_dir=None) -> StrippingResult
+    strip_boilerplate(markdown_text, product="default", rules_dir=None) -> StrippingResult
 """
 from __future__ import annotations
 

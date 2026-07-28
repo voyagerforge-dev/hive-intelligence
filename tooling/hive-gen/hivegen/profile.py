@@ -54,11 +54,20 @@ class CorpusProfile:
     guide_topics: dict[str, str] = field(default_factory=dict)
     retopic_bucket: str = ""
     products: dict[str, str] = field(default_factory=dict)
+    #: Canonical facet values. Validators gate card frontmatter on these, so an empty set
+    #: means "do not validate this facet" rather than "reject everything".
+    card_products: tuple[str, ...] = ()
+    #: Display titles for product facets, used when generating index pages.
+    product_titles: dict[str, str] = field(default_factory=dict)
+    #: Filename prefixes shared by most documents, stripped before a title is shown to a
+    #: model. They carry no signal and crowd out the part of the name that does.
+    filename_prefixes: tuple[str, ...] = ()
     path: Path | None = None
 
     @property
     def is_empty(self) -> bool:
-        return not (self.areas or self.subareas or self.guide_topics or self.products)
+        return not (self.areas or self.subareas or self.guide_topics or self.products
+                    or self.card_products)
 
 
 def _candidates(explicit: str | None, atomic_dir: str | None) -> list[Path]:
@@ -117,6 +126,10 @@ def load_profile(explicit: str | None = None,
         guide_topics={str(k): str(v) for k, v in (raw.get("guide_topics") or {}).items()},
         retopic_bucket=str(raw.get("retopic_bucket") or ""),
         products={str(k): str(v) for k, v in (raw.get("products") or {}).items()},
+        card_products=tuple(str(x) for x in ((raw.get("facets") or {}).get("product") or ())),
+        product_titles={str(k): str(v)
+                        for k, v in ((raw.get("facets") or {}).get("titles") or {}).items()},
+        filename_prefixes=tuple(str(x) for x in (raw.get("filename_prefixes") or ())),
         path=path,
     )
 
