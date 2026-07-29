@@ -24,7 +24,7 @@ def test_memory_submission_roundtrips_through_parser():
         title="Second scan", lesson="Alpha requires a second scan.",
         context="Alpha only.", platform="bench", related=["widgets/allocation-process"],
         citations=["alpha.md"])
-    assert sub["labels"] == ["okf-memory"]
+    assert sub["labels"] == ["hive-memory"]
     assert sub["title"] == "[memory] Second scan"
     rec = _load("memory_from_issue").parse_issue(sub["body"])
     assert rec["client"] == "alpha" and rec["product"] == "widgets"
@@ -37,7 +37,7 @@ def test_correction_submission_roundtrips_through_parser():
     sub = build_correction_submission(owner="u@x.dev", target_concept_id="sprockets/data-requirements",
         corrected_fact="Duplicate slots are not allowed.", rationale="Per the guide.",
         citations=["sprockets.md"])
-    assert sub["labels"] == ["okf-correction"]
+    assert sub["labels"] == ["hive-correction"]
     rec = _load("correction_from_issue").parse_issue(sub["body"])
     assert rec["corrects"] == "sprockets/data-requirements"
     assert rec["correction"] == "Duplicate slots are not allowed."

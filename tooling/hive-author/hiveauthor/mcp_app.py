@@ -23,7 +23,7 @@ def build_mcp(settings, gh_factory) -> FastMCP:
                                 related: list[str] | None = None,
                                 citations: list[str] | None = None) -> dict:
         """File a CLIENT-scoped memory-promotion issue (requires a client; never touches core
-        knowledge). Opens an okf-memory issue for CODEOWNER approve-label + Action."""
+        knowledge). Opens a hive-memory issue for CODEOWNER approve-label + Action."""
         owner = owner_from_ctx(ctx, settings)
         try:
             sub = submissions.build_memory_submission(
@@ -38,7 +38,7 @@ def build_mcp(settings, gh_factory) -> FastMCP:
                           citations: list[str] | None = None,
                           supersedes: list[str] | None = None) -> dict:
         """File a CORE-knowledge correction issue against a concept id (never client-scoped).
-        Opens an okf-correction issue for CODEOWNER approve-label + Action."""
+        Opens a hive-correction issue for CODEOWNER approve-label + Action."""
         owner = owner_from_ctx(ctx, settings)
         sub = submissions.build_correction_submission(
             owner=owner, target_concept_id=target_concept_id, corrected_fact=corrected_fact,

@@ -49,6 +49,45 @@ label. The corpus changes when a person merges.
 `submissions.py` is pure and side-effect free, which is what makes the round-trip guarantee
 testable without a network.
 
+## Internals
+
+Module-level detail, verified against the code on 2026-07-30.
+
+### `submissions.py`
+
+**Pure builders, no I/O.** They turn arguments into `{title, body, labels}`.
+
+The body emits `### <label>` sections that match the corpus repository's issue forms **exactly**,
+so the same workflow parsers accept an issue whichever way it was filed. That symmetry is the whole
+design: one parser, two front doors.
+
+The two builders are hard-separated and cannot cross. Memory **requires** a client and labels
+`hive-memory`; correction targets a concept id and labels `hive-correction`.
+
+> Those labels must stay in step with `.github/ISSUE_TEMPLATE/*.yml` in the corpus repository. They
+> said `okf-*` here until 2026-07-30 while the forms said `hive-*`, so an issue filed through this
+> service carried a different label from the same issue filed through the form, and any label-based
+> filter or CODEOWNER route saw only half the submissions. Nothing failed; the halves were just
+> invisible to each other.
+
+### `github_client.py`
+
+A protocol with two implementations: the real HTTP client, and a fake used throughout the tests. The
+real one needs **only `issues:write`**.
+
+Injecting the client is what lets the entire suite run with no token and no network, which matters
+for a service whose only job is to hold a credential.
+
+### `mcp_app.py`, `identity.py`, `server.py`
+
+`mcp_app` exposes exactly two tools, mirroring the two builders. `identity` resolves the submitter
+from the trusted gate header so `submitted_by` provenance is server-derived, never a parameter.
+`server` is the entrypoint.
+
+## Tests
+
+11 tests. Fakes only, no network, no token.
+
 ## Configuration
 
 See [configuration](configuration.md#hive-author).
