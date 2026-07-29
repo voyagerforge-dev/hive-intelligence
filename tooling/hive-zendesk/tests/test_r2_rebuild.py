@@ -40,7 +40,7 @@ class FakeS3:
         return {"Contents": [{"Key": k} for k in self._keys if k.startswith(pref)],
                 "IsTruncated": False}
 
-    def get_object(self, Bucket, Key):  # noqa: N803 - boto3 signature
+    def get_object(self, Bucket, Key):
         class B:
             @staticmethod
             def read():
@@ -126,9 +126,9 @@ def test_rebuild_dry_run_calls_no_model_and_writes_nothing(tmp_path):
 
 def test_rebuild_skips_entries_already_written(tmp_path):
     (tmp_path / "concepts").mkdir()
-    kw = dict(clients=["alpha"], org_ids={"alpha": [1]},
-              r2=R2Reader(FakeS3(KEYS), "bucket"), connector=FakeConnector(ROWS),
-              clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts", workers=2)
+    kw = {"clients": ["alpha"], "org_ids": {"alpha": [1]},
+              "r2": R2Reader(FakeS3(KEYS), "bucket"), "connector": FakeConnector(ROWS),
+              "clients_dir": tmp_path / "clients", "concepts_dir": tmp_path / "concepts", "workers": 2}
     rebuild(llm=FakeLLM(), **kw)
     second = FakeLLM()
     report = rebuild(llm=second, **kw)
@@ -170,7 +170,7 @@ class CountingS3(FakeS3):
         super().__init__(keys)
         self.gets = 0
 
-    def get_object(self, Bucket, Key):  # noqa: N803 - boto3 signature
+    def get_object(self, Bucket, Key):
         self.gets += 1
         return super().get_object(Bucket=Bucket, Key=Key)
 
@@ -181,8 +181,8 @@ def test_already_carded_tickets_are_not_downloaded_from_r2(tmp_path):
     The first full run spent 7m23s re-downloading 1,132 cards it then discarded.
     """
     (tmp_path / "concepts").mkdir()
-    kw = dict(clients=["alpha"], org_ids={"alpha": [1]}, connector=FakeConnector(ROWS),
-              clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts", workers=1)
+    kw = {"clients": ["alpha"], "org_ids": {"alpha": [1]}, "connector": FakeConnector(ROWS),
+              "clients_dir": tmp_path / "clients", "concepts_dir": tmp_path / "concepts", "workers": 1}
     s3 = CountingS3(KEYS)
     rebuild(r2=R2Reader(s3, "bucket"), llm=FakeLLM(), **kw)
     first = s3.gets

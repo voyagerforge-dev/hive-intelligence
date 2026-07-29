@@ -1,7 +1,6 @@
 """Hard verification gate. Any failure raises RunError - never a warning."""
 from __future__ import annotations
 
-
 from .fm import parse_frontmatter
 from .model import IssueCard, RunError, RunReport
 from .scrub import leaks

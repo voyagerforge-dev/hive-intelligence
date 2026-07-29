@@ -1,7 +1,10 @@
 # tests/test_striptrim.py
 from pathlib import Path
+
 import docx
+
 from hiveprep.striptrim import strip_struck
+
 
 def _make_doc(path: Path):
     d = docx.Document()

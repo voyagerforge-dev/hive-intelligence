@@ -9,13 +9,13 @@ from __future__ import annotations
 import csv
 import os
 import stat
+from collections.abc import Iterator
 from dataclasses import dataclass, fields
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import IO, Iterator
+from typing import IO
 
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
-
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 
 # ── Inventory row ────────────────────────────────────────────────────
 
@@ -128,15 +128,15 @@ def scan_directory(
                 continue
 
             rel_path = str(filepath.relative_to(root))
-            modified = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat()
+            modified = datetime.fromtimestamp(st.st_mtime, tz=UTC).isoformat()
 
             # Parse folder hints
             hints: dict = {}
             if folder_parser and segments:
                 try:
                     hints = folder_parser(rel_path, segments)
-                except Exception:
-                    pass  # folder_parser errors are non-fatal
+                except Exception:  # noqa: BLE001, S110 - folder_parser errors are non-fatal
+                    pass
 
             yield FileRecord(
                 relative_path=rel_path,

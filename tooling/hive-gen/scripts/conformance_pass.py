@@ -33,7 +33,9 @@ def _title_map(concepts_dir):
         if os.path.basename(p) in ("index.md", "log.md"):
             continue
         cid = os.path.relpath(p, concepts_dir)[:-3]
-        fm = yaml.safe_load(open(p).read().split("---", 2)[1]) or {}
+        with open(p) as _fh:
+            _text = _fh.read()
+        fm = yaml.safe_load(_text.split("---", 2)[1]) or {}
         m[cid] = fm.get("title", cid)
     return m
 
@@ -71,8 +73,8 @@ def _citations_section(sources):
 
 def _strip_generated(body):
     # strip any existing ## Related (stop at next h1/h2) and # Citations (stop at next h1) block
-    body = re.sub(r"\n*## Related\b.*?(?=\n#{1,2} |\Z)", "", body, flags=re.S)
-    body = re.sub(r"\n*# Citations\b.*?(?=\n# |\Z)", "", body, flags=re.S)
+    body = re.sub(r"\n*## Related\b.*?(?=\n#{1,2} |\Z)", "", body, flags=re.DOTALL)
+    body = re.sub(r"\n*# Citations\b.*?(?=\n# |\Z)", "", body, flags=re.DOTALL)
     return body.rstrip("\n")
 
 
@@ -83,7 +85,8 @@ def process(concepts_dir):
         if os.path.basename(p) in ("index.md", "log.md"):
             continue
         cid = os.path.relpath(p, concepts_dir)[:-3]
-        text = open(p).read()
+        with open(p) as _fh:
+            text = _fh.read()
         parts = text.split("---", 2)
         if len(parts) < 3:
             continue
@@ -99,7 +102,8 @@ def process(concepts_dir):
         if cs:
             add += "\n\n" + cs.rstrip("\n")
             cit += 1
-        open(p, "w").write(f"---{new_fm}---{body}{add}\n")
+        with open(p, "w") as _fh:
+            _fh.write(f"---{new_fm}---{body}{add}\n")
         n += 1
     print(f"processed {n} cards | Related sections {rel} | Citations sections {cit}")
 

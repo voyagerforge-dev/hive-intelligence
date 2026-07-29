@@ -90,7 +90,7 @@ class BifrostChat:
                 # help, so fail fast rather than burning the retry allowance.
                 if choice.get("finish_reason") == "length":
                     return None
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 - any failure falls through to the retry below
                 pass
             if attempt < self._retries - 1:
                 time.sleep(self._backoff * (attempt + 1))

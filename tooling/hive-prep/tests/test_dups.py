@@ -1,4 +1,5 @@
-from hiveprep.dups import sha256_file, group_duplicates
+from hiveprep.dups import group_duplicates, sha256_file
+
 
 def test_identical_files_group(tmp_path):
     a = tmp_path/"a.pdf"; b = tmp_path/"sub"/"b.pdf"; b.parent.mkdir()

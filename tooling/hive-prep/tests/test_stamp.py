@@ -1,5 +1,5 @@
 # tests/test_stamp.py
-from hiveprep.stamp import stamp_file, stamp_dir
+from hiveprep.stamp import stamp_dir, stamp_file
 from hiveprep.validate import validate_atomic_dir
 
 FULL_FM = """---
@@ -123,8 +123,8 @@ def test_stamp_dir_skips_already_complete(tmp_path):
 
 
 def test_stamp_from_plan_fills_invariant_fields(tmp_path):
-    from hiveprep.stamp import stamp_from_plan
     from hiveprep.curation_plan import Plan
+    from hiveprep.stamp import stamp_from_plan
     atomic = tmp_path / "atomic"; atomic.mkdir()
     # slug is the folder-qualified doc_slug of the include path (how transform writes it)
     (atomic / "doc.md").write_text(
@@ -142,8 +142,8 @@ def test_stamp_from_plan_fills_invariant_fields(tmp_path):
 
 def test_stamp_from_plan_matches_passthrough_ext_suffixed_slug(tmp_path):
     """Passthrough atomic files use an ext-suffixed slug; stamp must match them to the plan entry."""
-    from hiveprep.stamp import stamp_from_plan
     from hiveprep.curation_plan import Plan
+    from hiveprep.stamp import stamp_from_plan
     atomic = tmp_path / "atomic"; atomic.mkdir()
     # a .xsd passthrough → slug = doc_slug + "-xsd"
     (atomic / "widgets-x-appointment-2017-xsd.md").write_text(
@@ -159,8 +159,8 @@ def test_stamp_from_plan_matches_passthrough_ext_suffixed_slug(tmp_path):
 
 def test_stamp_from_plan_matches_by_slug_not_basename(tmp_path):
     """Two docs sharing a basename across folders must each receive THEIR OWN metadata."""
-    from hiveprep.stamp import stamp_from_plan
     from hiveprep.curation_plan import Plan
+    from hiveprep.stamp import stamp_from_plan
     atomic = tmp_path / "atomic"; atomic.mkdir()
     (atomic / "widgets-bench-a-overview.md").write_text(
         '---\ntitle: Overview\nslug: widgets-bench-a-overview\nsource_doc: "Overview.docx"\nstatus: active\n---\nbody\n')

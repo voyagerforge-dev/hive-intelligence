@@ -4,7 +4,7 @@ Usage: python scripts/memory_from_issue.py <issue_body_file> <clients_dir>  -> p
 import os
 import re
 import sys
-from datetime import date
+from datetime import UTC, datetime
 from pathlib import Path
 
 from hivegen.memory import record_to_memory
@@ -49,7 +49,7 @@ def parse_issue(body: str) -> dict:
         "related": _lines(body, "Related concept ids (optional)"),
         "citations": _lines(body, "Citation source files (optional)"),
         "tags": [], "supersedes": [], "status": "approved",
-        "timestamp": date.today().isoformat(),
+        "timestamp": datetime.now(UTC).date().isoformat(),
     }
 
 

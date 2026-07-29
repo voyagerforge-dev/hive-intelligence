@@ -17,7 +17,9 @@ ALLOWED_PRODUCTS = set(load_profile().card_products)
 
 
 def _fm(p):
-    parts = open(p).read().split("---", 2)
+    with open(p) as _fh:
+        _text = _fh.read()
+    parts = _text.split("---", 2)
     return yaml.safe_load(parts[1]) if len(parts) >= 3 else {}
 
 

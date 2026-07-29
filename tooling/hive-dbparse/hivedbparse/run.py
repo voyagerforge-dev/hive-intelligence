@@ -299,9 +299,11 @@ def _parse_dialect_tables(
         #                                (or a sequence has no resolvable owner).
         #                                A scope consequence -> reported, non-fatal.
         # Capturing them separately is why they must not be parent/child loggers.
-        with _capture_warnings("hivedbparse.parse_aux") as aux_failures:
-            with _capture_warnings("hivedbparse.aux_unattached") as aux_unattached:
-                apply_aux(tables, "\n".join(texts), dialect)
+        with (
+            _capture_warnings("hivedbparse.parse_aux") as aux_failures,
+            _capture_warnings("hivedbparse.aux_unattached") as aux_unattached,
+        ):
+            apply_aux(tables, "\n".join(texts), dialect)
         prefix = f"{_DIALECT_DIR[dialect]} aux"
         unparsed.extend(f"{prefix}: {w}" for w in aux_failures)
         unattached.extend(f"{prefix}: {w}" for w in aux_unattached)

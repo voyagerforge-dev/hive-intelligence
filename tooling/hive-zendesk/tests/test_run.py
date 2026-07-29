@@ -71,10 +71,10 @@ def test_run_records_skip_reasons(tmp_path):
 
 def test_second_run_is_idempotent(tmp_path):
     (tmp_path / "concepts").mkdir()
-    kw = dict(clients=["alpha"], org_ids={"alpha": [42]},
-              connector=FakeConnector([ROW], COMMENTS), llm=FakeLLM(),
-              clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts",
-              state_dir=tmp_path / "state")
+    kw = {"clients": ["alpha"], "org_ids": {"alpha": [42]},
+              "connector": FakeConnector([ROW], COMMENTS), "llm": FakeLLM(),
+              "clients_dir": tmp_path / "clients", "concepts_dir": tmp_path / "concepts",
+              "state_dir": tmp_path / "state"}
     ingest(**kw)
     ingest(**kw)
     written = list((tmp_path / "clients" / "alpha" / "issues").glob("*.md"))
@@ -106,9 +106,9 @@ def test_pii_is_quarantined_not_aborted(tmp_path):
 def test_already_carded_ticket_is_not_refetched_or_redistilled(tmp_path):
     """Closed tickets are immutable: a replayed window must not re-spend on them."""
     (tmp_path / "concepts").mkdir()
-    kw = dict(clients=["alpha"], org_ids={"alpha": [42]},
-              clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts",
-              state_dir=tmp_path / "state")
+    kw = {"clients": ["alpha"], "org_ids": {"alpha": [42]},
+              "clients_dir": tmp_path / "clients", "concepts_dir": tmp_path / "concepts",
+              "state_dir": tmp_path / "state"}
     first = FakeLLM()
     ingest(connector=FakeConnector([ROW], COMMENTS), llm=first, **kw)
     assert first.calls == 1

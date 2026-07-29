@@ -17,9 +17,9 @@ from pathlib import Path
 
 from . import __version__
 from .emit import render, write_card
-from .relink import load_card_ids
 from .model import RunReport
 from .r2 import R2Reader, parse_key
+from .relink import load_card_ids
 from .reshape import reshape_batch
 from .scrub import leaks
 from .verify import verify_card, verify_run

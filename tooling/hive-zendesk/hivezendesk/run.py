@@ -20,10 +20,10 @@ from .distill import distill
 from .emit import card_dir, render, write_card
 from .fetch import ConnectorClient, to_ticket
 from .gate import content_hash, keep
-from .relink import load_card_ids
 from .llm import BifrostChat
 from .model import RunError, RunReport
 from .orgs import load_org_ids
+from .relink import load_card_ids
 from .scrub import known_values, leaks
 from .state import load_state, replay_since, save_state
 from .verify import verify_card, verify_run

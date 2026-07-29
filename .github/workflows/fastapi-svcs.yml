@@ -69,8 +69,13 @@ jobs:
       # Install linters at the job level so `ruff`/`mypy` exist regardless of whether a
       # given service lists them in its own [dev] extras. Each service still supplies its
       # own ruff/mypy CONFIG via pyproject.toml (line-length, ignores, target-version).
+      # Ruff is pinned to a MINOR range, not left open. A new minor turns on new default
+      # rules, and on 2026-07-29 ruff 0.16 did exactly that: 90 pre-existing violations
+      # appeared across every service at once and the whole matrix went red on a PR that had
+      # touched one comment. Patches inside 0.16 are fine; moving to 0.17 is a deliberate
+      # change that comes with fixing whatever it newly finds.
       - name: Install lint/type tooling
-        run: pip install "ruff>=0.7" "mypy>=1.10"
+        run: pip install "ruff>=0.16,<0.17" "mypy>=1.10"
       # hive-serve/hive-author depend on the in-repo `hivegen` via [tool.uv.sources]. Plain pip
       # does not read that table and would otherwise pull a SAME-NAMED package from PyPI
       # (which exists and is not ours), so install any local path source first (editable) to

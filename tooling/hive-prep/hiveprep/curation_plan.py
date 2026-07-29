@@ -1,10 +1,13 @@
 """Load and validate the curation plan. Validation is deterministic; a bad plan refuses to run."""
 from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
+
 import yaml
+
 from hiveprep.profile import load_curation_vocabulary
-from hiveprep.validate import DOC_TYPES   # DRY: single source of doc-type enum
+from hiveprep.validate import DOC_TYPES  # DRY: single source of doc-type enum
 
 # Values a curation plan may assign. These are one corpus's vocabulary, so they come from
 # the corpus profile. An empty set disables the check rather than rejecting every value:

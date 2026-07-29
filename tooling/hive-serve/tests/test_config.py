@@ -1,4 +1,4 @@
-from hiveserve.config import get_settings, Settings
+from hiveserve.config import Settings, get_settings
 
 
 def test_settings_reads_env(monkeypatch, tmp_path):

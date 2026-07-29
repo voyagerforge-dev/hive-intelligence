@@ -11,15 +11,16 @@ the corpus profile rather than from this module.
 Usage: python retopic.py [--apply] [--limit N]
 """
 from __future__ import annotations
+
 import pathlib
 import re
 import sys
+
 # Make `import hivegen.*` work when run directly (python retopic.py): add the
 # hive-gen/ package dir (parent of this hivegen/ dir) to sys.path.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from hivegen.config import get_settings
 from hivegen.llm import BifrostChat, extract_json
-
 from hivegen.profile import load_profile
 
 _PROFILE = load_profile()
@@ -35,11 +36,11 @@ BUCKET = _PROFILE.retopic_bucket
 TOPICS: dict[str, str] = dict(_PROFILE.guide_topics)
 
 def frontmatter(text):
-    m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+    m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
     return m.group(1) if m else None
 
 def get_field(fm, key):
-    m = re.search(rf"^{key}:\s*\"?([^\"\n]+)\"?\s*$", fm, re.M)
+    m = re.search(rf"^{key}:\s*\"?([^\"\n]+)\"?\s*$", fm, re.MULTILINE)
     return m.group(1).strip() if m else ""
 
 def basename(stem):
@@ -76,14 +77,14 @@ def classify(text, llm):
     fm = frontmatter(text)
     if fm:
         title = get_field(fm, "title")
-    body = re.sub(r"^---\n.*?\n---\n", "", text, flags=re.S)
+    body = re.sub(r"^---\n.*?\n---\n", "", text, flags=re.DOTALL)
     prompt = f"TOPICS:\n{opts}\n\nTITLE: {title}\nDOCUMENT:\n{body[:1200]}"
     data = extract_json(llm.complete(_SYSTEM, prompt) or "")
     t = (data or {}).get("topic", "")
     return t if t in TOPICS else "UNCLASSIFIED"
 
 def set_topic(text, topic):
-    return re.sub(r'^(topic:\s*).*$', f'topic: "{topic}"', text, count=1, flags=re.M)
+    return re.sub(r'^(topic:\s*).*$', f'topic: "{topic}"', text, count=1, flags=re.MULTILINE)
 
 def main():
     apply = "--apply" in sys.argv

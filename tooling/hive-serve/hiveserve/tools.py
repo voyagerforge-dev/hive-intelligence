@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from hiveserve.resolver import get_card, load_index, resolve
 
-
 _LEAN_FIELDS = ("id", "title", "product", "type", "regime", "version",
                 "client", "corrects", "status")
 

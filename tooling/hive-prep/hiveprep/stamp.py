@@ -6,7 +6,9 @@ in deterministically. By default only MISSING fields are added, preserving any
 content-derived values the subagent wrote (content-trust).
 """
 from __future__ import annotations
+
 from pathlib import Path
+
 import yaml as _yaml
 
 

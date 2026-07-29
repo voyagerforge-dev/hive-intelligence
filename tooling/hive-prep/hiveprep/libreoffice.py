@@ -37,7 +37,7 @@ def to_pdf(src: Path, out_dir: Path, timeout: int = 180) -> Path:
     with tempfile.TemporaryDirectory(prefix="lo-") as prof:
         cmd = build_command(src, out_dir, profile_dir=f"file://{prof}")
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
         except subprocess.TimeoutExpired as e:
             raise LibreOfficeError(f"soffice timed out after {timeout}s on {src.name}") from e
         if proc.returncode != 0:

@@ -3,7 +3,7 @@ Called by .github/workflows/correction-from-issue.yml.
 Usage: python scripts/correction_from_issue.py <issue_body_file> <concepts_dir>  -> prints card path"""
 import re
 import sys
-from datetime import date
+from datetime import UTC, datetime
 from pathlib import Path
 
 from hivegen.corrections import record_to_correction
@@ -33,7 +33,7 @@ def parse_issue(body: str) -> dict:
         "description": f"Correction to {corrects}.",
         "correction": correction, "rationale": _field(body, "Rationale"),
         "citations": cites, "supersedes": sup, "status": "approved",
-        "timestamp": date.today().isoformat(),
+        "timestamp": datetime.now(UTC).date().isoformat(),
     }
 
 

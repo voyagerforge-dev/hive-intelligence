@@ -3,17 +3,17 @@
 import json
 
 from hivezendesk.relink import (
-    clear_links,
-    confine_to_one_product,
-    product_of,
-    set_linked_by,
-    set_product,
     allowed_products,
     apply_links,
     build_idf,
+    clear_links,
+    confine_to_one_product,
     load_targets,
-    rerank,
+    product_of,
     relink_cards,
+    rerank,
+    set_linked_by,
+    set_product,
     suggest,
     tokenize,
 )

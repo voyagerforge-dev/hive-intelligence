@@ -1,5 +1,5 @@
 import hiveprep.curation_plan as cp
-from hiveprep.curation_plan import load_plan, validate_plan, dedup_format_variants, Plan
+from hiveprep.curation_plan import Plan, dedup_format_variants, load_plan, validate_plan
 
 
 def test_dedup_format_variants_keeps_richest_and_records_drop():

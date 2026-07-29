@@ -1,5 +1,6 @@
 # tests/test_validate.py
 from pathlib import Path
+
 from hiveprep.validate import validate_atomic_dir
 
 FM = """---

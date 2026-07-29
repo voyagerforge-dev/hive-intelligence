@@ -27,8 +27,8 @@ def build(product: str, target_id: str, title: str, *, out_dir, timestamp: str) 
 
 
 if __name__ == "__main__":  # pragma: no cover
-    from datetime import date
+    from datetime import UTC, datetime
     product, target_id, title = sys.argv[1], sys.argv[2], sys.argv[3]
     concepts = sys.argv[4] if len(sys.argv) > 4 else "concepts"
-    out = build(product, target_id, title, out_dir=concepts, timestamp=date.today().isoformat())
+    out = build(product, target_id, title, out_dir=concepts, timestamp=datetime.now(UTC).date().isoformat())
     print(f"scaffolded {out} (fill in Correction/Rationale/citations, set status: approved, then PR)")

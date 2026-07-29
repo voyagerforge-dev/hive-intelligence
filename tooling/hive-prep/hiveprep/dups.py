@@ -1,7 +1,9 @@
 """Content-SHA duplicate grouping, provable byte-identical dupes for the curator."""
 from __future__ import annotations
+
 import hashlib
 from pathlib import Path
+
 
 def sha256_file(path: Path, chunk: int = 1 << 20) -> str:
     h = hashlib.sha256()

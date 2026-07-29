@@ -3,11 +3,11 @@ from hivezendesk.model import Comment, Ticket
 
 
 def _t(**kw):
-    base = dict(id=1, subject="Orders not allocating", description="Wave stuck all morning.",
-                org_id=1, client="alpha", closed_at="2026-03-14", tags=[],
-                comments=[Comment("agent", True, "Replen tasks lagged behind demand; "
+    base = {"id": 1, "subject": "Orders not allocating", "description": "Wave stuck all morning.",
+                "org_id": 1, "client": "alpha", "closed_at": "2026-03-14", "tags": [],
+                "comments": [Comment("agent", True, "Replen tasks lagged behind demand; "
                                                  "reran replenishment and the wave allocated.",
-                                  "2026-03-14")])
+                                  "2026-03-14")]}
     base.update(kw)
     return Ticket(**base)
 

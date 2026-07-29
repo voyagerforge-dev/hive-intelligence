@@ -109,7 +109,8 @@ def load_profile(explicit: str | None = None,
     subareas: dict[str, SubArea] = {}
     for name, spec in (raw.get("subareas") or {}).items():
         if not isinstance(spec, dict):
-            raise ValueError(f"{path}: subarea '{name}' must be a mapping")
+            raise ValueError(  # noqa: TRY004 - ValueError is this file's convention for config validity
+                f"{path}: subarea '{name}' must be a mapping")
         if not spec.get("topics"):
             # A sub-area with no topics matches nothing, silently. Refuse it: a slice that
             # loads zero documents looks identical to a corpus that has none.

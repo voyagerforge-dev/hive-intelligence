@@ -16,8 +16,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-from .striptrim import strip_struck
 from .libreoffice import to_pdf as lo_to_pdf
+from .striptrim import strip_struck
 
 # .docx alone gets strike-trim; the rest are converted by LibreOffice as-is.
 _STRIKE_TRIM = {".docx"}
@@ -61,7 +61,7 @@ def normalize_source(src: Path, work_dir: Path, base_dir: Path | None = None) ->
         out_dir.mkdir(parents=True, exist_ok=True)
         pdf = lo_to_pdf(src, out_dir)
         return NormalizeResult(src, ok=True, pdf=pdf)
-    except Exception as e:  # flag, don't crash the batch
+    except Exception as e:  # noqa: BLE001 - flag, don't crash the batch
         return NormalizeResult(src, ok=False, error=str(e))
 
 

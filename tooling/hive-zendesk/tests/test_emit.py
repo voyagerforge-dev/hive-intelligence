@@ -3,10 +3,10 @@ from hivezendesk.model import IssueCard
 
 
 def _card(**kw):
-    base = dict(ticket_id=14872, client="alpha", title="Wave allocation stalls",
-                description="d", module="allocation",
-                related=["widgets/allocation/wave-replen-lag"], tags=["allocation"],
-                what_happened="w", how_it_closed="h", closed_at="2026-03-14")
+    base = {"ticket_id": 14872, "client": "alpha", "title": "Wave allocation stalls",
+                "description": "d", "module": "allocation",
+                "related": ["widgets/allocation/wave-replen-lag"], "tags": ["allocation"],
+                "what_happened": "w", "how_it_closed": "h", "closed_at": "2026-03-14"}
     base.update(kw)
     return IssueCard(**base)
 

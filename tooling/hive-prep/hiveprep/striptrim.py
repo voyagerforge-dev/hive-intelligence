@@ -41,8 +41,7 @@ def _strip_paragraph(paragraph, stats: StripStats) -> None:
 def _iter_table_paragraphs(table):
     for row in table.rows:
         for cell in row.cells:
-            for paragraph in cell.paragraphs:
-                yield paragraph
+            yield from cell.paragraphs
             for nested in cell.tables:
                 yield from _iter_table_paragraphs(nested)
 

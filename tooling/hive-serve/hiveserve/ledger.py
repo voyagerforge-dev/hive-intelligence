@@ -5,7 +5,7 @@ import json
 import sqlite3
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 MODES = {"investigate", "implement", "learn"}
 STATUSES = {"open", "active", "resolved", "done"}
@@ -14,7 +14,7 @@ MEM_VISIBILITY = {"private", "promotion_requested"}
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _id() -> str:

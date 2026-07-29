@@ -1,5 +1,11 @@
 # knowledge/okf/tooling/hive-gen/tests/test_facets.py
-from hivegen.facets import read_facets, card_regime, stamp_facets, cross_facet_edges, derive_versions
+from hivegen.facets import (
+    card_regime,
+    cross_facet_edges,
+    derive_versions,
+    read_facets,
+    stamp_facets,
+)
 
 CARD = "---\ntitle: A\ndescription: d\nrelated:\n- b\ntype: concept\n---\n\nBody.\n"
 

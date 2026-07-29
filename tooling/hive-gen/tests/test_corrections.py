@@ -1,6 +1,6 @@
 import re
 
-from hivegen.corrections import record_to_correction, correction_to_record
+from hivegen.corrections import correction_to_record, record_to_correction
 
 REC = {
     "corrects": "sprockets/data-requirements",

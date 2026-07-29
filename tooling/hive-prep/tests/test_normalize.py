@@ -1,8 +1,11 @@
 # tests/test_normalize.py
 from pathlib import Path
+
 import pytest
+
 from hiveprep import normalize as nz
 from hiveprep.striptrim import StripStats
+
 
 def test_pdf_is_copied_as_is(tmp_path):
     src = tmp_path / "a.pdf"; src.write_bytes(b"%PDF-1.4 fake")
@@ -19,7 +22,9 @@ def test_docx_is_striptrimmed_then_converted(tmp_path, monkeypatch):
     def fake_strip(s, o):
         Path(o).parent.mkdir(parents=True, exist_ok=True); Path(o).write_bytes(b"clean-docx")
         calls["stripped"] = Path(o)
-        from hiveprep.striptrim import StripStats; return StripStats(runs_removed=3)
+        from hiveprep.striptrim import StripStats
+
+        return StripStats(runs_removed=3)
     def fake_to_pdf(s, outdir, timeout=180):
         assert s == calls["stripped"]               # converts the CLEANED docx
         p = Path(outdir) / (Path(s).stem + ".pdf"); p.write_bytes(b"%PDF clean"); return p

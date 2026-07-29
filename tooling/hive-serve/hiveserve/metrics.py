@@ -162,7 +162,7 @@ class ContentCollector:
         if self._cache is None or (now - self._last) >= self._ttl:
             try:
                 self._cache = self._sample_fn()
-            except Exception:
+            except Exception:  # noqa: BLE001 - a scrape must never take down /metrics
                 # A scrape must degrade to stale/empty content gauges, never take
                 # down the whole /metrics endpoint. Fall back to last-known-good,
                 # or an empty-but-valid shape if we have no prior sample at all.

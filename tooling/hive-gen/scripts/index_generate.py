@@ -26,7 +26,9 @@ def _cards_by_product(concepts_dir):
             continue
         product = os.path.relpath(p, concepts_dir).split("/", 1)[0]
         cid = os.path.relpath(p, concepts_dir)[:-3]
-        fm = yaml.safe_load(open(p).read().split("---", 2)[1]) or {}
+        with open(p) as _fh:
+            _text = _fh.read()
+        fm = yaml.safe_load(_text.split("---", 2)[1]) or {}
         if fm.get("type") == "correction":
             continue
         out.setdefault(product, []).append(
@@ -45,17 +47,19 @@ def generate(concepts_dir):
         for cid, title, desc in sorted(cards, key=lambda c: c[1].lower()):
             suffix = f", {desc}" if desc else ""
             lines.append(f"- [{title}](/{cid}.md){suffix}")
-        open(f"{concepts_dir}/{product}/index.md", "w").write("\n".join(lines) + "\n")
+        with open(f"{concepts_dir}/{product}/index.md", "w") as _fh:
+            _fh.write("\n".join(lines) + "\n")
     # root index
     root = ['---', 'okf_version: "0.1"', '---', "",
             "# Knowledge Bundle Index", "",
-            f"Curated OKF knowledge, organised by product. {total} concepts across "
-            f"{len(by_product)} products.", "",
+            (f"Curated OKF knowledge, organised by product. {total} concepts across "
+            f"{len(by_product)} products."), "",
             "## Products", ""]
     for product in sorted(by_product, key=lambda k: -len(by_product[k])):
         name = PRODUCT_NAMES.get(product, product)
         root.append(f"- [{name}](/{product}/index.md), {len(by_product[product])} concepts")
-    open(f"{concepts_dir}/index.md", "w").write("\n".join(root) + "\n")
+    with open(f"{concepts_dir}/index.md", "w") as _fh:
+        _fh.write("\n".join(root) + "\n")
     print(f"wrote root index + {len(by_product)} product indexes ({total} concepts)")
 
 

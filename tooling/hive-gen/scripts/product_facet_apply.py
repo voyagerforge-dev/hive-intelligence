@@ -9,7 +9,6 @@ import os
 import sys
 from pathlib import Path
 
-
 from hivegen.facets import read_facets, stamp_facets
 
 
@@ -40,12 +39,14 @@ def apply(concepts_dir: str, atomic_dir: str, product: str, platform: str) -> No
     for p in sorted(glob.glob(f"{concepts_dir}/**/*.md", recursive=True)):
         if os.path.basename(p) == "index.md":
             continue
-        text = open(p).read()
+        with open(p) as _fh:
+            text = _fh.read()
         facets = {"product": product, "platform": platform}
         versions = versions_for_card(text, atomic_dir)
         if versions:
             facets["version"] = versions
-        open(p, "w").write(stamp_facets(text, facets))
+        with open(p, "w") as _fh:
+            _fh.write(stamp_facets(text, facets))
         n += 1
     print(f"stamped {product}/{platform} facets on {n} cards")
 

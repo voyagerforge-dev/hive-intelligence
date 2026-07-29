@@ -21,7 +21,7 @@ def score_pair(fa: dict, fb: dict, llm) -> dict:
     user = f"MEMORY A:\n{_text(fa)}\n\nMEMORY B:\n{_text(fb)}"
     try:
         data = extract_json(llm.complete(_SYS, user) or "")
-    except Exception:
+    except Exception:  # noqa: BLE001 - any scoring failure must fall through to fail-safe block
         data = None
     if not data or "probability" not in data:
         return {"probability": 1.0, "rationale": "unscored, fail-safe block"}

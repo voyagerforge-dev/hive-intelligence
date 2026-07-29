@@ -19,8 +19,8 @@ from sqlglot import exp
 from hivedbparse.model import Table
 from hivedbparse.parse_tables import (
     _extract_create_table_fragment,
-    _sqlglot_dialect,
     _split_statements,
+    _sqlglot_dialect,
     _strip_constraint_state,
     _strip_using_index_clause,
 )

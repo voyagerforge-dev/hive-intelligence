@@ -17,10 +17,8 @@ product hinting is simply off.
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 from hiveprep.profile import load_product_aliases
-
 
 # ── Product names ────────────────────────────────────────────────────
 
@@ -104,18 +102,18 @@ def _normalize(segment: str) -> str:
     return " ".join(segment.lower().strip().split())
 
 
-def _match_product(segment: str, aliases: dict[str, str]) -> Optional[str]:
+def _match_product(segment: str, aliases: dict[str, str]) -> str | None:
     """Match a folder segment against the corpus profile's product aliases."""
     return aliases.get(_normalize(segment))
 
 
-def _match_version(segment: str) -> Optional[str]:
+def _match_version(segment: str) -> str | None:
     """Try to match a folder segment to a version pattern."""
     m = VERSION_PATTERN.match(segment.strip())
     return m.group(1) if m else None
 
 
-def _match_category(segment: str) -> Optional[str]:
+def _match_category(segment: str) -> str | None:
     """Try to match a folder segment to a document category."""
     norm = _normalize(segment)
     return CATEGORY_KEYWORDS.get(norm)

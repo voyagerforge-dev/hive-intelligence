@@ -18,8 +18,15 @@ import yaml
 from hivegen.profile import SubArea, load_profile, missing_profile_error
 
 __all__ = [
-    "Doc", "SubArea", "frontmatter_topic", "load_docs", "load_docs_local",
-    "load_area_local", "load_subarea_local", "area_names", "subarea_names",
+    "Doc",
+    "SubArea",
+    "area_names",
+    "frontmatter_topic",
+    "load_area_local",
+    "load_docs",
+    "load_docs_local",
+    "load_subarea_local",
+    "subarea_names",
 ]
 
 

@@ -6,8 +6,8 @@ from hivezendesk.verify import verify_card, verify_run
 
 
 def _card(**kw):
-    base = dict(ticket_id=1, client="alpha", title="T", description="d", module="allocation",
-                related=["widgets/a"], tags=[], what_happened="w", how_it_closed="h", closed_at="2026-03-14")
+    base = {"ticket_id": 1, "client": "alpha", "title": "T", "description": "d", "module": "allocation",
+                "related": ["widgets/a"], "tags": [], "what_happened": "w", "how_it_closed": "h", "closed_at": "2026-03-14"}
     base.update(kw)
     return IssueCard(**base)
 

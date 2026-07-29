@@ -137,7 +137,7 @@ def validate_plan_cmd(plan_path: str, corpus_root: str):
 def dedup_formats_cmd(plan_path: str, out: str):
     """Collapse same-document format variants (X.doc + X.docx → keep richest) so each doc has one
     unique slug/output path. Records dropped variants as dedup_groups."""
-    from hiveprep.curation_plan import load_plan, dedup_format_variants
+    from hiveprep.curation_plan import dedup_format_variants, load_plan
 
     plan = load_plan(Path(plan_path))
     before = len(plan.include)
@@ -190,6 +190,7 @@ def normalize(plan_path, work, jobs):
 def route(plan_path, work):
     """GPU-free precheck: report text/vision/passthrough tier per doc (no conversion)."""
     from collections import Counter
+
     from hiveprep.config import get_settings
     from hiveprep.curation_plan import load_plan
     from hiveprep.transform import route_plan
@@ -207,11 +208,12 @@ def route(plan_path, work):
 def transform(plan_path, work):
     """Convert normalized PDFs + passthrough sources to atomic markdown (Docling / Qwen)."""
     from collections import Counter
+
     from hiveprep.config import get_settings
     from hiveprep.curation_plan import load_plan
     from hiveprep.docling_client import DoclingClient
-    from hiveprep.vision import QwenVisionClient
     from hiveprep.transform import transform_plan
+    from hiveprep.vision import QwenVisionClient
     s = get_settings()
     docling = DoclingClient(base=s.docling_base, api_key=s.docling_api_key,
                             timeout_s=s.docling_timeout_s, ca_bundle=s.docling_ca_bundle) \

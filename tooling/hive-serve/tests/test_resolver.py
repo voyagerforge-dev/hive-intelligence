@@ -403,7 +403,7 @@ def test_load_index_forces_memory_type_in_client_tree(tmp_path):
 
 
 def test_load_index_excludes_db_tier(tmp_path):
-    from hiveserve.resolver import load_index, get_card
+    from hiveserve.resolver import get_card, load_index
     (tmp_path / "widgets").mkdir()
     (tmp_path / "widgets" / "replenishment.md").write_text(
         "---\ntitle: Replen\ndescription: d\nproduct: widgets\n---\nbody\n")

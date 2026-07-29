@@ -1,4 +1,4 @@
-from hiveprep.slugs import slugify, doc_slug, assign_slugs
+from hiveprep.slugs import assign_slugs, doc_slug, slugify
 
 
 def test_slugify():

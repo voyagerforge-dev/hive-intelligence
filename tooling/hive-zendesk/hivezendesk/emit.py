@@ -5,7 +5,7 @@ rewritten content, so rewriting an approved card is prevented rather than detect
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -32,7 +32,7 @@ def _frontmatter(card: IssueCard, version: str) -> dict:
         "status": card.status,
         "distilled_by": f"hive-zendesk@{version}",
         **({"model": card.model} if card.model else {}),
-        "timestamp": date.today().isoformat(),
+        "timestamp": datetime.now(UTC).date().isoformat(),
     }
 
 

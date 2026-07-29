@@ -1,7 +1,10 @@
 # tests/test_libreoffice.py
 from pathlib import Path
+
 import pytest
+
 from hiveprep import libreoffice as lo
+
 
 def test_build_command_shape(tmp_path):
     cmd = lo.build_command(Path("/x/in.docx"), tmp_path)

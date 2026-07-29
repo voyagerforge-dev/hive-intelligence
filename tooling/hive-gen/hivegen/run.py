@@ -1,7 +1,7 @@
 """Orchestrate the OKF card pipeline (gate-aware) + detached entrypoint."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, datetime
 from pathlib import Path
 
 from hivegen.assign import assign_docs
@@ -43,7 +43,7 @@ def generate_drafts(docs: list[Doc], concepts: list[Concept], assign_llm: ChatLL
                 continue
             draft_path.write_text(card)
             written.append(f"{cid}.md")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - one bad concept must not end the batch
             print(f"[hivegen] skipping concept {cid!r}: {exc}", flush=True)
             continue
     return sorted(written)
@@ -51,8 +51,7 @@ def generate_drafts(docs: list[Doc], concepts: list[Concept], assign_llm: ChatLL
 
 def main() -> None:  # pragma: no cover, live wiring (detached)
     from hivegen.config import get_settings
-    from hivegen.load import (load_area_local, load_docs, load_docs_local,
-                             load_subarea_local)
+    from hivegen.load import load_area_local, load_docs, load_docs_local, load_subarea_local
     from hivegen.profile import load_profile, missing_profile_error
     from hivegen.taxonomy import load_taxonomy, propose_taxonomy, write_taxonomy
 
@@ -105,7 +104,7 @@ def main() -> None:  # pragma: no cover, live wiring (detached)
                               timeout_s=s.bifrost_timeout_s)
     written = generate_drafts(docs, concepts, assign_llm, distill_llm,
                               drafts_dir=root / "drafts", max_chars=s.max_chars,
-                              today=date.today().isoformat(),
+                              today=datetime.now(UTC).date().isoformat(),
                               pipeline_dir=root / ".pipeline" / (area or "wave-replen"))
     print(f"GATE 2 [{label}]: wrote {len(written)} draft cards → drafts/. Review, flip "
           "status: approved, then run promote.", flush=True)
