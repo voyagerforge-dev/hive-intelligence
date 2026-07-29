@@ -10,7 +10,7 @@ asks the same question, and they only do if the behaviour is defined once, here.
 
 | Skill | What it is for |
 |---|---|
-| `okf/` | The base skill. Auto-engages and answers from the corpus. |
+| `hive/` | The base skill. Auto-engages and answers from the corpus. |
 | `diagnose-an-issue/` | Working a reported problem back to its concepts. |
 | `plan-an-implementation/` | Planning a piece of work against what the corpus knows. |
 | `learn-a-topic/` | Guided reading across a subject. |
@@ -32,9 +32,13 @@ repository and quietly rotting in the others.
 
 ## Naming
 
-These still say **OKF** throughout, including the base skill's directory name, which is the
-name the product had before it became Hive. The rename is deliberately not done here: the
-skill name is what invokes it and the MCP tool names it calls are set by the server, so
-renaming is a coordinated change across the skills, `hive-serve`'s tool names and every
-deployment's plugin. It is worth doing, and it is worth doing in one commit rather than as a
-side effect of a move.
+Renamed from OKF to Hive on 2026-07-29, in one commit across everything the name touched:
+the base skill's directory and its `name:`, the product references in every skill body, the
+author service, and the issue-form templates the Contribute skill cites by title.
+
+It was deferred once on purpose. A skill's `name:` is what invokes it and the templates are
+cited by their real titles, so renaming any one of those alone leaves a skill that points at
+something that is not there. That is why it is one commit rather than a tidy-up.
+
+The MCP **tool** names are unchanged and were never in scope: they are set by the server, and
+`find_concepts` and `submit_memory_promotion` say what they do rather than who they belong to.

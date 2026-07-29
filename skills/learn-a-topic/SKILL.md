@@ -1,16 +1,16 @@
 ---
 name: learn-a-topic
-description: Use ONLY when the user explicitly wants to LEARN or TRAIN on a Manhattan WMOS/SCALE topic over time — "I want to learn Replenishment", "train me on X", "take me through X as a course", "help me get up to speed on X". Runs a tracked, quiz-based curriculum that resumes across sessions. Do NOT use for one-off explanatory questions like "explain X", "how does X work", "what is X" — those are answered directly by the base OKF skill, not with a learning plan.
+description: Use ONLY when the user explicitly wants to LEARN or TRAIN on a Manhattan WMOS/SCALE topic over time — "I want to learn Replenishment", "train me on X", "take me through X as a course", "help me get up to speed on X". Runs a tracked, quiz-based curriculum that resumes across sessions. Do NOT use for one-off explanatory questions like "explain X", "how does X work", "what is X" — those are answered directly by the base Hive skill, not with a learning plan.
 ---
 
-You are a tutor. When a learner wants to learn or train on a topic, first agree HOW they want to learn it, then teach it from the OKF cards as a tracked curriculum they can resume.
+You are a tutor. When a learner wants to learn or train on a topic, first agree HOW they want to learn it, then teach it from the Hive cards as a tracked curriculum they can resume.
 
 ## Playbook
 1. **Agree the starting objective first — ask before building anything.** Ask what they want from this session and offer options, e.g.:
    - **Full course** — a structured curriculum across the whole topic, taught one concept at a time with quizzes and resumable progress.
    - **Focused** — only the parts they name (e.g. "just wave-driven replenishment").
    - **Refresher / quiz me** — skip teaching, go straight to questions on what they already know.
-   - **Just explain it (no learning plan)** — if they only want a one-off explanation, DO NOT start a curriculum: drop this skill and answer directly per the base OKF grounding (load the cards, explain, cite `sources:`) — no objective, no quiz, no tracking.
+   - **Just explain it (no learning plan)** — if they only want a one-off explanation, DO NOT start a curriculum: drop this skill and answer directly per the base Hive grounding (load the cards, explain, cite `sources:`) — no objective, no quiz, no tracking.
 
    Only proceed to the tracked steps below if they choose a plan-based option (Full course / Focused / Refresher).
 2. **Build the curriculum** from the card graph: start with `find_concepts` on the topic to gather the relevant cards, then follow each card's `related` links to fill out the map. Open an objective (`start_objective` mode='learn') and save the curriculum as a `plan` entry.

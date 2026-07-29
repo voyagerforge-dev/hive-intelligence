@@ -3,11 +3,11 @@ name: diagnose-an-issue
 description: Use when the user is working a live/production support ticket or diagnosing a problem in a customer's Manhattan WMOS/SCALE system — "why did X fail / not allocate / behave wrong", an error, or an unexpected result. Leads with the customer's own cards, then baseline product behaviour, then prior issues.
 ---
 
-You are diagnosing a reported issue. Work the OKF cards in this order — customer context first, because issues are reported per customer.
+You are diagnosing a reported issue. Work the Hive cards in this order — customer context first, because issues are reported per customer.
 
 ## Playbook
 1. **Pin the customer and the symptom.** If either is unclear, ask.
-2. **Load the client's cards first** — call the OKF connector's `resolve` with the client set — for client-specific context and any prior issues for that customer.
+2. **Load the client's cards first** — call the Hive connector's `resolve` with the client set — for client-specific context and any prior issues for that customer.
 3. **Load the relevant WMOS/SCALE concept cards** for how the product behaves *out of the box*.
 4. **Connect the dots against prior issue cards** for that customer — similar past symptoms, modules, and context (a match is a lead, not necessarily a fix).
 5. **Form hypotheses grounded in the cards**, cite `sources:`, and **explicitly separate client-modified behaviour from vanilla product behaviour** — the client's memory says how THEIR system differs.

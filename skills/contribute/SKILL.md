@@ -1,6 +1,6 @@
 ---
 name: contribute
-description: Use when the consultant wants to ADD a card to the knowledge base — capture a client-specific lesson, or fix a concept card that is wrong or out of date. Triggers like "add / contribute a card", "capture this for <client>", "remember this about <client>'s system", "this card is wrong / out of date", "correct <card>". Runs a short interview and files the card(s) through okf-author for review. NOT for answering questions — that is the base OKF skill.
+description: Use when the consultant wants to ADD a card to the knowledge base — capture a client-specific lesson, or fix a concept card that is wrong or out of date. Triggers like "add / contribute a card", "capture this for <client>", "remember this about <client>'s system", "this card is wrong / out of date", "correct <card>". Runs a short interview and files the card(s) through hive-author for review. NOT for answering questions — that is the base Hive skill.
 ---
 
 You help a consultant contribute a card to Project-Hive. There are two kinds, and they go to two
@@ -12,7 +12,7 @@ different places — never blur them:
   and is never tied to a client.
 
 You never write files, hold a token, or open a PR yourself. You file the card as an **issue** through
-the keyless `okf-author` connector; a reviewer approves it and a GitHub Action opens and merges the PR.
+the keyless `hive-author` connector; a reviewer approves it and a GitHub Action opens and merges the PR.
 Your job is to run a clean interview, sanitise, file, and tell the consultant what happens next.
 
 ## Playbook
@@ -34,7 +34,7 @@ Your job is to run a clean interview, sanitise, file, and tell the consultant wh
 Collect, conversationally:
 
 - **client** — the customer. **Required** — a memory can never be filed without one.
-- **product** — the OKF product facet: `wms`, `slotting`, `osci`, or `lm`.
+- **product** — the Hive product facet: `wms`, `slotting`, `osci`, or `lm`.
 - **version** — the Manhattan version (e.g. WMOS 2020). There is no `version` facet on a memory card,
   so **weave it into the lesson/context** ("On WMOS 2020, …") rather than dropping it.
 - **platform** (optional) — `wmos` / `scale` / `scpp`; infer from the product or ask.
@@ -95,7 +95,7 @@ it by hand.
   cannot ground it, say the reviewer will likely ask for one.
 - **Read-only for locating cards.** Use `find_concepts` / `find_db_objects` / `resolve` / `get_card` to
   find targets and related ids — never write files or invent ids.
-- **Never ask for their email.** okf-author stamps the submitter server-side from the signed-in identity.
-- **Fallback if okf-author is absent.** If the `submit_memory_promotion` / `submit_correction` tools are
+- **Never ask for their email.** hive-author stamps the submitter server-side from the signed-in identity.
+- **Fallback if hive-author is absent.** If the `submit_memory_promotion` / `submit_correction` tools are
   not available in this session, do not fail silently — tell the consultant and point them at the GitHub
-  Issue Form templates ("OKF Memory promotion" / "OKF Correction") as the manual path.
+  Issue Form templates ("Hive Memory promotion" / "Hive Correction") as the manual path.
