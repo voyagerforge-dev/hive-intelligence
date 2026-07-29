@@ -14,9 +14,17 @@ import sys
 
 import yaml
 
-# Per-deployment: the public base a card id resolves under. Cards are portable, so this
-# cannot be baked in. Set CARD_BASE_URL in the environment of whoever runs the pass.
-BASE_URL = os.environ.get("CARD_BASE_URL", "https://hive.example.com/card")
+# The base a card id resolves under. A PATH by default, deliberately.
+#
+# The comment here used to say cards are portable so the host cannot be baked in, and then
+# defaulted to a host anyway, which is an invitation to run the pass with a real one. The
+# EXAMPLECO corpus took that invitation: 991 cards were written with an absolute URI and every one
+# of them had to be rewritten on 2026-07-29 when the deployment moved domains. A card
+# outlives any one deployment's hostname, so the default is the thing that stays true.
+#
+# Override with CARD_BASE_URL only where a deployment genuinely needs absolute URIs, and
+# expect to rewrite them the next time it moves.
+BASE_URL = os.environ.get("CARD_BASE_URL", "/card")
 
 
 def _title_map(concepts_dir):
