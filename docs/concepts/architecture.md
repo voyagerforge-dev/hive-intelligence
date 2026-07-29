@@ -3,6 +3,9 @@
 Three stages produce a corpus. One service serves it. Two stores keep knowledge and work state
 apart.
 
+This is the shape of the system in one page. For the long form, with every gate, the layers on top
+and the diagrams, read [the pipeline end to end](pipeline.md).
+
 ```
    raw documents
         │

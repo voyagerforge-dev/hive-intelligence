@@ -11,6 +11,7 @@ Read these to understand what Hive is and why it is shaped the way it is.
 | [Overview](concepts/overview.md) | the problem, the approach, and who this is for |
 | [Cards](concepts/cards.md) | the OKF card format: five types, frontmatter, facets, ids |
 | [Architecture](concepts/architecture.md) | three stages, two doors, two stores |
+| [The pipeline, end to end](concepts/pipeline.md) | the long form: every stage, every gate, every layer, with diagrams |
 | [Principles](concepts/principles.md) | the decisions that constrain everything else |
 
 ## Guides
