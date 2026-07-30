@@ -61,6 +61,100 @@ An unparsed construct is a parser bug to fix, not a file to exclude.
 | `emit.py` | render cards and manifest lines |
 | `run.py` | walk, parse, reconcile, gate, write |
 
+## Internals
+
+Module-level detail, verified against the code on 2026-07-30.
+
+### What the walk actually covers
+
+Three locations per dialect, and the third is the one that is easy to miss:
+
+| Location | Holds |
+|---|---|
+| `DBScripts/Product/*.sql` | module files, **non-recursive** |
+| `DBScripts/Seed/Product/<module>/` | the base-schema catalogs, where the bulk of the classic tables are declared |
+| `DBScripts/Product/PLSQL_Objects/*.sql` | dedicated PL/SQL units |
+
+Subdirectories under `Product/` (`Seed/`, `Archive/`, `Upgrade/`, `CreateSchema/`) and the
+non-`Product` `Seed/` subtrees (`Archive/`, `Merges/`, `Shared/`) are **never walked**. Under
+`Seed/Product`, per-table INSERT seed-data files carrying no object DDL are skipped by content.
+
+> **Pointing this at only `Product/*.sql` produces a corpus that looks complete.** The base-schema
+> catalogs are disjoint from the module files, so omitting them drops thousands of tables while
+> every gate passes: a gate that verifies completeness against its own input cannot tell you the
+> input was incomplete.
+
+`module` comes from the source filename stem. `source_files` records the actual path each object
+was read from, which is what makes a PL/SQL card's `sources:` point at its real file rather than a
+synthesised module name.
+
+### The gate, precisely
+
+**The gate is hard on exactly one thing: unparsed objects.** That is the only case that silently
+drops unique content.
+
+The run always finishes the full walk before raising, so the error can report exactly what did and
+did not work. `parse_tables` and `parse_plsql` log a warning with a source snippet rather than
+skipping quietly, including a `CREATE OR REPLACE` whose object-kind keyword matches no known
+PL/SQL kind. Warnings are captured per file, so each is attributed to where it came from.
+
+**Same-name duplicates within a dialect do not fail the run.** A duplicate is at worst two
+near-identical definitions where one gets carded, which is not a drop of unique content. Each is
+deduped keeping the first seen, **both** source files are recorded on the survivor, and a line
+naming the object, the files, and whether they are identical or differ is appended to
+`conflicts.log`. Visible, never silent, never fatal.
+
+Two things are *not* logged as duplicates because they are legitimate merges: a cross-dialect match
+of the same name, and a package spec paired with its body.
+
+The emitted-equals-parsed count check is a **cheap consistency assertion, not the primary
+protection**.
+
+> **The gate counts; it does not diff.** A change that rewrites existing cards passes it cleanly.
+> Require an additive-only git diff on any re-run.
+
+### `parse_tables.py`
+
+sqlglot with a dialect map. **sqlglot has no native DB2 dialect**, so DB2 DDL is parsed with the
+generic ANSI dialect; the logical label is kept for tagging regardless of what parsed it.
+
+Where sqlglot bails on physical-storage clauses (`TABLESPACE`, `STORAGE (...)`, `PCTFREE`), a
+token-level **fragment fallback** extracts the parseable `CREATE TABLE` head by paren matching.
+Oracle's inline `USING INDEX TABLESPACE` needs separate handling because it sits *inside* the
+parens, where paren-matching cannot trim it.
+
+### `parse_aux.py`, `parse_plsql.py`
+
+`parse_aux` overlays the out-of-line facts: `COMMENT ON` kept **verbatim** as the human
+description, foreign keys, indexes, sequences.
+
+`parse_plsql` captures each unit's signature and **full body as a verbatim character slice**, so
+nothing is paraphrased or normalised. Unit boundaries come from the tokenizer:
+
+> **A `/` terminates a unit only when it stands alone on its line.** That is the SQL\*Plus
+> terminator. Treating every `/` as a boundary truncates any body containing a division.
+
+Units are captured from both the dedicated PL/SQL files and inline in the module files. Most
+triggers and views live inline, so skipping inline capture drops a large fraction of the tier.
+
+### `reconcile.py`
+
+Matches objects across dialects by name. Oracle is the structural base; DB2 contributes `type_db2`
+on matching columns. PL/SQL bodies are unioned by name with a **whitespace-normalised** body
+comparison, so an identical body renders as "identical" rather than as two copies. Package spec and
+body are merged into one unit.
+
+### `emit.py`
+
+One card and one `manifest.jsonl` line per object, with a **deterministic `card_id`**, so a re-run
+over unchanged DDL produces byte-identical output and an empty diff. Frontmatter is written through
+safe YAML.
+
+## Tests
+
+103 tests. Fakes and DDL fixtures only. No database is needed, because the parser reads
+SQL text.
+
 ## Output
 
 One markdown card per object, plus `manifest.jsonl` recording what was parsed, plus `conflicts.log`

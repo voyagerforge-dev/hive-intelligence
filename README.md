@@ -48,7 +48,8 @@ Six Python packages under `tooling/`. Three form the pipeline; three extend it.
 - **[Documentation](docs/README.md)** is the map.
 - **[Getting started](docs/guides/getting-started.md)** has `hive-serve` answering questions from
   the bundled fixture corpus in about five minutes.
-- **[Architecture](docs/concepts/architecture.md)** is the conceptual reference.
+- **[Architecture](docs/concepts/architecture.md)** is the conceptual reference, and
+  **[the pipeline end to end](docs/concepts/pipeline.md)** is the long form with diagrams.
 
 ## What this repository is not
 

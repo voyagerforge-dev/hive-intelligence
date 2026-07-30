@@ -107,6 +107,100 @@ call a model, through `hivegen`, and are never on the serving path.
 Question sets name real card ids, so they are corpus-specific and ship with a corpus rather than
 with the product. `run_eval` therefore requires the set as an argument and has no default.
 
+## Internals
+
+Module-level detail, verified against the code on 2026-07-30.
+
+### `resolver.py`, the whole retrieval algorithm
+
+Everything selection-related lives here, which is why both doors cannot drift apart on isolation.
+
+**`card_path`** maps a card id to a file. Ids starting `clients/` resolve under `CLIENTS_DIR`,
+everything else under `CONCEPTS_DIR`. Both are resolved and bounds-checked, so a crafted id cannot
+escape its directory.
+
+**`load_index`** builds the lean index. It reads frontmatter only, never bodies. Client cards get a
+`client` facet **derived from the id path**, not from author-supplied frontmatter, so a card cannot
+declare itself into another client's scope.
+
+**`resolve`** is a breadth-first walk with three independent limits and two guards:
+
+```
+seed        ids that exist AND are in scope
+expand      follow related: edges, up to `depth` levels
+budget      stop at `max_cards` (default 8); then optionally trim to `max_chars`
+```
+
+The two guards run on every neighbour, and both share a subtlety worth stating:
+
+| Guard | Rule |
+|---|---|
+| Cross-regime | skip a neighbour whose regime differs from its parent's |
+| Cross-client | skip a neighbour scoped to a different client than the active one |
+
+> **A skipped neighbour is deliberately not marked as seen.** It stays reachable by another path
+> that legitimately leads to it. Marking it seen would let the first, rejected traversal
+> permanently hide a card from a valid one, and the symptom would be an answer missing a card for
+> reasons invisible in the output.
+
+**Broken links are tolerated.** A `related:` id with no file is skipped silently rather than
+raising. A corpus mid-edit stays servable; `validate-atomic` and the lint scripts are where dangling
+links are supposed to be caught.
+
+**The character budget always keeps at least one card.** The trim only drops a card if something is
+already kept, so a single card larger than `max_chars` is returned rather than an empty bundle.
+
+**Corrections are co-pulled last and are unbudgeted.** After selection and trimming, every active
+correction of every selected concept is appended. They are not subject to `max_cards` or
+`max_chars`, because a dropped correction means the wrong fact stands.
+
+The return is `{card_ids, bundle, dropped, corrections}`. `dropped` is what the budget removed, and
+it is worth surfacing: a silently truncated bundle looks like a complete answer.
+
+### `dbobjects.py`
+
+LLM-free keyword search over `concepts/<product>/db/manifest.jsonl`, one JSON object per line,
+emitted by the parser. Case-insensitive token matching, **scored by how many query tokens hit**,
+optionally filtered by kind or module, capped by `limit` (default 20).
+
+The same shape as memory `recall`, deliberately. Neither calls a model, so both are cheap enough to
+sit in a tool loop and deterministic enough to test.
+
+### `ledger.py`
+
+Three tables in one SQLite file, WAL mode: `objective`, `entry`, `memory`. Enum-validated on write
+and **owner-scoped on every read and write**.
+
+### `identity.py`
+
+Resolves `owner` from the configured trusted header, falling back to the configured default when
+there is no header (stdio, where there is no gate in front).
+
+Header lookup is **case-insensitive**: it tries the exact name, then retries against a lowercased
+view of the keys, because a plain dict is case-sensitive while HTTP headers are not. A gate that
+sends a differently-cased header would otherwise silently produce the default owner for everyone,
+which is a data-mixing bug rather than an error.
+
+### `app.py`, `mcp_app.py`, `server.py`
+
+`app.py` is the FastAPI REST router. `mcp_app.py` is the FastMCP server: 15 tools, no prompts,
+injecting `owner` from the request context so it can never be a tool parameter. `server.py` is the
+entrypoint that mounts the MCP streamable-HTTP app onto the same FastAPI process for `--http`, or
+runs stdio.
+
+### `agent.py`, `eval.py`, `run_eval.py`
+
+The offline evaluation harness. **Not on the serving path** and the only part of this package that
+calls a model. It exists to measure the corpus, and the product-isolation eval over it is the
+deploy gate.
+
+## Tests
+
+146 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
+datasets, or the GitHub
+submission surface skip with a stated reason when their subject is absent, so the suite is green in
+this repository and meaningful in a deployment that has a corpus.
+
 ## Configuration
 
 See [configuration](configuration.md#hive-serve).

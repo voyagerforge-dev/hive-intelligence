@@ -1,7 +1,12 @@
-"""Pure builders for OKF authoring issues. The issue body emits `### <label>` sections that
+"""Pure builders for Hive authoring issues. The issue body emits `### <label>` sections that
 match the memory.yml / correction.yml Issue Forms exactly, so the Action parsers round-trip
 them. The two build_* functions are hard-separated: memory REQUIRES a client and labels
-okf-memory; correction targets a concept id and labels okf-correction."""
+hive-memory; correction targets a concept id and labels hive-correction.
+
+These labels must match .github/ISSUE_TEMPLATE/*.yml in the corpus repository, because both
+paths feed the same workflow parsers. They said okf-* until 2026-07-30, so an issue filed
+through here carried a different label from the same issue filed through the form, and any
+label-based filter or CODEOWNER route saw only half the submissions."""
 from __future__ import annotations
 
 
@@ -45,7 +50,7 @@ def build_memory_submission(*, owner, client, product, title, lesson, context=""
     body = memory_issue_body(client=str(client).strip().lower(), product=product, title=title,
                              lesson=lesson, context=context, platform=platform,
                              related=related, citations=citations, submitted_by=owner)
-    return {"title": f"[memory] {title}", "body": body, "labels": ["okf-memory"]}
+    return {"title": f"[memory] {title}", "body": body, "labels": ["hive-memory"]}
 
 
 def build_correction_submission(*, owner, target_concept_id, corrected_fact, rationale,
@@ -53,4 +58,4 @@ def build_correction_submission(*, owner, target_concept_id, corrected_fact, rat
     body = correction_issue_body(target_concept_id=target_concept_id, corrected_fact=corrected_fact,
                                  rationale=rationale, citations=citations, supersedes=supersedes,
                                  submitted_by=owner)
-    return {"title": f"[correction] {target_concept_id}", "body": body, "labels": ["okf-correction"]}
+    return {"title": f"[correction] {target_concept_id}", "body": body, "labels": ["hive-correction"]}

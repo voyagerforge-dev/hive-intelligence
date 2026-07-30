@@ -90,6 +90,74 @@ skipped, preserved, cached, held or failed. A run that cannot account for every 
 
 **Approved cards are never overwritten** unless `--force` is passed.
 
+## Internals
+
+Module-level detail, verified against the code on 2026-07-30.
+
+### Why linking is a separate stage
+
+The distiller has **never seen the corpus**. Card ids it invents resolve a small fraction of the
+time, so cards are emitted with `related: []` and linked afterwards.
+
+`relink.py` builds a **TF-IDF shortlist** over the concept corpus, hands the model that shortlist,
+and lets it **decline**. Three properties follow:
+
+- A link can only ever be a real card id, because the shortlist is built from ids that exist.
+- Declining is a valid answer, so a ticket with no good match gets no link rather than a wrong one.
+- The IDF weighting is what stops every ticket linking to whichever concept has the most common
+  vocabulary.
+
+`apply_links` writes the chosen ids back into frontmatter. `product_of` and `product_vocabulary`
+derive the product facet from the corpus profile rather than from the ticket.
+
+### The product facet, and why it is stricter than linking
+
+Leaving the corpus's default product **requires positive evidence in the entry's own words**, not
+in the card it linked to. The marker vocabulary comes from the corpus profile, so it is
+corpus-specific rather than baked in.
+
+That rule exists because the obvious approach failed in a specific way: inferring the product from
+the chosen link filed a ticket titled "Application is down" under the wrong product entirely,
+because the best-matching card happened to belong to it.
+
+> **A wrong facet is worse than a wrong link.** Selection filters on product, so an entry stamped
+> with the wrong one is *invisible* to the consultant who needs it. A wrong link is merely noise in
+> a bundle someone reads.
+
+`product_vocabulary` returns `None` when the corpus profile defines no vocabulary at all, which is
+treated as "do not attempt the inference" rather than as an empty allowlist.
+
+### `verify.py`, the gate
+
+**Any failure raises rather than warning.** `verify_card` checks each card against the known card
+ids and the issue record; `verify_run` checks the run as a whole.
+
+The reason it is hard: a several-hundred-ticket backfill that half-succeeds is worse than one that
+refuses, because the partial result looks like a complete one and nothing downstream can tell.
+
+### `run.py`, the modes
+
+| Mode | Does |
+|---|---|
+| `backfill` | a bounded historical range |
+| `incremental` | since the last run |
+| `rebuild` | re-emit cards from stored records, no model call |
+| `relink` | re-run linking only, against the current corpus |
+
+`--dry-run` fetches and gates but **never calls the model and never writes**. That is how a backfill
+is sized and costed before any money is spent.
+
+`--limit` is applied **before** counting, so the verification reflects what was actually requested.
+Applying it afterwards would make every limited run fail its own count check.
+
+`rebuild` and `relink` exist because the two model stages fail independently. A bad linking pass is
+repairable without re-distilling, which is the expensive half.
+
+## Tests
+
+107 tests. Fakes only: the connector and both model clients are injected, so the suite
+runs with no network and no models.
+
 ## Configuration
 
 See [configuration](configuration.md#hive-zendesk).

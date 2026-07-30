@@ -13,10 +13,10 @@ def test_tools_registered():
 
 
 def test_hard_separation_of_build_helpers():
-    # memory always labels okf-memory + needs a client; correction always labels okf-correction
+    # memory always labels hive-memory + needs a client; correction always labels hive-correction
     m = build_memory_submission(owner="o", client="alpha", product="widgets", title="t", lesson="l")
     c = build_correction_submission(owner="o", target_concept_id="widgets/x",
                                     corrected_fact="f", rationale="r")
-    assert m["labels"] == ["okf-memory"] and c["labels"] == ["okf-correction"]
+    assert m["labels"] == ["hive-memory"] and c["labels"] == ["hive-correction"]
     assert "Client" in m["body"] and "Target concept id" in c["body"]
     assert "Client" not in c["body"] and "Target concept id" not in m["body"]
