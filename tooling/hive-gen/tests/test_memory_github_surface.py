@@ -31,7 +31,7 @@ needs_github_surface = pytest.mark.skipif(
 @needs_github_surface
 def test_memory_issue_form_wellformed():
     form = yaml.safe_load(ISSUE_FORM.read_text())
-    assert "okf-memory" in form["labels"]
+    assert "hive-memory" in form["labels"]
     ids = {f.get("id") for f in form["body"]}
     assert {"client", "product", "title", "memory"} <= ids
 
@@ -39,7 +39,7 @@ def test_memory_issue_form_wellformed():
 @needs_github_surface
 def test_memory_action_fires_on_approved_label():
     text = MEMORY_WORKFLOW.read_text()
-    assert "okf-memory-approved" in text
+    assert "hive-memory-approved" in text
     assert "memory_from_issue.py" in text
 
 
