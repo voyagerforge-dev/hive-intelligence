@@ -23,7 +23,7 @@ connector URL.
 
 **Not here:** the packaging. A deployment wraps these in a plugin with its own
 `.claude-plugin/`, its own `.mcp.json` naming its own MCP endpoint, and its own marketplace
-entry. The EXAMPLECO deployment does that in `example-org/example-hive-plugin`.
+entry. The EXAMPLECO deployment does that in `loom-loki/example-hive-plugin`.
 
 A deployment fork inherits this directory the same way it inherits `tooling/` and `docs/`:
 by merging `upstream`. That is the whole point of putting them here. A skill fixed once is
