@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+from hiveauthor import metrics
 from hiveauthor.config import get_settings
 from hiveauthor.mcp_app import build_mcp
 
@@ -27,6 +28,15 @@ def build_http_app(settings):
     @app.get("/healthz")
     def healthz():
         return {"ok": True}
+
+    # Declared BEFORE the catch-all MCP mount at "/", or the mount shadows it and
+    # /metrics 404s while looking correctly configured.
+    @app.get("/metrics", include_in_schema=False)
+    def metrics_endpoint():
+        from fastapi.responses import Response
+
+        body, content_type = metrics.render()
+        return Response(content=body, media_type=content_type)
 
     app.mount("/", mcp.streamable_http_app())
     return app
