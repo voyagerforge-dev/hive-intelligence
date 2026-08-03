@@ -112,9 +112,9 @@ def db_object_samples(concepts_dir) -> dict[str, int]:
     """Count the on-demand database-object tier, per product.
 
     ``load_index`` deliberately skips ``concepts/<product>/db/**`` because those cards are
-    resolved on demand rather than listed. That makes them invisible to okf_corpus_cards,
+    resolved on demand rather than listed. That makes them invisible to hive_corpus_cards,
     and on a corpus with a real schema behind it they are the large majority of it:
-    commonly several thousand of a few thousand more. An alert built only on okf_corpus_cards would therefore report a healthy
+    commonly several thousand of a few thousand more. An alert built only on hive_corpus_cards would therefore report a healthy
     corpus while almost all of it was missing.
 
     Counted by directory walk rather than by parsing frontmatter: this is a presence
@@ -176,7 +176,7 @@ class ContentCollector:
     def collect(self):
         data = self._samples()
         cards = GaugeMetricFamily(
-            "okf_corpus_cards", "OKF cards on disk by product and regime facet",
+            "hive_corpus_cards", "Hive cards on disk by product and regime facet",
             labels=["product", "regime"])
         # Defensive sort key: content_samples normalizes facets to "none", but a
         # raw None from any sample_fn would make plain tuple-sort raise (None < str).
@@ -185,14 +185,14 @@ class ContentCollector:
             cards.add_metric([str(product), str(regime)], n)
         yield cards
         db = GaugeMetricFamily(
-            "okf_corpus_db_objects",
+            "hive_corpus_db_objects",
             "OKF database-object cards on disk by product (the on-demand tier, "
-            "excluded from okf_corpus_cards)", labels=["product"])
+            "excluded from hive_corpus_cards)", labels=["product"])
         for product, n in sorted(data.get("db_objects", {}).items()):
             db.add_metric([str(product)], n)
         yield db
         rows = GaugeMetricFamily(
-            "okf_ledger_rows", "OKF ledger row counts by table", labels=["table"])
+            "hive_ledger_rows", "Hive ledger row counts by table", labels=["table"])
         for table, n in sorted(data["ledger"].items()):
             rows.add_metric([table], n)
         yield rows

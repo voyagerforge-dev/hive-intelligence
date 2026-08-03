@@ -96,7 +96,7 @@ advisable, for any exposure beyond the host.
 ## Metrics
 
 See [metrics](metrics.md). The short version: `/healthz` cannot see an empty corpus, so alert on
-`okf_corpus_cards` and `okf_corpus_db_objects`. Both, because the first excludes the
+`hive_corpus_cards` and `hive_corpus_db_objects`. Both, because the first excludes the
 database-object tier and that tier is usually most of the corpus.
 
 ## The evaluation harness

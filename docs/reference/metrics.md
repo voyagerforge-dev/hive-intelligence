@@ -29,18 +29,18 @@ deliberately: counting Prometheus scraping would dilute the denominator of any e
 
 | Metric | Type | Labels |
 |---|---|---|
-| `okf_corpus_cards` | gauge | `product`, `regime` |
-| `okf_corpus_db_objects` | gauge | `product` |
-| `okf_ledger_rows` | gauge | `table` |
+| `hive_corpus_cards` | gauge | `product`, `regime` |
+| `hive_corpus_db_objects` | gauge | `product` |
+| `hive_ledger_rows` | gauge | `table` |
 
 Both corpus gauges are needed to see the whole corpus, and this is the important thing on this page.
 
-`okf_corpus_cards` counts **indexed** cards. It deliberately excludes the database-object tier,
+`hive_corpus_cards` counts **indexed** cards. It deliberately excludes the database-object tier,
 because that tier is resolved on demand and is excluded from the index. On a corpus with a real
 schema behind it, that exclusion is most of the corpus: 7,249 of 10,536 cards in the deployment
 this was measured on.
 
-So `okf_corpus_db_objects` exists to cover the rest. An alert built on `okf_corpus_cards` alone
+So `hive_corpus_db_objects` exists to cover the rest. An alert built on `hive_corpus_cards` alone
 would report a healthy corpus while 88% of it was missing, which is worse than no alert at all,
 because it turns silence into assurance.
 
@@ -65,18 +65,18 @@ green.
 
 ```yaml
 - alert: HiveServeCorpusEmpty
-  expr: (sum(okf_corpus_cards{job="hive_serve"}) or vector(0)) == 0
+  expr: (sum(hive_corpus_cards{job="hive_serve"}) or vector(0)) == 0
   for: 10m
   labels: { severity: critical }
 
 - alert: HiveServeDbObjectsEmpty
-  expr: (sum(okf_corpus_db_objects{job="hive_serve"}) or vector(0)) == 0
+  expr: (sum(hive_corpus_db_objects{job="hive_serve"}) or vector(0)) == 0
   for: 10m
   labels: { severity: critical }
 
 - alert: HiveServeCorpusShrank
-  expr: sum(okf_corpus_cards{job="hive_serve"})
-        < 0.8 * sum(okf_corpus_cards{job="hive_serve"} offset 1h)
+  expr: sum(hive_corpus_cards{job="hive_serve"})
+        < 0.8 * sum(hive_corpus_cards{job="hive_serve"} offset 1h)
   for: 15m
   labels: { severity: warning }
 ```

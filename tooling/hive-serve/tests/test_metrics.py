@@ -98,13 +98,13 @@ def test_content_collector_emits_gauges():
                 "ledger": {"objective": 2, "memory": 5}}
     coll = metrics.ContentCollector(sample, ttl_s=30.0, clock=lambda: 0.0)
     families = {m.name: m for m in coll.collect()}
-    assert "okf_corpus_cards" in families
-    assert "okf_ledger_rows" in families
+    assert "hive_corpus_cards" in families
+    assert "hive_ledger_rows" in families
     card_samples = {(s.labels["product"], s.labels["regime"]): s.value
-                    for s in families["okf_corpus_cards"].samples}
+                    for s in families["hive_corpus_cards"].samples}
     assert card_samples[("widgets", "operational")] == 3
     ledger_samples = {s.labels["table"]: s.value
-                      for s in families["okf_ledger_rows"].samples}
+                      for s in families["hive_ledger_rows"].samples}
     assert ledger_samples == {"objective": 2, "memory": 5}
 
 
@@ -117,10 +117,10 @@ def test_content_collector_survives_sample_failure():
     # No prior cache: collector must still yield both families, with zero samples.
     coll = metrics.ContentCollector(failing_sample, ttl_s=30.0, clock=lambda: clock["t"])
     families = {m.name: m for m in coll.collect()}
-    assert "okf_corpus_cards" in families
-    assert "okf_ledger_rows" in families
-    assert families["okf_corpus_cards"].samples == []
-    assert families["okf_ledger_rows"].samples == []
+    assert "hive_corpus_cards" in families
+    assert "hive_ledger_rows" in families
+    assert families["hive_corpus_cards"].samples == []
+    assert families["hive_ledger_rows"].samples == []
 
     # Last-known-good: prime with one good sample, then fail past the TTL window;
     # collect() should keep serving the previously-cached values, not raise/blank out.
@@ -138,10 +138,10 @@ def test_content_collector_survives_sample_failure():
     calls["fail"] = True
     families2 = {m.name: m for m in coll2.collect()}
     card_samples = {(s.labels["product"], s.labels["regime"]): s.value
-                    for s in families2["okf_corpus_cards"].samples}
+                    for s in families2["hive_corpus_cards"].samples}
     assert card_samples[("widgets", "operational")] == 3
     ledger_samples = {s.labels["table"]: s.value
-                      for s in families2["okf_ledger_rows"].samples}
+                      for s in families2["hive_ledger_rows"].samples}
     assert ledger_samples == {"objective": 2, "memory": 5}
 
 
@@ -167,7 +167,7 @@ def test_content_samples_counts_fixture_corpus(tmp_path):
 
 # --------------------------------------------------------------------------
 # Database-object tier. These cards are the majority of a real corpus and are
-# invisible to okf_corpus_cards by design, so they get their own gauge and the
+# invisible to hive_corpus_cards by design, so they get their own gauge and the
 # alert watches both.
 # --------------------------------------------------------------------------
 
@@ -211,11 +211,11 @@ def test_db_object_gauge_is_exported_alongside_the_card_gauge(tmp_path):
         lambda: metrics.content_samples(str(concepts), str(tmp_path / "clients"), factory))
     families = {f.name: f for f in collector.collect()}
 
-    assert "okf_corpus_db_objects" in families
+    assert "hive_corpus_db_objects" in families
     assert {s.labels["product"]: s.value
-            for s in families["okf_corpus_db_objects"].samples} == {"widgets": 1.0}
-    # The db tier must NOT be double-counted into okf_corpus_cards.
-    assert sum(s.value for s in families["okf_corpus_cards"].samples) == 1.0
+            for s in families["hive_corpus_db_objects"].samples} == {"widgets": 1.0}
+    # The db tier must NOT be double-counted into hive_corpus_cards.
+    assert sum(s.value for s in families["hive_corpus_cards"].samples) == 1.0
 
 
 def test_empty_corpus_yields_a_zero_sum_not_a_missing_series(tmp_path):
@@ -236,5 +236,5 @@ def test_empty_corpus_yields_a_zero_sum_not_a_missing_series(tmp_path):
             str(tmp_path / "gone"), str(tmp_path / "gone-too"), factory))
     families = {f.name: f for f in collector.collect()}
 
-    assert sum(s.value for s in families["okf_corpus_cards"].samples) == 0
-    assert sum(s.value for s in families["okf_corpus_db_objects"].samples) == 0
+    assert sum(s.value for s in families["hive_corpus_cards"].samples) == 0
+    assert sum(s.value for s in families["hive_corpus_db_objects"].samples) == 0
