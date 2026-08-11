@@ -23,6 +23,18 @@ def _fm(p):
     return yaml.safe_load(parts[1]) if len(parts) >= 3 else {}
 
 
+# The repository-relative prefix client memory lives under. Card ids are built from it
+# here, and `pr_conflict_gate.pr_touches_memory` decides whether a PR needs scoring by
+# matching it. Those are the same fact and must not be two strings: pr_conflict_gate.py
+# used to hardcode `knowledge/okf/clients/`, a stale monorepo-era prefix that never
+# matches the `clients/` corpora this tooling runs against, so the gate matched nothing
+# and posted `okf/memory-conflict` success on every memory PR without ever scoring one.
+# A gate that reports green on every memory PR is worse than one switched off, because
+# the green is evidence of nothing and reads as evidence of something. Import this
+# constant instead of restating the string.
+CLIENTS_PREFIX = "clients/"
+
+
 def _memories(clients_dir):
     out = {}
     for p in glob.glob(f"{clients_dir}/**/*.md", recursive=True):
@@ -32,7 +44,7 @@ def _memories(clients_dir):
         parts = rel[:-3].split(os.sep)
         if len(parts) < 3 or parts[1] != "memory":
             continue
-        out["clients/" + "/".join(parts)] = _fm(p) or {}
+        out[CLIENTS_PREFIX + "/".join(parts)] = _fm(p) or {}
     return out
 
 

@@ -1,7 +1,15 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 _S = Path(__file__).resolve().parents[1] / "scripts"
+
+# tests -> hive-gen -> tooling -> repo root. hive-intelligence ships no corpus of its own
+# (the corpus lives with whichever product repository consumes this tooling), but the
+# hive-serve fixtures give us a real, on-disk `clients/` tree to anchor against instead of
+# a path this test would otherwise have to invent.
+_FIXTURE_CORPUS = Path(__file__).resolve().parents[3] / "tooling" / "hive-serve" / "tests" / "fixtures" / "corpus"
 
 
 def _load(name):
@@ -23,9 +31,40 @@ class FakeLLM:
 
 
 def test_pr_touches_memory():
-    assert pcg.pr_touches_memory(["knowledge/okf/clients/alpha/memory/x.md"]) is True
-    assert pcg.pr_touches_memory(["knowledge/okf/concepts/widgets/a.md"]) is False
+    assert pcg.pr_touches_memory(["clients/alpha/memory/x.md"]) is True
+    assert pcg.pr_touches_memory(["clients/widgets/a.md"]) is False
+    assert pcg.pr_touches_memory(["concepts/wms/a.md"]) is False
     assert pcg.pr_touches_memory(["README.md"]) is False
+
+
+@pytest.mark.skipif(
+    not (_FIXTURE_CORPUS / "clients").is_dir(),
+    reason="no fixture corpus on disk to anchor against",
+)
+def test_the_gate_matches_a_memory_card_that_actually_exists():
+    """Anchored to a real corpus tree, not to a path this test made up.
+
+    A version of this test written against `knowledge/okf/clients/alpha/memory/x.md`
+    would pass forever while the gate matched nothing real, because the test and the code
+    would share the same wrong assumption. A test that invents its own input cannot catch
+    that; one that reads an actual tree can. hive-intelligence carries no corpus of its
+    own, so this reads the hive-serve fixture corpus instead of a repo-root `clients/`.
+    """
+    cards = [p for p in (_FIXTURE_CORPUS / "clients").glob("*/memory/*.md") if p.name != "index.md"]
+    assert cards, "no client memory cards found in the fixture corpus; this test has lost track of it"
+    rel = [str(p.relative_to(_FIXTURE_CORPUS)) for p in cards]
+    assert pcg.pr_touches_memory(rel) is True, f"the gate does not recognise {rel[0]}"
+
+
+def test_the_gate_and_the_linter_agree_on_where_memory_lives():
+    """One fact, one string. Their disagreement is what made the gate inert.
+
+    `memory_lint` builds card ids from this prefix and the gate decides what to score by
+    it. If they ever diverge again, a PR can change a card the linter knows about and the
+    gate will wave it through.
+    """
+    lint = _load("memory_lint")
+    assert pcg.pr_touches_memory([f"{lint.CLIENTS_PREFIX}acme/memory/a.md"]) is True
 
 
 def test_verdict_to_status():

@@ -19,8 +19,17 @@ def _load(name):
 
 
 def pr_touches_memory(changed_files) -> bool:
+    """Whether a PR changes a client memory card, and therefore needs scoring.
+
+    The prefix comes from `memory_lint`, the module that builds card ids from it: import
+    the fact, do not restate it. Restating it as a literal here is what broke this gate
+    before: it hardcoded `knowledge/okf/clients/`, a stale monorepo-era prefix that never
+    matches the `clients/` corpora this tooling runs against, so the gate matched nothing
+    and posted `okf/memory-conflict` success on every memory PR without ever scoring one.
+    """
+    lint = _load("memory_lint")
     return any(
-        f.startswith("knowledge/okf/clients/") and "/memory/" in f and f.endswith(".md")
+        f.startswith(lint.CLIENTS_PREFIX) and "/memory/" in f and f.endswith(".md")
         for f in changed_files
     )
 
