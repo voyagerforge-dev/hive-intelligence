@@ -1,7 +1,7 @@
 import anyio
 
 from hiveauthor.config import Settings
-from hiveauthor.github_client import FakeIssueClient
+from hiveauthor.issue_client import FakeIssueClient
 from hiveauthor.mcp_app import build_mcp
 from hiveauthor.submissions import build_correction_submission, build_memory_submission
 

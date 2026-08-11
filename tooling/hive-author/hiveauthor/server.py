@@ -8,15 +8,21 @@ from hiveauthor.config import get_settings
 from hiveauthor.mcp_app import build_mcp
 
 
-def _gh_factory(settings):
-    from hiveauthor.github_client import GitHubIssueClient
-    return lambda: GitHubIssueClient(settings.github_api, settings.github_repo, settings.github_token)
+def _issue_client_factory(settings):
+    from hiveauthor.issue_client import ForgejoIssueClient
+    missing = [n for n in ("forge_api", "forge_repo", "forge_token") if not getattr(settings, n)]
+    if missing:
+        # Refuse to start rather than serve a client that builds `/repos//issues` and
+        # 404s every submission while reporting success. That exact gap ran unnoticed
+        # from deployment until 2026-08-11.
+        raise RuntimeError(f"hive-author is not configured: missing {', '.join(missing)}")
+    return lambda: ForgejoIssueClient(settings.forge_api, settings.forge_repo, settings.forge_token)
 
 
 def build_http_app(settings):
     from fastapi import FastAPI
 
-    mcp = build_mcp(settings, _gh_factory(settings))
+    mcp = build_mcp(settings, _issue_client_factory(settings))
 
     @asynccontextmanager
     async def lifespan(app):

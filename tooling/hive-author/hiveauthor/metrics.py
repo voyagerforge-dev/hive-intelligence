@@ -11,7 +11,12 @@ not just on calls:
 
     filed          the issue exists on GitHub, with a number
     rejected       the submission failed validation before any API call
-    github_error   GitHub refused it
+    github_error   the forge refused it
+
+The `github_error` label value is kept despite the move to Forgejo on 2026-08-12:
+it is consumed by the hive_contribute alert group in Host-B and by the
+hive-contribute dashboard, so renaming it silently breaks alerting for cosmetic
+gain. Rename it in all three places together or not at all.
 
 `rejected` and `github_error` are separated on purpose. The first is a user
 getting it wrong and is not a fault. The second is ours, and is the one worth
