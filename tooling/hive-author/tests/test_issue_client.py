@@ -1,6 +1,11 @@
 import pytest
 
-from hiveauthor.issue_client import FakeIssueClient, ForgejoIssueClient, UnknownLabelError
+from hiveauthor.issue_client import (
+    FakeIssueClient,
+    ForgejoIssueClient,
+    GitHubIssueClient,
+    UnknownLabelError,
+)
 
 
 class _Resp:
@@ -81,3 +86,60 @@ def test_no_labels_skips_lookup_entirely(monkeypatch):
     gh.create_issue(title="t", body="b", labels=[])
     assert captured["json"]["labels"] == []
     assert "get_url" not in captured
+
+
+# ---------------------------------------------------------------------------
+# GitHub. EXAMPLECO returned to github.com/example-org on 2026-08-15, so the same server
+# has to file issues on either forge depending on the deployment.
+# ---------------------------------------------------------------------------
+
+def test_github_sends_label_names_not_ids(monkeypatch):
+    """The whole reason there are two clients: GitHub takes names, Forgejo takes ints."""
+    captured = {}
+    _patch(monkeypatch, captured, [{"name": "hive-memory", "id": 41}])
+    gh = GitHubIssueClient("https://api.github.com", "example-org/corpus", "tok")
+    out = gh.create_issue(title="t", body="b", labels=["hive-memory"])
+
+    assert out == {"number": 7, "url": "https://forge.test/7"}
+    assert captured["url"] == "https://api.github.com/repos/example-org/corpus/issues"
+    assert captured["json"] == {"title": "t", "body": "b", "labels": ["hive-memory"]}
+
+
+def test_github_also_refuses_an_unknown_label(monkeypatch):
+    """GitHub would auto-create the label rather than drop it, so this is not about
+    losing the label. It is so that a deployment moving between forges does not
+    silently change what a typo does: on both, a bad label fails the submission
+    instead of quietly creating something nobody meant."""
+    captured = {}
+    _patch(monkeypatch, captured, [{"name": "hive-memory", "id": 41}])
+    gh = GitHubIssueClient("https://api.github.com", "example-org/corpus", "tok")
+    with pytest.raises(UnknownLabelError, match="hive-correction"):
+        gh.create_issue(title="t", body="b", labels=["hive-correction"])
+    assert "url" not in captured
+
+
+def test_a_callable_token_is_read_on_every_call(monkeypatch):
+    """App installation tokens last an hour and this process outlives that.
+
+    A token captured at construction is the failure that matters: it works all
+    afternoon and then 401s, in a service whose whole job is to file something a
+    consultant has already typed.
+    """
+    captured = {}
+    _patch(monkeypatch, captured, [{"name": "hive-memory", "id": 41}])
+    tokens = iter(["first", "second"])
+    gh = GitHubIssueClient("https://api.github.com", "example-org/corpus",
+                           lambda: next(tokens))
+
+    gh.create_issue(title="t", body="b", labels=[])
+    assert captured["headers"]["Authorization"] == "Bearer first"
+    gh.create_issue(title="t", body="b", labels=[])
+    assert captured["headers"]["Authorization"] == "Bearer second"
+
+
+def test_forgejo_accepts_a_callable_token_too(monkeypatch):
+    captured = {}
+    _patch(monkeypatch, captured, [{"name": "hive-memory", "id": 41}])
+    gh = ForgejoIssueClient("http://forge/api/v1", "example/corpus", lambda: "rotated")
+    gh.create_issue(title="t", body="b", labels=[])
+    assert captured["headers"]["Authorization"] == "Bearer rotated"

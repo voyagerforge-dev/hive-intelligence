@@ -17,14 +17,27 @@ services:
     container_name: hive-author
     restart: unless-stopped
 
-    # hive-author holds a GITHUB_TOKEN, unlike hive-serve. Scope it to issues:write on the single
-    # corpus repository and nothing else: this service opens card submissions as issues and needs no
-    # other access. Keep this file outside the git checkout.
+    # hive-author holds a forge credential, unlike hive-serve. Scope it to issues:write on the
+    # single corpus repository and nothing else: this service opens card submissions as issues and
+    # needs no other access. Keep this file outside the git checkout.
     env_file: [./hive-author.env]
 
     environment:
       HOST: 0.0.0.0
       PORT: "8016"
+
+      # Which forge this deployment files against. No default, and not inferred from FORGE_API:
+      # GitHub takes label names where Forgejo takes integer IDs, so guessing wrong fails the
+      # submission at the moment somebody is waiting on it.
+      FORGE_KIND: github            # or: forgejo
+      FORGE_API: https://api.github.com
+      FORGE_REPO: owner/corpus-repo
+
+      # Either FORGE_TOKEN in the env file, or FORGE_TOKEN_FILE here. The file exists for
+      # GitHub App installation tokens, which last an hour while this container runs for days:
+      # something outside mints one and rewrites the file, and the client re-reads it per
+      # submission. Mount it read-only from tmpfs; do not bake a token into the image.
+      FORGE_TOKEN_FILE: /run/forge/token
 
     # Defaults to loopback. hive-author trusts an upstream identity header and does not authenticate
     # callers itself, so put an authenticating proxy in front before exposing it beyond the host.

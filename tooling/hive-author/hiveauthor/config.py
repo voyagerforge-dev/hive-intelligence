@@ -8,6 +8,15 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     forge_token: str = ""
+    # An alternative to forge_token, and the one the EXAMPLECO deployment uses since 2026-08-15.
+    # A GitHub App installation token lasts an hour, so it cannot be an env var: this
+    # process outlives it. A timer mints one and writes it here; the client re-reads the
+    # file on every submission. Set one or the other, not both.
+    forge_token_file: str = ""
+    # Which forge this deployment files against: "forgejo" or "github". No default, and
+    # not inferred from forge_api. Guessing wrong sends label IDs to GitHub or label names
+    # to Forgejo, and the submission fails at the moment somebody is waiting on it.
+    forge_kind: str = ""
     # No default. This names the corpus repository that card submissions are filed
     # against, which is deployment-specific, and a wrong-but-plausible default files
     # issues into someone else's repository.
