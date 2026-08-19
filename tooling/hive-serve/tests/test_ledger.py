@@ -3,12 +3,8 @@ import pytest
 from hiveserve import ledger
 
 
-def _conn(tmp_path):
-    return ledger.connect(tmp_path / "obj.db")
-
-
-def test_objective_lifecycle(tmp_path):
-    c = _conn(tmp_path)
+def test_objective_lifecycle(conn):
+    c = conn
     o = ledger.start_objective(c, owner="alice", mode="investigate", goal="slow waves")
     assert o["mode"] == "investigate" and o["status"] == "open" and o["owner"] == "alice"
     oid = o["id"]
@@ -23,8 +19,8 @@ def test_objective_lifecycle(tmp_path):
     assert full["entries"][0]["card_ids"] == ["wave-replen"]
 
 
-def test_owner_scoping(tmp_path):
-    c = _conn(tmp_path)
+def test_owner_scoping(conn):
+    c = conn
     o = ledger.start_objective(c, owner="alice", mode="learn", goal="x")
     assert ledger.get_objective(c, owner="bob", objective_id=o["id"]) is None
     assert ledger.append_entry(c, owner="bob", objective_id=o["id"], kind="note", content="x") is None
@@ -34,8 +30,8 @@ def test_owner_scoping(tmp_path):
     assert len(ledger.list_objectives(c, owner="alice")) == 1
 
 
-def test_validation(tmp_path):
-    c = _conn(tmp_path)
+def test_validation(conn):
+    c = conn
     with pytest.raises(ValueError):
         ledger.start_objective(c, owner="a", mode="bogus", goal="x")
     o = ledger.start_objective(c, owner="a", mode="implement", goal="x")
@@ -45,15 +41,15 @@ def test_validation(tmp_path):
         ledger.set_status(c, owner="a", objective_id=o["id"], status="bogus")
 
 
-def test_external_ref_roundtrip(tmp_path):
-    c = _conn(tmp_path)
+def test_external_ref_roundtrip(conn):
+    c = conn
     ref = {"provider": "zendesk", "id": "123", "url": "http://z/123"}
     o = ledger.start_objective(c, owner="a", mode="investigate", goal="x", external_ref=ref)
     assert ledger.get_objective(c, owner="a", objective_id=o["id"])["external_ref"] == ref
 
 
-def test_memory_remember_roundtrip(tmp_path):
-    c = _conn(tmp_path)
+def test_memory_remember_roundtrip(conn):
+    c = conn
     m = ledger.remember(c, owner="alice", text="Alpha pick-confirm needs a second scan",
                         tags=["alpha", "pick-confirm"], card_ids=["widgets/pick-confirm"],
                         external_ref={"provider": "zendesk", "id": "1421"}, client="alpha")
@@ -67,15 +63,15 @@ def test_memory_remember_roundtrip(tmp_path):
     assert got == m
 
 
-def test_memory_defaults_minimal(tmp_path):
-    c = _conn(tmp_path)
+def test_memory_defaults_minimal(conn):
+    c = conn
     m = ledger.remember(c, owner="alice", text="a bare note")
     assert m["tags"] == [] and m["card_ids"] == [] and m["external_ref"] is None
     assert m["client"] is None and m["visibility"] == "private"
 
 
-def test_memory_recall_filters(tmp_path):
-    c = _conn(tmp_path)
+def test_memory_recall_filters(conn):
+    c = conn
     ledger.remember(c, owner="alice", text="Alpha wave replen is nightly",
                     tags=["alpha", "replen"], card_ids=["widgets/replenishment"], client="alpha")
     ledger.remember(c, owner="alice", text="ACME sprockets uses zones",
@@ -98,14 +94,14 @@ def test_memory_recall_filters(tmp_path):
     assert len(ledger.recall(c, owner="alice", limit=1)) == 1
 
 
-def test_memory_recall_owner_scoped(tmp_path):
-    c = _conn(tmp_path)
+def test_memory_recall_owner_scoped(conn):
+    c = conn
     ledger.remember(c, owner="alice", text="alice only")
     assert ledger.recall(c, owner="bob") == []
 
 
-def test_memory_recall_tag_branch_isolated(tmp_path):
-    c = _conn(tmp_path)
+def test_memory_recall_tag_branch_isolated(conn):
+    c = conn
     ledger.remember(c, owner="alice", text="nightly batch window is 2am", tags=["cutoff"])
     ledger.remember(c, owner="alice", text="unrelated note", tags=["misc"])
     # 'cutoff' is only a tag, never a substring of any text -> only the tag branch can match it
@@ -113,8 +109,8 @@ def test_memory_recall_tag_branch_isolated(tmp_path):
         ["nightly batch window is 2am"]
 
 
-def test_memory_recall_and_combination_and_subset(tmp_path):
-    c = _conn(tmp_path)
+def test_memory_recall_and_combination_and_subset(conn):
+    c = conn
     ledger.remember(c, owner="alice", text="Alpha wave replen is nightly",
                     tags=["replen", "wave"], client="alpha")
     ledger.remember(c, owner="alice", text="ACME sprockets uses zones",
@@ -129,16 +125,16 @@ def test_memory_recall_and_combination_and_subset(tmp_path):
         ["Alpha wave replen is nightly"]
 
 
-def test_memory_recall_orders_newest_first(tmp_path):
-    c = _conn(tmp_path)
+def test_memory_recall_orders_newest_first(conn):
+    c = conn
     ledger.remember(c, owner="alice", text="first")
     ledger.remember(c, owner="alice", text="second")
     ledger.remember(c, owner="alice", text="third")
     assert [m["text"] for m in ledger.recall(c, owner="alice")] == ["third", "second", "first"]
 
 
-def test_memory_forget_owner_scoped(tmp_path):
-    c = _conn(tmp_path)
+def test_memory_forget_owner_scoped(conn):
+    c = conn
     m = ledger.remember(c, owner="alice", text="x")
     assert ledger.forget(c, owner="bob", memory_id=m["id"]) is False
     assert ledger.get_memory(c, owner="alice", memory_id=m["id"]) is not None
@@ -146,8 +142,8 @@ def test_memory_forget_owner_scoped(tmp_path):
     assert ledger.get_memory(c, owner="alice", memory_id=m["id"]) is None
 
 
-def test_memory_visibility_flip(tmp_path):
-    c = _conn(tmp_path)
+def test_memory_visibility_flip(conn):
+    c = conn
     m = ledger.remember(c, owner="alice", text="x", client="alpha")
     updated = ledger.set_memory_visibility(c, owner="alice", memory_id=m["id"],
                                            visibility="promotion_requested")
@@ -158,8 +154,8 @@ def test_memory_visibility_flip(tmp_path):
         ledger.set_memory_visibility(c, owner="alice", memory_id=m["id"], visibility="bogus")
 
 
-def test_promotion_record_shape(tmp_path):
-    c = _conn(tmp_path)
+def test_promotion_record_shape(conn):
+    c = conn
     m = ledger.remember(c, owner="alice", text="Alpha mod: second scan on pick-confirm",
                         tags=["alpha", "pick-confirm"], card_ids=["widgets/pick-confirm"],
                         external_ref={"provider": "zendesk", "id": "1421"}, client="alpha")
@@ -174,8 +170,8 @@ def test_promotion_record_shape(tmp_path):
     }
 
 
-def test_promote_memory_guards(tmp_path):
-    c = _conn(tmp_path)
+def test_promote_memory_guards(conn):
+    c = conn
     assert ledger.promote_memory(c, owner="alice", memory_id="nope") == {"error": "not_found"}
     m0 = ledger.remember(c, owner="alice", text="no client note")
     assert ledger.promote_memory(c, owner="alice", memory_id=m0["id"]) == {"error": "client_required"}
@@ -189,7 +185,7 @@ def test_promote_memory_guards(tmp_path):
                             memory_id=m1["id"])["visibility"] == "promotion_requested"
 
 
-def test_promote_memory_owner_scoped(tmp_path):
-    c = _conn(tmp_path)
+def test_promote_memory_owner_scoped(conn):
+    c = conn
     m = ledger.remember(c, owner="alice", text="alpha", client="alpha")
     assert ledger.promote_memory(c, owner="bob", memory_id=m["id"]) == {"error": "not_found"}

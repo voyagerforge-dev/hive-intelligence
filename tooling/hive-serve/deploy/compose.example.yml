@@ -5,21 +5,36 @@
 #
 #   CORPUS_DIR   directory of OKF concept cards to serve. Required.
 #   CLIENTS_DIR  directory of client-scoped memory cards. Optional; omit the mount to disable.
-#   LEDGER_DIR   writable directory for the SQLite objectives and memory ledger. Required.
+#   LEDGER_DSN   Postgres connection string for the objectives and memory ledger. Required.
+#                A `ledger-db` service is included below; point this at your own Postgres
+#                instead if the platform already manages one.
 #   BIND         address:port to expose. Use 127.0.0.1 unless something in front terminates TLS.
 
 services:
-  # One-shot: make the bind-mounted ledger directory writable by the runtime uid.
+  # The ledger. Postgres since 2026-08-19; it was a SQLite file in a bind mount before.
   #
-  # The image runs as `svc` (uid 1001). A host directory owned by any other uid makes every ledger
-  # operation fail with "unable to open database file". This runs as root, chowns, and exits, so a
-  # fresh clone or a redeploy onto a new host works without a manual chown.
-  hive-ledger-init:
-    image: alpine:3.20
-    command: ["sh", "-c", "chown -R 1001:1001 /data/ledger"]
+  # It moved for one reason: it is the only mutable state this service holds, and a managed
+  # platform backs up a database it manages and does not back up a file in a volume. Being a
+  # database is what makes it get backed up.
+  #
+  # If your platform already provides Postgres, delete this service and point LEDGER_DSN at
+  # that instead. Nothing here depends on it being local.
+  ledger-db:
+    image: postgres:16-alpine
+    container_name: hive-ledger-db
+    environment:
+      POSTGRES_USER: ${LEDGER_USER:-hive}
+      POSTGRES_PASSWORD: ${LEDGER_PASSWORD:?set LEDGER_PASSWORD}
+      POSTGRES_DB: ${LEDGER_DB:-hive_ledger}
     volumes:
-      - ${LEDGER_DIR:-./ledger}:/data/ledger
-    restart: "no"
+      - ledger-data:/var/lib/postgresql/data
+    # Unpublished on purpose: only hive-serve talks to it, over the compose network.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LEDGER_USER:-hive} -d ${LEDGER_DB:-hive_ledger}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   hive-serve:
     build:
@@ -28,8 +43,11 @@ services:
       dockerfile: tooling/hive-serve/deploy/Dockerfile
     container_name: hive-serve
     depends_on:
-      hive-ledger-init:
-        condition: service_completed_successfully
+      ledger-db:
+        # service_healthy, not service_started. hive-serve creates its schema on the first
+        # connection, so starting before Postgres accepts connections fails at boot rather
+        # than retrying.
+        condition: service_healthy
 
     # hive-serve makes no LLM calls and holds no credentials, so there is no secret file here.
     # This is for non-secret overrides only: see .env.example for the recognised keys.
@@ -43,10 +61,6 @@ services:
       # Client-scoped memory. Hard-isolated at serve time: a caller identified as one client cannot
       # read another's cards. Omit this mount if you are not using client memory.
       - ${CLIENTS_DIR:-/dev/null}:/data/clients:ro
-
-      # Per-owner objectives and personal memory. This is the only writable mount, and the only
-      # state that does not survive in git. Back it up.
-      - ${LEDGER_DIR:-./ledger}:/data/ledger
 
     ports:
       # Defaults to loopback. Bind to a LAN address only if the network is trusted, and put an
@@ -62,3 +76,9 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+volumes:
+  # The only state in this stack that does not survive in git, and the whole reason the
+  # ledger stopped being a file in a bind mount: a managed platform backs up a database it
+  # manages, and does not back up a volume you happen to have mounted.
+  ledger-data:

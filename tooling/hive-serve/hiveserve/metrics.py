@@ -140,8 +140,13 @@ def content_samples(concepts_dir, clients_dir, conn_factory) -> dict:
         key = (c.get("product") or "none", c.get("regime") or "none")
         cards[key] = cards.get(key, 0) + 1
     with conn_factory() as conn:
-        obj = conn.execute("SELECT COUNT(*) FROM objective").fetchone()[0]
-        mem = conn.execute("SELECT COUNT(*) FROM memory").fetchone()[0]
+        # Aliased and read by name. The ledger connection uses psycopg's dict_row factory,
+        # so fetchone() returns a dict and the old fetchone()[0] raises KeyError: 0. That
+        # would not have failed the scrape loudly either, because ContentCollector swallows
+        # a failing sample_fn and serves the previous cache, so the gauge would simply have
+        # frozen at its last value.
+        obj = conn.execute("SELECT COUNT(*) AS n FROM objective").fetchone()["n"]
+        mem = conn.execute("SELECT COUNT(*) AS n FROM memory").fetchone()["n"]
     return {"cards": cards, "db_objects": db_object_samples(concepts_dir),
             "ledger": {"objective": obj, "memory": mem}}
 

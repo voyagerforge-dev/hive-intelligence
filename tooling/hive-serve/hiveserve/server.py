@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from hiveserve import ledger
 from hiveserve.app import build_rest_router
@@ -21,9 +20,21 @@ def _choose_transport(http_flag: bool, stdio_flag: bool, settings) -> str:
 
 
 def _conn_factory(settings):
-    db = Path(settings.okf_data_dir) / "objectives.db"
-    db.parent.mkdir(parents=True, exist_ok=True)
-    return lambda: ledger.session(db)
+    """The ledger connection factory.
+
+    Fails here rather than at the first tool call. The SQLite version built a path and
+    created the file if it was missing, so a deployment pointed at the wrong directory
+    came up healthy and served an empty ledger to whoever asked. There is no equivalent
+    accident with a DSN: either it is set and reachable, or this refuses to start.
+    """
+    if not settings.ledger_dsn:
+        raise RuntimeError(
+            "LEDGER_DSN is not set. The ledger is Postgres since 2026-08-19; there is no "
+            "file fallback, because falling back is how an empty ledger gets served as if "
+            "it were the real one."
+        )
+    dsn = settings.ledger_dsn
+    return lambda: ledger.session(dsn)
 
 
 def build_http_app(settings):

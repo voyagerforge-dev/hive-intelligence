@@ -5,7 +5,7 @@ description = "Serve + test OKF concept cards as agent context (no RAG)"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
-dependencies = ["vf-hive-gen", "pydantic>=2.9", "pydantic-settings>=2.5", "PyYAML>=6.0", "mcp==1.28.1", "fastapi>=0.135", "uvicorn>=0.30", "prometheus_client>=0.20"]
+dependencies = ["vf-hive-gen", "pydantic>=2.9", "pydantic-settings>=2.5", "PyYAML>=6.0", "mcp==1.28.1", "fastapi>=0.135", "uvicorn>=0.30", "prometheus_client>=0.20", "psycopg[binary]>=3.2"]
 
 [project.scripts]
 hiveserve = "hiveserve.server:main"

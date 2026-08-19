@@ -145,7 +145,7 @@ def test_content_collector_survives_sample_failure():
     assert ledger_samples == {"objective": 2, "memory": 5}
 
 
-def test_content_samples_counts_fixture_corpus(tmp_path):
+def test_content_samples_counts_fixture_corpus(tmp_path, clean_ledger):
     from hiveserve import ledger
     concepts = tmp_path / "concepts"; clients = tmp_path / "clients"
     (concepts / "widgets").mkdir(parents=True)
@@ -153,10 +153,10 @@ def test_content_samples_counts_fixture_corpus(tmp_path):
         "---\ntitle: A\ndescription: d\nproduct: widgets\nregime: operational\n---\nbody\n")
     (concepts / "widgets" / "b.md").write_text(
         "---\ntitle: B\ndescription: d\nproduct: widgets\nregime: operational\n---\nbody\n")
-    db = tmp_path / "obj.db"
+
 
     def factory():
-        return ledger.session(db)
+        return ledger.session(clean_ledger)
     with factory() as conn:
         ledger.start_objective(conn, owner="o", mode="investigate", goal="g")
         ledger.remember(conn, owner="o", text="t")
@@ -192,17 +192,17 @@ def test_db_object_samples_is_empty_when_the_corpus_is_missing(tmp_path):
     assert metrics.db_object_samples(str(tmp_path / "gone")) == {}
 
 
-def test_db_object_gauge_is_exported_alongside_the_card_gauge(tmp_path):
+def test_db_object_gauge_is_exported_alongside_the_card_gauge(tmp_path, clean_ledger):
     from hiveserve import ledger
 
     concepts = tmp_path / "concepts"
     (concepts / "widgets" / "db").mkdir(parents=True)
     (concepts / "widgets" / "db" / "T.md").write_text("---\ntype: dbobject\n---\n")
     (concepts / "widgets" / "c.md").write_text("---\ntitle: C\nproduct: widgets\n---\n")
-    db = tmp_path / "obj.db"
+
 
     def factory():
-        return ledger.session(db)
+        return ledger.session(clean_ledger)
 
     with factory() as conn:
         ledger.start_objective(conn, owner="o", mode="investigate", goal="g")
@@ -218,15 +218,15 @@ def test_db_object_gauge_is_exported_alongside_the_card_gauge(tmp_path):
     assert sum(s.value for s in families["hive_corpus_cards"].samples) == 1.0
 
 
-def test_empty_corpus_yields_a_zero_sum_not_a_missing_series(tmp_path):
+def test_empty_corpus_yields_a_zero_sum_not_a_missing_series(tmp_path, clean_ledger):
     """What the alert keys on. A corpus that has vanished must produce gauges that
     sum to zero, and must not make the collector raise."""
     from hiveserve import ledger
 
-    db = tmp_path / "obj.db"
+
 
     def factory():
-        return ledger.session(db)
+        return ledger.session(clean_ledger)
 
     with factory() as conn:
         ledger.start_objective(conn, owner="o", mode="investigate", goal="g")

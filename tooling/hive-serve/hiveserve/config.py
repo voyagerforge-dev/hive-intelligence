@@ -20,7 +20,14 @@ class Settings(BaseSettings):
     resolve_depth: int = 1
     concepts_dir: str = "../../concepts"
     clients_dir: str = "../../clients"
+    # Retained: hive-serve still writes non-ledger scratch here. The LEDGER no longer
+    # lives in it, see ledger_dsn below.
     okf_data_dir: str = "./.data"
+    # The objective/memory ledger, Postgres since 2026-08-19. No default, deliberately:
+    # the previous setting defaulted to a path, so a misconfigured deployment quietly got
+    # a fresh empty SQLite file and served an empty ledger while looking healthy. An empty
+    # DSN now fails at startup instead.
+    ledger_dsn: str = ""
     host: str = "127.0.0.1"
     port: int = 8000
     transport: str = "stdio"
