@@ -19,10 +19,10 @@ class Settings(BaseSettings):
     docling_ca_bundle: str = ""
     prefer_docling: bool = True
 
-    # Qwen3.6-27B (Host-D), vision tier (OpenAI-compatible /v1/chat/completions with image_url).
+    # Qwen3.8-27B (Host-D), vision tier (OpenAI-compatible /v1/chat/completions with image_url).
     qwen_base: str = ""
     qwen_api_key: str = ""
-    qwen_model: str = "qwen3.6-27b"
+    qwen_model: str = "qwen3.8-27b"
     qwen_timeout_s: int = 600
 
     # Routing: avg extractable chars/page >= this → text tier; below + image-dominant → vision.

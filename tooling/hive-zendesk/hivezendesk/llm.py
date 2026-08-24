@@ -41,7 +41,7 @@ def extract_json(text: str) -> dict | None:
 class BifrostChat:
     """Chat client for Bifrost.
 
-    NB the on-prem Qwen (`host-d/qwen3.6-27b`) is a REASONING model: it emits
+    NB the on-prem Qwen (`host-d/qwen3.8-27b`; `qwen3.6-27b` before 2026-08-24) is a REASONING model: it emits
     `reasoning`/`reasoning_details` and only adds `content` once it has finished
     thinking. Two consequences, both learned the hard way against the live endpoint:
 
