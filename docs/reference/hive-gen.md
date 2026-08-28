@@ -62,6 +62,7 @@ tolerant** (a failure on one concept is reported and skipped rather than killing
 | `run.py` | orchestrate the gate-aware pipeline |
 | `llm.py` | OpenAI-compatible chat client with defensive JSON extraction |
 | `config.py` | typed settings |
+| `corpus.py` | `require_dir`: refuse a configured corpus path that is unset or not a directory, naming the setting. Shared with `hive-serve` |
 
 ## Slicing
 

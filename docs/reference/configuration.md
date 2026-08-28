@@ -178,8 +178,10 @@ an empty answer is never allowed to become a wrong one.
 `CLIENTS_DIR` is the deliberate exception, because omitting it disables client memory and that is a
 supported deployment. It is never a startup refusal. Empty is coerced to "off" once, in
 `hiveserve/resolver.py`, so every door agrees; `run_eval` refuses only when the eval set it was
-handed actually has rows that exercise client memory, and otherwise says out loud that the path is
-dead rather than degrading quietly.
+handed actually has rows that exercise client memory, and otherwise reports a dead path rather than
+degrading quietly - but only when some source actually set `CLIENTS_DIR`, since naming a default
+nobody chose would warn on every run of a deployment that has no client memory. See
+[hive-serve](hive-serve.md#the-evaluation-harness) for what the eval does with it.
 
 An emptiness check counts what the consumer counts. `run_eval` asks `load_index` rather than
 counting `*.md`, because `index.md`, `log.md` and the `<product>/db/` tier are not cards: a corpus
