@@ -120,12 +120,14 @@ enough either - `run_eval` asks `load_index` which clients it can serve and refu
 it cannot. What counts as "needed" is which clients a row expects **cards** for - an `expects_memory`
 id, or a `clients/<client>/...` entry in `expected_card_ids` - never the `client` field alone. A
 control client in an isolation set deliberately has no memory of its own, and demanding cards for it
-would refuse the deploy gate. Such a run is allowed to proceed but not to be read as an isolation
-result: `score_memory` counts a card only when its client differs from the row's, so when no row has
-any served client out of its own scope, every row passes because nothing could leak rather than
-because isolation held. `run_eval` says so on stdout **and** records `isolation_vacuous` beside the
-aggregate, because the report is what outlives the terminal. Reports are written under
-`OKF_DATA_DIR`.
+would refuse the deploy gate. Such a run is allowed to proceed but not to be read as cross-client
+isolation: `score_memory` counts a card only when its client differs from the row's, so when no row
+has any served client out of its own scope, `cross_client` scores zero because nothing could have
+leaked rather than because isolation held. `run_eval` says so on stdout **and** records
+`cross_client_unexercised` beside the aggregate, because the report is what outlives the terminal.
+That flag is scoped to `cross_client` alone: `memory_ok` for a row carrying `expects_memory` stays a
+real and failable measurement, since it also requires that client's own memory card to have been
+retrieved. Reports are written under `OKF_DATA_DIR`.
 
 ## Internals
 
@@ -222,7 +224,7 @@ deploy gate.
 
 ## Tests
 
-182 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
+184 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
 datasets, or the GitHub
 submission surface skip with a stated reason when their subject is absent, so the suite is green in
 this repository and meaningful in a deployment that has a corpus.

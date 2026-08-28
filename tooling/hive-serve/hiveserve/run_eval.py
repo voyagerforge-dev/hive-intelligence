@@ -112,38 +112,43 @@ def out_of_scope_clients(row: dict, served: set[str]) -> set[str]:
     return served - {str(asked_as)} if asked_as else set(served)
 
 
-def isolation_is_vacuous(qa: list[dict], served: set[str]) -> bool:
-    """Whether the memory columns are about to be satisfied with nothing to measure.
+def cross_client_is_unexercised(qa: list[dict], served: set[str]) -> bool:
+    """Whether ``cross_client`` is about to be satisfied with nothing that could fail it.
 
-    ``score_memory`` scores a row with no ``expects_memory`` as ``memory_ok`` when no
-    out-of-scope client card reached the bundle. When no such card exists in the first
-    place, every row passes and the aggregate reports a perfect cross-client isolation
-    score for a run that never had anything to leak - which is what the deploy gate reads.
-    Refusing is wrong, since a control client having no cards is the point, but reporting
-    it as a measurement is worse than the silence it replaced.
+    ``cross_client`` counts client cards that reached a bundle from outside the asking
+    client's scope, so it is the absence-of-leak column. When no served client is out of
+    scope for any row, no such card exists, every row scores zero, and the aggregate reads
+    as a demonstration of cross-client isolation for a run in which a leak had nothing to
+    show - which is what the deploy gate reads.
+
+    This is only about that column. ``memory_ok`` for a row carrying ``expects_memory`` is
+    a real and failable measurement: with ``cross`` structurally zero it reduces to whether
+    that client's own memory card was actually retrieved, which can and does fail. A run
+    over one client's own memory set is therefore unexercised for cross-client and fully
+    meaningful for memory_ok, and this must never claim otherwise.
 
     A non-empty ``served`` is not enough: a tree holding only the asking client's own cards
-    serves nothing that could count against it. So this asks the question per row, and the
-    run is vacuous only when no row has anything out of scope to catch.
+    serves nothing that could count against it, so the question is asked per row.
     """
     if not asking_clients(qa):
         return False
     return not any(out_of_scope_clients(row, served) for row in qa)
 
 
-def warn_if_isolation_is_vacuous(qa: list[dict], served: set[str]) -> bool:
-    """Report a vacuous isolation run on stdout, and say so to the caller for the record."""
-    if not isolation_is_vacuous(qa, served):
+def warn_if_cross_client_is_unexercised(qa: list[dict], served: set[str]) -> bool:
+    """Say so on stdout, and tell the caller so the report can carry it too."""
+    if not cross_client_is_unexercised(qa, served):
         return False
     asking = sorted(asking_clients(qa))
     named = ", ".join(asking[:5]) + (", ..." if len(asking) > 5 else "")
     noun = "identity" if len(asking) == 1 else "identities"
     print(f"[run_eval] this set asks as {len(asking)} client {noun} ({named}), but the index "
           f"serves no client cards out of scope for {'it' if len(asking) == 1 else 'them'}, "
-          "so memory_ok and cross_client are VACUOUS for this run: every such row passes "
-          "because there is nothing that could leak, not because isolation was demonstrated. "
-          "Point CLIENTS_DIR at the corpus's client memory before reading this run as an "
-          "isolation result.", flush=True)
+          "so cross_client is UNEXERCISED for this run: it scores zero because no card "
+          "could have leaked, not because isolation was demonstrated. Point CLIENTS_DIR at "
+          "client memory for another client before reading this run as cross-client "
+          "isolation. (This says nothing about memory_ok, which is a separate column.)",
+          flush=True)
     return True
 
 
@@ -165,7 +170,7 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
     provenance rather than a guess from the value: it decides only whether a dead path is
     worth reporting, never whether the set is allowed to run.
 
-    Returns the clients tree and whether this run's isolation columns are vacuous. The
+    Returns the clients tree and whether this run leaves ``cross_client`` unexercised. The
     second is decided here because this is the only place that knows which clients are
     served, and it travels to the report so the record outlives the scrollback.
     """
@@ -182,7 +187,7 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
                 "live at <client>/memory/<slug>.md and <client>/issues/<slug>.md, so a "
                 "directory that merely exists serves none of them: every row expecting "
                 "those cards misses and the aggregate reads as a property of the corpus.")
-        return path, warn_if_isolation_is_vacuous(qa, served)
+        return path, warn_if_cross_client_is_unexercised(qa, served)
     needs = [str(row.get("id", "?")) for row in qa if needs_client_memory(row)]
     if needs:
         raise SystemExit(
@@ -205,7 +210,7 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
         print(f"[run_eval] CLIENTS_DIR={given} is not a directory (resolved to "
               f"{path.resolve()}), so client memory is disabled for this run. "
               f"{consequence}", flush=True)
-    return None, warn_if_isolation_is_vacuous(qa, set())
+    return None, warn_if_cross_client_is_unexercised(qa, set())
 
 
 def main() -> None:
@@ -218,7 +223,7 @@ def main() -> None:
     concepts = corpus_cards(s.concepts_dir)
     qa_path = qa_set_path(sys.argv[2], s.eval_dir)
     qa = load_qa(qa_path)
-    clients, isolation_vacuous = corpus_clients(
+    clients, cross_client_unexercised = corpus_clients(
         s.clients_dir, qa, concepts=concepts,
         configured="clients_dir" in s.model_fields_set)
     select_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.select_model,
@@ -232,9 +237,9 @@ def main() -> None:
                    get_card_fn=lambda cid: get_card(concepts, cid, clients),
                    mode=mode, depth=s.resolve_depth, max_cards=s.max_cards,
                    max_chars=s.max_chars, clients_dir=clients)
-    # Beside memory_ok, because the report outlives the terminal and is what the deploy
+    # Beside cross_client, because the report outlives the terminal and is what the deploy
     # gate is judged on. A caveat only on stdout is a caveat nobody reads.
-    res["aggregate"]["isolation_vacuous"] = isolation_vacuous
+    res["aggregate"]["cross_client_unexercised"] = cross_client_unexercised
     # The report is this service's own scratch, so it goes where the other non-ledger
     # scratch goes. It used to be written inside the installed package, which is neither
     # writable nor findable once hive-serve is installed rather than checked out.

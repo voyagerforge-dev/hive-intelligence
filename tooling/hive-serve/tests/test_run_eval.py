@@ -430,7 +430,7 @@ def test_an_isolation_set_does_not_force_client_memory_to_be_configured(client_m
     assert client_memory["kwargs"]["clients_dir"] is None
 
 
-def test_an_isolation_only_set_runs_but_says_its_memory_columns_are_vacuous(client_memory,
+def test_an_isolation_only_set_runs_but_says_cross_client_was_unexercised(client_memory,
                                                                            monkeypatch,
                                                                            capsys):
     """`score_memory` passes a control row when no out-of-scope client card reached the
@@ -448,11 +448,11 @@ def test_an_isolation_only_set_runs_but_says_its_memory_columns_are_vacuous(clie
 
     out = capsys.readouterr().out
     assert client_memory["ran"] is True, "refused the isolation eval, which is the gate"
-    assert "VACUOUS" in out
+    assert "UNEXERCISED" in out
     assert "beta" in out, "should name the identity whose isolation was not measured"
 
 
-def test_the_vacuous_notice_also_fires_when_a_configured_clients_dir_is_dead(client_memory,
+def test_the_unexercised_notice_also_fires_when_a_configured_clients_dir_is_dead(client_memory,
                                                                             monkeypatch,
                                                                             tmp_path,
                                                                             capsys):
@@ -468,11 +468,11 @@ def test_the_vacuous_notice_also_fires_when_a_configured_clients_dir_is_dead(cli
 
     out = capsys.readouterr().out
     assert client_memory["ran"] is True
-    assert "VACUOUS" in out
+    assert "UNEXERCISED" in out
     assert "aggregate is unaffected" not in out, "claimed a measurement it did not make"
 
 
-def test_no_vacuous_notice_when_client_cards_are_actually_served(client_memory, monkeypatch,
+def test_no_unexercised_notice_when_client_cards_are_actually_served(client_memory, monkeypatch,
                                                                 capsys):
     """The other half: acme's memory is in the index, so beta's control row measures a real
     absence and the run is a genuine isolation result."""
@@ -486,10 +486,10 @@ def test_no_vacuous_notice_when_client_cards_are_actually_served(client_memory, 
 
     out = capsys.readouterr().out
     assert client_memory["ran"] is True
-    assert "VACUOUS" not in out
+    assert "UNEXERCISED" not in out
 
 
-def test_isolation_is_vacuous_when_the_only_served_client_is_the_one_being_asked_as(
+def test_cross_client_is_unexercised_when_the_only_served_client_is_the_asking_one(
         client_memory, monkeypatch, tmp_path, capsys):
     """A non-empty clients tree is not enough. `score_memory` counts a card only when its
     client DIFFERS from the row's, so a tree holding only beta's own cards serves nothing
@@ -506,10 +506,10 @@ def test_isolation_is_vacuous_when_the_only_served_client_is_the_one_being_asked
     run_eval_module.main()
 
     assert client_memory["ran"] is True
-    assert "VACUOUS" in capsys.readouterr().out
+    assert "UNEXERCISED" in capsys.readouterr().out
 
 
-def test_the_persisted_report_records_that_the_isolation_columns_were_vacuous(client_memory,
+def test_the_persisted_report_records_that_cross_client_was_unexercised(client_memory,
                                                                              monkeypatch,
                                                                              tmp_path):
     """The terminal scrollback is gone by the time anyone reads the result. The report is
@@ -525,10 +525,10 @@ def test_the_persisted_report_records_that_the_isolation_columns_were_vacuous(cl
 
     report = json.loads(
         (tmp_path / "data" / "eval" / "report-progressive-isolation.json").read_text())
-    assert report["aggregate"]["isolation_vacuous"] is True
+    assert report["aggregate"]["cross_client_unexercised"] is True
 
 
-def test_a_measurable_isolation_run_is_not_flagged_in_the_report(client_memory, monkeypatch,
+def test_a_measurable_cross_client_run_is_not_flagged_in_the_report(client_memory, monkeypatch,
                                                                 tmp_path):
     """acme's cards are served and the set asks as beta, so a leak would have something to
     show. That run is a real result and must not carry the caveat."""
@@ -543,4 +543,48 @@ def test_a_measurable_isolation_run_is_not_flagged_in_the_report(client_memory, 
 
     report = json.loads(
         (tmp_path / "data" / "eval" / "report-progressive-isolation.json").read_text())
-    assert report["aggregate"]["isolation_vacuous"] is False
+    assert report["aggregate"]["cross_client_unexercised"] is False
+
+
+def test_a_single_client_memory_set_is_not_described_as_having_a_vacuous_memory_ok(
+        client_memory, monkeypatch, tmp_path, capsys):
+    """acme's own memory set, with only acme served. cross_client cannot fail here - there
+    is no other client's card to leak - but memory_ok is a real measurement: with cross
+    structurally zero it reduces to whether acme's own card was retrieved, which can fail.
+    The notice and the report must scope themselves to cross_client and claim nothing else."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(client_memory["clients"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    monkeypatch.setenv("OKF_DATA_DIR", str(tmp_path / "data"))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "acme-memory")
+
+    run_eval_module.main()
+
+    out = capsys.readouterr().out
+    assert client_memory["ran"] is True
+    assert "cross_client is UNEXERCISED" in out, \
+        "the claim must name cross_client alone, not memory_ok with it"
+    report = json.loads(
+        (tmp_path / "data" / "eval" / "report-progressive-acme-memory.json").read_text())
+    assert report["aggregate"]["cross_client_unexercised"] is True
+    assert "memory_ok_unexercised" not in report["aggregate"]
+
+
+def test_a_two_client_set_flags_neither_column(client_memory, monkeypatch, tmp_path):
+    """acme's cards are served and beta's control row asks as beta, so a leak into beta had
+    something to show. Nothing about this run is unexercised."""
+    (client_memory["evals"] / "both.jsonl").write_text(
+        json.dumps(CLIENT_QA_ROW) + "\n" + json.dumps(ISOLATION_QA_ROW) + "\n")
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(client_memory["clients"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    monkeypatch.setenv("OKF_DATA_DIR", str(tmp_path / "data"))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "both")
+
+    run_eval_module.main()
+
+    report = json.loads(
+        (tmp_path / "data" / "eval" / "report-progressive-both.json").read_text())
+    assert report["aggregate"]["cross_client_unexercised"] is False
