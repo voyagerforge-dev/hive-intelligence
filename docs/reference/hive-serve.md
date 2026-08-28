@@ -113,14 +113,17 @@ Both are checked before any model is called. An absent or empty corpus scores ze
 and reports an aggregate as though it had measured something, so `run_eval` refuses instead, naming
 the setting. "Empty" is `load_index`'s definition, not "holds no `.md`", since `index.md`, `log.md`
 and the `<product>/db/` tier are not cards. `CLIENTS_DIR` stays optional: `run_eval` refuses only
-when the set it was handed has rows carrying `client` or `expects_memory`, and otherwise prints that
-a dead path disabled client memory rather than degrading quietly. When it is set, existing is not
+when the set it was handed has rows expecting client cards - an `expects_memory` id, or a
+`clients/<client>/...` entry in `expected_card_ids` - and otherwise prints that a dead path disabled
+client memory rather than degrading quietly. When it is set, existing is not
 enough either - `run_eval` asks `load_index` which clients it can serve and refuses naming the ones
 it cannot. What counts as "needed" is which clients a row expects **cards** for - an `expects_memory`
 id, or a `clients/<client>/...` entry in `expected_card_ids` - never the `client` field alone. A
 control client in an isolation set deliberately has no memory of its own, and demanding cards for it
-would refuse the deploy gate. Reports are written under
-`OKF_DATA_DIR`.
+would refuse the deploy gate. Such a run is allowed to proceed but not to be read as an isolation
+result: when rows ask as a client and the index serves no client cards, `score_memory` passes every
+one of them because nothing could leak, so `run_eval` says plainly that `memory_ok` and
+`cross_client` are vacuous for that run. Reports are written under `OKF_DATA_DIR`.
 
 ## Internals
 
@@ -217,7 +220,7 @@ deploy gate.
 
 ## Tests
 
-176 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
+179 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
 datasets, or the GitHub
 submission surface skip with a stated reason when their subject is absent, so the suite is green in
 this repository and meaningful in a deployment that has a corpus.

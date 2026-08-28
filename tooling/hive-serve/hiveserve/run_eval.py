@@ -95,6 +95,33 @@ def needs_client_memory(row: dict) -> bool:
     return bool(row.get("expects_memory")) or bool(required_clients(row))
 
 
+def asking_clients(qa: list[dict]) -> set[str]:
+    """The identities the set asks *as*, which is not the same as needing cards."""
+    return {str(row["client"]) for row in qa if row.get("client")}
+
+
+def warn_if_isolation_is_vacuous(qa: list[dict], served: set[str]) -> None:
+    """Say so when the memory columns are about to be satisfied by an empty index.
+
+    ``score_memory`` scores a row with no ``expects_memory`` as ``memory_ok`` when no
+    out-of-scope client card reached the bundle. With no client cards served at all, no
+    card can, so every such row passes and the aggregate reports a perfect cross-client
+    isolation score for a run that never had anything to leak. Refusing is wrong - a
+    control client having no cards is the point - but reporting it as a measurement is
+    worse than the silence it replaced, and this lands on the deploy gate.
+    """
+    asking = sorted(asking_clients(qa))
+    if not asking or served:
+        return
+    named = ", ".join(asking[:5]) + (", ..." if len(asking) > 5 else "")
+    noun = "identity" if len(asking) == 1 else "identities"
+    print(f"[run_eval] this set asks as {len(asking)} client {noun} ({named}), but the index "
+          "holds no client cards, so memory_ok and cross_client are VACUOUS for this run: "
+          "every such row passes because there is nothing that could leak, not because "
+          "isolation was demonstrated. Point CLIENTS_DIR at the corpus's client memory "
+          "before reading this run as an isolation result.", flush=True)
+
+
 def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
                    configured: bool) -> Path | None:
     """Client memory for the eval, matching the shape the served path builds.
@@ -111,7 +138,9 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
 
     ``configured`` says whether any source actually supplied ``CLIENTS_DIR``, which is
     provenance rather than a guess from the value: it decides only whether a dead path is
-    worth reporting, never whether the set is allowed to run.
+    worth reporting, never whether the set is allowed to run. A run that proceeds without
+    client cards while rows ask as clients is reported either way, by
+    :func:`warn_if_isolation_is_vacuous`, because that one is about the numbers.
     """
     given = str(clients_dir).strip()
     path = clients_base(clients_dir)
@@ -126,6 +155,7 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
                 "live at <client>/memory/<slug>.md and <client>/issues/<slug>.md, so a "
                 "directory that merely exists serves none of them: every row expecting "
                 "those cards misses and the aggregate reads as a property of the corpus.")
+        warn_if_isolation_is_vacuous(qa, served)
         return path
     needs = [str(row.get("id", "?")) for row in qa if needs_client_memory(row)]
     if needs:
@@ -139,10 +169,17 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
     # that is a directory almost nowhere, so warning on an untouched one would name a dead
     # path the operator never set, on every run of a deployment with no client memory.
     if path is not None and configured:
+        # "Unaffected" is only true when nothing asks as a client. When something does, its
+        # memory columns are affected - satisfied trivially - and the notice below says so.
+        consequence = ("The path is dead, and the next set that needs it will refuse."
+                       if asking_clients(qa) else
+                       "No row in this eval set exercises it, so the aggregate is "
+                       "unaffected - but the path is dead, and the next set that needs it "
+                       "will refuse.")
         print(f"[run_eval] CLIENTS_DIR={given} is not a directory (resolved to "
-              f"{path.resolve()}), so client memory is disabled for this run. No row in "
-              "this eval set exercises it, so the aggregate is unaffected - but the path "
-              "is dead, and the next set that needs it will refuse.", flush=True)
+              f"{path.resolve()}), so client memory is disabled for this run. "
+              f"{consequence}", flush=True)
+    warn_if_isolation_is_vacuous(qa, set())
     return None
 
 

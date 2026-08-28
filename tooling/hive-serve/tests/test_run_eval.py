@@ -428,3 +428,62 @@ def test_an_isolation_set_does_not_force_client_memory_to_be_configured(client_m
 
     assert client_memory["ran"] is True
     assert client_memory["kwargs"]["clients_dir"] is None
+
+
+def test_an_isolation_only_set_runs_but_says_its_memory_columns_are_vacuous(client_memory,
+                                                                           monkeypatch,
+                                                                           capsys):
+    """`score_memory` passes a control row when no out-of-scope client card reached the
+    bundle. With no client cards served at all, none can, so every row passes and the
+    aggregate reads as a perfect cross-client isolation score for a run that had nothing
+    to leak. It must still run - refusing blocks the gate - but it must not be readable as
+    a measurement it did not make."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    monkeypatch.setenv("CLIENTS_DIR", "")
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "isolation")
+
+    run_eval_module.main()
+
+    out = capsys.readouterr().out
+    assert client_memory["ran"] is True, "refused the isolation eval, which is the gate"
+    assert "VACUOUS" in out
+    assert "beta" in out, "should name the identity whose isolation was not measured"
+
+
+def test_the_vacuous_notice_also_fires_when_a_configured_clients_dir_is_dead(client_memory,
+                                                                            monkeypatch,
+                                                                            tmp_path,
+                                                                            capsys):
+    """Unset and set-but-dead reach the same empty index, so both must say it. The dead-path
+    notice must also stop claiming the aggregate is unaffected, because it is not."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(tmp_path / "clients-typo"))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "isolation")
+
+    run_eval_module.main()
+
+    out = capsys.readouterr().out
+    assert client_memory["ran"] is True
+    assert "VACUOUS" in out
+    assert "aggregate is unaffected" not in out, "claimed a measurement it did not make"
+
+
+def test_no_vacuous_notice_when_client_cards_are_actually_served(client_memory, monkeypatch,
+                                                                capsys):
+    """The other half: acme's memory is in the index, so beta's control row measures a real
+    absence and the run is a genuine isolation result."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(client_memory["clients"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "isolation")
+
+    run_eval_module.main()
+
+    out = capsys.readouterr().out
+    assert client_memory["ran"] is True
+    assert "VACUOUS" not in out
