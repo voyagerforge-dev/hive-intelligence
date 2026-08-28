@@ -307,3 +307,70 @@ def test_eval_refuses_a_client_tree_whose_cards_the_index_does_not_load(client_m
         run_eval_module.main()
     assert "CLIENTS_DIR" in str(exc.value) and "acme" in str(exc.value)
     assert client_memory["ran"] is False
+
+
+def test_the_eval_scores_against_one_index_that_includes_the_client_memory(client_memory,
+                                                                          monkeypatch):
+    """The index the corpus guards had to build is the index the eval scores against, so
+    the corpus is walked and parsed once for the guards rather than once per guard."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(client_memory["clients"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "acme-memory")
+
+    run_eval_module.main()
+
+    handed = client_memory["kwargs"]["index"]
+    assert {c["id"] for c in handed} == {
+        c["id"] for c in load_index(client_memory["concepts"], client_memory["clients"])}
+    assert "clients/acme/memory/wave-note" in {c["id"] for c in handed}
+
+
+def test_the_eval_scores_against_the_concepts_index_when_client_memory_is_off(corpus,
+                                                                              monkeypatch):
+    monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
+    monkeypatch.setenv("CLIENTS_DIR", "")
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "wave-replen")
+
+    run_eval_module.main()
+
+    assert {c["id"] for c in corpus["kwargs"]["index"]} == {
+        c["id"] for c in load_index(corpus["concepts"])}
+
+
+def test_an_unconfigured_clients_dir_default_is_not_reported_as_a_dead_path(corpus,
+                                                                           monkeypatch,
+                                                                           capsys):
+    """CLIENTS_DIR's class default is a relative guess that is a directory almost nowhere.
+    Warning about it names a path the operator never set, on every run of a deployment
+    that simply has no client memory - noise that trains people to ignore the real one."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
+    monkeypatch.delenv("CLIENTS_DIR", raising=False)
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "wave-replen")
+
+    run_eval_module.main()
+
+    assert "CLIENTS_DIR" not in capsys.readouterr().out
+    assert corpus["ran"] is True
+    assert corpus["kwargs"]["clients_dir"] is None
+
+
+def test_an_unconfigured_clients_dir_default_still_refuses_a_set_that_needs_client_memory(
+        client_memory, monkeypatch):
+    """Staying quiet about the default must not extend to the case that actually matters:
+    a set with client rows and nowhere to load them from is the wrong-aggregate bug."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    monkeypatch.delenv("CLIENTS_DIR", raising=False)
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "acme-memory")
+
+    with pytest.raises(SystemExit) as exc:
+        run_eval_module.main()
+    assert "CLIENTS_DIR" in str(exc.value)
+    assert client_memory["ran"] is False

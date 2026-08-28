@@ -62,7 +62,15 @@ def main() -> None:
     # checkout, where no approved taxonomy has ever lived.
     root = require_dir(s.card_corpus_root, setting="CARD_CORPUS_ROOT",
                        what="the card corpus this pass generates into")
-    profile = load_profile(atomic_dir=s.atomic_dir or None)
+    # Validated before load_profile, not after: load_profile looks for corpus-profile.yaml
+    # beside ATOMIC_DIR, so a typo there surfaces one step later as "no corpus profile
+    # found" and sends the operator after CORPUS_PROFILE, which is not the setting that is
+    # wrong. Optional by design - empty falls back to the R2 reader below - so the check
+    # runs only when it is set.
+    atomic = (require_dir(s.atomic_dir, setting="ATOMIC_DIR",
+                          what="the atomic documents to generate from")
+              if s.atomic_dir else None)
+    profile = load_profile(atomic_dir=str(atomic) if atomic is not None else None)
     area = s.slice_area.strip()
     is_sub = area in profile.subareas
     if area and not is_sub and area not in profile.areas:
@@ -74,11 +82,7 @@ def main() -> None:
     label = area or "the whole corpus"
     stem = f"taxonomy.{area}" if area else "taxonomy"  # per-area taxonomy, areas never clobber
 
-    if s.atomic_dir:
-        # Optional by design - empty falls back to R2 below - so it is validated only when
-        # it is set. Set-but-wrong is the case that used to pass straight through.
-        atomic = require_dir(s.atomic_dir, setting="ATOMIC_DIR",
-                             what="the atomic documents to generate from")
+    if atomic is not None:
         if is_sub:
             docs = load_subarea_local(atomic, area, profile)
         elif area:

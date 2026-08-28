@@ -188,3 +188,24 @@ def test_run_refuses_a_zero_document_load_before_proposing_anything(corpus_run, 
     assert "ATOMIC_DIR" in str(exc.value) and str(empty_atomic) in str(exc.value)
     assert corpus_run["proposed"] is False, "proposed a taxonomy from an empty inventory"
     assert list(fresh.iterdir()) == [], "wrote a taxonomy derived from no documents"
+
+
+def test_a_typo_in_atomic_dir_names_atomic_dir_and_not_the_corpus_profile(corpus_run,
+                                                                         monkeypatch,
+                                                                         tmp_path):
+    """load_profile looks for corpus-profile.yaml beside ATOMIC_DIR, so a typo there used
+    to surface one step later as "no corpus profile found, set CORPUS_PROFILE". A refusal
+    that names the wrong setting costs more than no refusal at all - the operator goes and
+    configures the thing that was never broken."""
+    typo = tmp_path / "atomik"
+    monkeypatch.setenv("CARD_CORPUS_ROOT", str(corpus_run["corpus"]))
+    monkeypatch.setenv("ATOMIC_DIR", str(typo))
+    monkeypatch.setenv("SLICE_AREA", "wave-replen")
+    get_settings.cache_clear()
+
+    with pytest.raises(SystemExit) as exc:
+        hivegen.run.main()
+    message = str(exc.value)
+    assert "ATOMIC_DIR" in message and str(typo) in message
+    assert "CORPUS_PROFILE" not in message, "sent the operator after the wrong setting"
+    assert corpus_run["proposed"] is False

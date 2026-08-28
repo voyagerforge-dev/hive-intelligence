@@ -104,3 +104,23 @@ def test_score_memory_hit_isolation_and_cross_client():
     assert r["memory_ok"] is False and r["cross_client"] == 1
     # expected memory missing from bundle -> not ok
     assert score_memory("clients/alpha/memory/m", ["widgets/a"], "alpha", [None])["memory_ok"] is False
+
+
+def test_run_eval_scores_facets_from_the_index_it_is_handed(tmp_path):
+    """`index` is not a hint: when a caller has already built the index, run_eval scores
+    the facets from that list rather than re-reading the corpus into a second one."""
+    (tmp_path / "a.md").write_text(
+        "---\ntitle: A\ndescription: d\nrelated: []\nregime: traditional\n"
+        "sources:\n- kind: widgets-doc\n  ref: a.md\nstatus: approved\n---\n\nbody about x\n")
+    qa = [{"id": "q1", "question": "x?", "expected_card_ids": ["a"], "expected_regime": "ops"}]
+    judge = JudgeLLM('{"grounded": true, "correct": true, "note": "ok"}')
+
+    on_disk = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=FixedAnswer(),
+                       judge_llm=judge, get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text())
+    handed = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=FixedAnswer(),
+                      judge_llm=judge, get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text(),
+                      index=[{"id": "a", "regime": "ops", "version": None, "product": None,
+                              "client": None}])
+
+    assert on_disk["aggregate"]["regime_ok"] == 0  # the card on disk is traditional
+    assert handed["aggregate"]["regime_ok"] == 1   # the index handed in says ops
