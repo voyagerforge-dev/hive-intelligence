@@ -18,9 +18,12 @@ directory that is not there yields nothing and raises nothing. Where a value is 
 optional (`CLIENTS_DIR` disables client memory), empty must mean *off* at the shared boundary, not
 *the working directory*.
 
-Corpus locations are settings (`CORPUS_ROOT` for hive-prep's raw input, `CARD_CORPUS_ROOT` for
-hive-gen's card corpus output, `CONCEPTS_DIR`, `CLIENTS_DIR`, `EVAL_DIR`), validated at the point of
-use, and an emptiness check must count what the consumer counts. See
+Corpus locations are settings (`CARD_CORPUS_ROOT` for hive-gen's card corpus output,
+`CONCEPTS_DIR`, `CLIENTS_DIR`, `EVAL_DIR`), validated at the point of use, and an emptiness check
+must count what the consumer counts. hive-prep's `CORPUS_ROOT` is the exception and not a
+counter-example: nothing validates it because no command reads it for the raw tree, which comes from
+the curation plan or the command argument. It is a corpus-profile lookup hint, read from the
+environment, so it must be **exported** to have any effect at all. See
 [docs/reference/configuration.md](docs/reference/configuration.md), section "Where the corpus is".
 `__file__` arithmetic is still right for a package's own files.
 

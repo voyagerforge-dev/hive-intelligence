@@ -70,7 +70,8 @@ def main() -> None:
     atomic = (require_dir(s.atomic_dir, setting="ATOMIC_DIR",
                           what="the atomic documents to generate from")
               if s.atomic_dir else None)
-    profile = load_profile(atomic_dir=str(atomic) if atomic is not None else None)
+    profile = load_profile(explicit=s.corpus_profile or None,
+                           atomic_dir=str(atomic) if atomic is not None else None)
     area = s.slice_area.strip()
     is_sub = area in profile.subareas
     if area and not is_sub and area not in profile.areas:

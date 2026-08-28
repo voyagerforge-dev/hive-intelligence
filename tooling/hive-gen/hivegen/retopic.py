@@ -46,12 +46,15 @@ def corpus_vocabulary():
     found" and sends the operator after CORPUS_PROFILE, which is not the setting that is
     wrong. `hivegen.run.main` is ordered the same way for the same reason.
 
-    Resolved here rather than at import, and from the validated setting rather than from
+    Resolved here rather than at import, and from the validated settings rather than from
     `os.environ`. Settings are `.env`-backed and pydantic-settings never writes back to the
-    environment, so an ATOMIC_DIR set in `.env` - which is what this package's own
-    `.env.example` tells an operator to do - is invisible to a bare `load_profile()`. The
-    profile then reads as missing and the refusal names a remedy ("put corpus-profile.yaml
-    beside ATOMIC_DIR") that the operator has already followed.
+    environment, so ATOMIC_DIR and CORPUS_PROFILE set in `.env` - which is what this
+    package's own `.env.example` tells an operator to do - are both invisible to a bare
+    `load_profile()`. The profile then reads as missing and the refusal names remedies
+    ("Set CORPUS_PROFILE, or put corpus-profile.yaml beside ATOMIC_DIR") the operator has
+    already followed. Worse than the message: an ignored CORPUS_PROFILE lets a different
+    corpus-profile.yaml in the working directory win silently, and the pass then classifies
+    against the wrong vocabulary with no error at all.
 
     A missing profile is deliberately not an error in `load_profile`; it becomes one here,
     where something asks for a vocabulary nothing defines. Without it the bucket is "" and
@@ -61,7 +64,8 @@ def corpus_vocabulary():
     left to re-topic.
     """
     docs = docs_dir()
-    profile = load_profile(atomic_dir=str(docs))
+    s = get_settings()
+    profile = load_profile(explicit=s.corpus_profile or None, atomic_dir=str(docs))
     missing = [key for key, value in (("retopic_bucket", profile.retopic_bucket),
                                       ("guide_topics", profile.guide_topics)) if not value]
     if not missing:

@@ -129,17 +129,27 @@ def cross_client_is_unexercised(qa: list[dict], served: set[str]) -> bool:
 
     A non-empty ``served`` is not enough: a tree holding only the asking client's own cards
     serves nothing that could count against it, so the question is asked per row.
+
+    This is structural, and answers for every set including one with no client-scoped rows
+    at all: with nothing served, nothing could have leaked, so the column is unexercised.
+    Answering False there would write "isolation was measured and nothing leaked" into the
+    report for a run whose index held no client cards.
     """
-    if not asking_clients(qa):
-        return False
     return not any(out_of_scope_clients(row, served) for row in qa)
 
 
 def warn_if_cross_client_is_unexercised(qa: list[dict], served: set[str]) -> bool:
-    """Say so on stdout, and tell the caller so the report can carry it too."""
-    if not cross_client_is_unexercised(qa, served):
-        return False
+    """Say so on stdout when it is worth saying, and tell the caller either way.
+
+    The notice is gated on the set asking as somebody, because its wording is about the
+    identities it asks as and there is nothing to tell an operator whose set never mentions
+    a client. The returned value is not gated: it goes into the report, where a missing
+    caveat is read as a measurement.
+    """
+    unexercised = cross_client_is_unexercised(qa, served)
     asking = sorted(asking_clients(qa))
+    if not unexercised or not asking:
+        return unexercised
     named = ", ".join(asking[:5]) + (", ..." if len(asking) > 5 else "")
     noun = "identity" if len(asking) == 1 else "identities"
     print(f"[run_eval] this set asks as {len(asking)} client {noun} ({named}), but the index "

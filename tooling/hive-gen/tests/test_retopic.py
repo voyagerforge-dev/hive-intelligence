@@ -158,3 +158,40 @@ def test_the_pass_refuses_when_a_profile_is_present_but_defines_no_guide_topics(
     message = str(exc.value)
     assert str(profile) in message
     assert "retopic_bucket" in message and "guide_topics" in message
+
+
+def test_a_dot_env_supplied_corpus_profile_resolves(atomic, monkeypatch, tmp_path):
+    """The other half of the same environ trap. `load_profile` reads CORPUS_PROFILE from the
+    environment, and pydantic-settings never puts a .env value there, so a profile named the
+    way config.py documents was ignored and the refusal told the operator to set the setting
+    they had already set."""
+    named = tmp_path / "named-profile.yaml"
+    named.write_text(PROFILE)
+    bare = tmp_path / "bare" / "atomic"
+    bare.mkdir(parents=True)
+    (bare / "wave-guide-2021.md").write_text(DOC)
+    (Path.cwd() / ".env").write_text(f"ATOMIC_DIR={bare}\nCORPUS_PROFILE={named}\n")
+    get_settings.cache_clear()
+
+    assert "CORPUS_PROFILE" not in os.environ, "the setting must not have reached the environment"
+    assert [p.name for p in retopic.newest_docs()] == ["wave-guide-2021.md"]
+
+
+def test_a_configured_corpus_profile_wins_over_one_in_the_working_directory(atomic,
+                                                                           monkeypatch,
+                                                                           tmp_path):
+    """Not just a message defect. When CORPUS_PROFILE is ignored, a different profile that
+    happens to sit in the working directory wins silently and the pass classifies against
+    the wrong vocabulary with no error at all."""
+    decoy = Path.cwd() / "corpus-profile.yaml"
+    decoy.write_text('retopic_bucket: "decoy"\nguide_topics:\n  other: "not ours"\n')
+    named = tmp_path / "named-profile.yaml"
+    named.write_text(PROFILE)
+    monkeypatch.setenv("ATOMIC_DIR", str(atomic))
+    monkeypatch.setenv("CORPUS_PROFILE", str(named))
+    get_settings.cache_clear()
+
+    _, profile = retopic.corpus_vocabulary()
+
+    assert profile.path == named, "the working directory's profile won over the configured one"
+    assert profile.retopic_bucket == "reference"

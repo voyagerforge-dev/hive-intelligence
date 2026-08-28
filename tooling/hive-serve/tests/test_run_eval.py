@@ -588,3 +588,26 @@ def test_a_two_client_set_flags_neither_column(client_memory, monkeypatch, tmp_p
     report = json.loads(
         (tmp_path / "data" / "eval" / "report-progressive-both.json").read_text())
     assert report["aggregate"]["cross_client_unexercised"] is False
+
+
+def test_a_set_with_no_client_rows_never_records_cross_client_as_measured(corpus, monkeypatch,
+                                                                         tmp_path, capsys):
+    """The most common eval-set shape, and the one the report was mislabelling. With no
+    client cards in the index nothing could have leaked, so cross_client scored zero for
+    every row without measuring anything. Recording false there reads as "isolation was
+    measured and nothing leaked" - a wrong value in the artifact the deploy gate is judged
+    on. It must not say that, and it must still print nothing: the notice is about the
+    identities a set asks as, and this set asks as nobody."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
+    monkeypatch.delenv("CLIENTS_DIR", raising=False)
+    monkeypatch.setenv("OKF_DATA_DIR", str(tmp_path / "data"))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "wave-replen")
+
+    run_eval_module.main()
+
+    assert "CLIENTS_DIR" not in capsys.readouterr().out
+    report = json.loads(
+        (tmp_path / "data" / "eval" / "report-progressive-wave-replen.json").read_text())
+    assert report["aggregate"]["cross_client_unexercised"] is True
