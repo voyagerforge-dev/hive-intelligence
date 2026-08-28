@@ -163,13 +163,24 @@ CLIENT_QA_ROW = {"id": "q2", "question": "what does acme do for waves?",
                  "expected_card_ids": ["clients/acme/memory/wave-note"], "client": "acme"}
 
 
+# The isolation control: asked AS beta, expecting only a shared card. beta deliberately
+# has no memory of its own - that is how the set demonstrates acme's memory does not leak
+# into it - so the row needs no client cards and scores without any.
+ISOLATION_QA_ROW = {"id": "q3", "question": "what feeds waves?",
+                    "expected_card_ids": ["wave-replen"], "client": "beta"}
+GHOST_QA_ROW = {"id": "q4", "question": "what does ghost do for waves?",
+                "expected_card_ids": ["clients/ghost/memory/note"], "client": "ghost"}
+
+
 @pytest.fixture
 def client_memory(corpus, tmp_path):
-    """Client memory beside the corpus, plus an eval set that needs it."""
+    """Client memory beside the corpus, plus eval sets that do and do not need it."""
     clients = tmp_path / "corpus" / "clients"
     (clients / "acme" / "memory").mkdir(parents=True)
     (clients / "acme" / "memory" / "wave-note.md").write_text(CLIENT_CARD)
     (corpus["evals"] / "acme-memory.jsonl").write_text(json.dumps(CLIENT_QA_ROW) + "\n")
+    (corpus["evals"] / "isolation.jsonl").write_text(json.dumps(ISOLATION_QA_ROW) + "\n")
+    (corpus["evals"] / "ghost-memory.jsonl").write_text(json.dumps(GHOST_QA_ROW) + "\n")
     corpus["clients"] = clients
     return corpus
 
@@ -364,3 +375,56 @@ def test_a_clients_dir_explicitly_set_to_the_default_value_is_still_reported_whe
     assert "CLIENTS_DIR" in out and default in out
     assert corpus["ran"] is True
     assert corpus["kwargs"]["clients_dir"] is None
+
+
+def test_an_isolation_control_row_runs_though_its_client_has_no_cards(client_memory,
+                                                                     monkeypatch):
+    """The deploy gate. A control client has no memory ON PURPOSE - that is what proves
+    another client's memory does not reach it - so a row asked as that client, expecting
+    only a shared card, must score rather than be refused. `resolve` drops every
+    out-of-scope clients/ card and `score_memory` measures the absence; nothing about it
+    needs a card under CLIENTS_DIR."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(client_memory["clients"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "isolation")
+
+    run_eval_module.main()
+
+    assert client_memory["ran"] is True, "refused the isolation eval, which is the gate"
+    assert client_memory["qa"] == [ISOLATION_QA_ROW]
+    assert client_memory["kwargs"]["clients_dir"] == client_memory["clients"], \
+        "scored isolation against an index with no client memory to leak"
+
+
+def test_a_row_expecting_a_missing_clients_cards_still_refuses(client_memory, monkeypatch):
+    """The other half of the distinction: this row does not merely ask as ghost, it expects
+    ghost's card. There is none, so every such row misses and the aggregate is wrong."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(client_memory["clients"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "ghost-memory")
+
+    with pytest.raises(SystemExit) as exc:
+        run_eval_module.main()
+    assert "CLIENTS_DIR" in str(exc.value)
+    assert "ghost" in str(exc.value)
+    assert client_memory["ran"] is False
+
+
+def test_an_isolation_set_does_not_force_client_memory_to_be_configured(client_memory,
+                                                                       monkeypatch):
+    """Asking as a client is not a requirement for client cards, so a set of only control
+    rows must still run on a deployment that has client memory switched off."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    monkeypatch.setenv("CLIENTS_DIR", "")
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "isolation")
+
+    run_eval_module.main()
+
+    assert client_memory["ran"] is True
+    assert client_memory["kwargs"]["clients_dir"] is None

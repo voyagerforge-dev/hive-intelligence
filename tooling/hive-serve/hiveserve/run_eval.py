@@ -22,7 +22,7 @@ from hivegen.llm import BifrostChat
 
 from hiveserve.config import get_settings
 from hiveserve.eval import load_qa, run_eval
-from hiveserve.resolver import clients_base, get_card, load_index
+from hiveserve.resolver import client_of_id, clients_base, get_card, load_index
 
 USAGE = (
     "usage: run_eval <progressive|ceiling> <qa-set>\n"
@@ -72,6 +72,29 @@ def corpus_cards(concepts_dir: str) -> Path:
     return path
 
 
+def required_clients(row: dict) -> set[str]:
+    """The clients a qa row needs *cards* for, which is not the identity it asks as.
+
+    A row's ``client`` field is who the question is asked as. An isolation control asks as
+    a client that deliberately has *no* memory - having none is exactly how you show that
+    another client's memory does not leak into it - and scores correctly with no client
+    cards of its own, because ``resolve`` excludes every out-of-scope ``clients/`` card and
+    ``score_memory`` then measures the absence. Treating that row as a requirement refuses
+    the isolation eval, which is the deploy gate.
+
+    What genuinely needs cards is a row that expects one: ``expects_memory`` names a card
+    id, and ``expected_card_ids`` may name ``clients/<client>/...``. The client segment is
+    read with the resolver's own derivation, so this and ``load_index`` cannot disagree.
+    """
+    ids = (row.get("expects_memory"), *(row.get("expected_card_ids") or ()))
+    return {name for cid in ids if cid for name in (client_of_id(str(cid)),) if name}
+
+
+def needs_client_memory(row: dict) -> bool:
+    """Whether a row is scored against client memory at all - one definition, both guards."""
+    return bool(row.get("expects_memory")) or bool(required_clients(row))
+
+
 def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
                    configured: bool) -> Path | None:
     """Client memory for the eval, matching the shape the served path builds.
@@ -83,7 +106,8 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
 
     A directory that merely exists is not a guard, for the same reason a file count is not
     one in :func:`corpus_cards`: the check asks ``load_index`` which clients it can
-    actually serve, and the rows name the clients they need, so no heuristic is required.
+    actually serve, and :func:`required_clients` reads which clients the rows need cards
+    for, so no heuristic is required.
 
     ``configured`` says whether any source actually supplied ``CLIENTS_DIR``, which is
     provenance rather than a guess from the value: it decides only whether a dead path is
@@ -92,19 +116,18 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
     given = str(clients_dir).strip()
     path = clients_base(clients_dir)
     if path is not None and path.is_dir():
-        exercised = sorted({str(row["client"]) for row in qa if row.get("client")})
+        required = sorted({name for row in qa for name in required_clients(row)})
         served = {c["client"] for c in load_index(concepts, path) if c["client"]}
-        absent = [c for c in exercised if c not in served]
+        absent = [c for c in required if c not in served]
         if absent:
             raise SystemExit(
                 f"CLIENTS_DIR={given} is a directory, but the index loads no client memory "
-                f"for {', '.join(absent)}, which this eval set scores against. Client cards "
+                f"for {', '.join(absent)}, whose cards this eval set expects. Client cards "
                 "live at <client>/memory/<slug>.md and <client>/issues/<slug>.md, so a "
-                "directory that merely exists serves none of them: every row naming those "
-                "clients misses and the aggregate reads as a property of the corpus.")
+                "directory that merely exists serves none of them: every row expecting "
+                "those cards misses and the aggregate reads as a property of the corpus.")
         return path
-    needs = [str(row.get("id", "?")) for row in qa
-             if row.get("client") or row.get("expects_memory")]
+    needs = [str(row.get("id", "?")) for row in qa if needs_client_memory(row)]
     if needs:
         raise SystemExit(
             f"CLIENTS_DIR={given or '(unset)'} is not a directory, but this eval set has "

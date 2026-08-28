@@ -14,7 +14,7 @@ def parse_frontmatter(text: str) -> dict:
     return fm if isinstance(fm, dict) else {}
 
 
-def _client_of_id(card_id: str):
+def client_of_id(card_id: str):
     """Client scope of a card, derived structurally from its id path (matches load_index):
     clients/<client>/... -> <client>; any other id -> None (core)."""
     if card_id.startswith("clients/"):
@@ -117,7 +117,7 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
         return parse_frontmatter(p.read_text()) if p is not None else {}
 
     def in_scope(cid):
-        cl = _client_of_id(cid)
+        cl = client_of_id(cid)
         return cl is None or cl == client          # client-scoped cards only in their own scope
 
     selected: list[str] = []
@@ -144,7 +144,7 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
                     rfm = parse_frontmatter(rp.read_text())
                     if parent_regime and rfm.get("regime") and parent_regime != rfm.get("regime"):
                         continue  # cross-regime auto-expansion guard (do NOT mark seen)
-                    rcl = _client_of_id(rid)
+                    rcl = client_of_id(rid)
                     if rcl is not None and rcl != client:
                         continue  # cross-client / out-of-scope memory guard (do NOT mark seen)
                     seen.add(rid)
