@@ -20,15 +20,24 @@ import sys
 # hive-gen/ package dir (parent of this hivegen/ dir) to sys.path.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from hivegen.config import get_settings
+from hivegen.corpus import require_dir
 from hivegen.llm import BifrostChat, extract_json
 from hivegen.profile import load_profile
 
 _PROFILE = load_profile()
 
-# Where atomic documents live. ATOMIC_DIR is the source of truth; the fallback keeps the
-# script runnable from inside a corpus checkout.
-DOCS = pathlib.Path(get_settings().atomic_dir or
-                    (pathlib.Path(__file__).resolve().parents[3] / "atomic"))
+
+def docs_dir() -> pathlib.Path:
+    """Where the atomic documents are. Configured, never derived, and resolved here rather
+    than at import so importing this module has no side effect.
+
+    This used to fall back to `Path(__file__).parents[3] / "atomic"`, which after the
+    2026-08-11 split is the engine repository. Globbing a directory that is not there
+    yields nothing and raises nothing, so the pass reported zero documents re-topiced
+    and exited 0.
+    """
+    return require_dir(get_settings().atomic_dir, setting="ATOMIC_DIR",
+                       what="the atomic documents to re-topic")
 
 # The catch-all topic this pass re-classifies, and the vocabulary it classifies into. Both
 # are corpus vocabulary: see hivegen.profile.
@@ -56,7 +65,7 @@ def basename(stem):
 def newest_docs():
     """One path per guide base-name: the one with the highest version year."""
     best = {}
-    for p in sorted(DOCS.glob("*.md")):
+    for p in sorted(docs_dir().glob("*.md")):
         fm = frontmatter(p.read_text())
         if not fm or get_field(fm, "topic") != BUCKET:
             continue

@@ -44,10 +44,11 @@ def corpus(tmp_path, monkeypatch):
 
     rec: dict = {"concepts": concepts, "evals": evals, "ran": False}
 
-    def _run_eval(concepts_dir, qa, **_kw):
+    def _run_eval(concepts_dir, qa, **kw):
         rec["ran"] = True
         rec["concepts_dir"] = Path(concepts_dir)
         rec["qa"] = qa
+        rec["kwargs"] = kw
         return {"aggregate": {"n": len(qa)}, "rows": []}
 
     monkeypatch.setattr(run_eval_module, "run_eval", _run_eval)
@@ -146,3 +147,76 @@ def test_eval_names_the_sets_it_can_see_when_the_one_asked_for_is_absent(corpus,
     assert "no-such-set" in str(exc.value)
     assert "wave-replen" in str(exc.value), "should name the sets it can actually see"
     assert corpus["ran"] is False
+
+
+# --------------------------------------------------------------------------
+# Client memory. CLIENTS_DIR is optional - omitting it disables client memory,
+# which is a supported deployment - but an eval set that exercises it and is
+# scored without it does not fail, it reports a wrong aggregate: `load_index`
+# never returns the client-scoped cards, so every such row misses.
+# --------------------------------------------------------------------------
+
+CLIENT_CARD = ("---\ntitle: Acme Wave Note\ndescription: acme's own wave rule\nrelated: []\n"
+               "---\nAcme body.\n")
+CLIENT_QA_ROW = {"id": "q2", "question": "what does acme do for waves?",
+                 "expected_card_ids": ["clients/acme/wave-note"], "client": "acme"}
+
+
+@pytest.fixture
+def client_memory(corpus, tmp_path):
+    """Client memory beside the corpus, plus an eval set that needs it."""
+    clients = tmp_path / "corpus" / "clients"
+    (clients / "acme").mkdir(parents=True)
+    (clients / "acme" / "wave-note.md").write_text(CLIENT_CARD)
+    (corpus["evals"] / "acme-memory.jsonl").write_text(json.dumps(CLIENT_QA_ROW) + "\n")
+    corpus["clients"] = clients
+    return corpus
+
+
+def test_eval_scores_client_memory_with_the_configured_clients_dir(client_memory, monkeypatch):
+    """The eval must measure the same shape the served path builds, which always passes
+    clients_dir. Dropping it scores every client-scoped row a miss and prints the total."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(client_memory["clients"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "acme-memory")
+
+    run_eval_module.main()
+
+    assert client_memory["kwargs"]["clients_dir"] == client_memory["clients"]
+    get_card_fn = client_memory["kwargs"]["get_card_fn"]
+    assert get_card_fn("clients/acme/wave-note") == CLIENT_CARD, \
+        "the reference text for a client-scoped card was not resolvable"
+
+
+def test_eval_refuses_a_client_scoped_set_when_clients_dir_is_not_configured(client_memory,
+                                                                            monkeypatch):
+    """The silent-wrong-aggregate case: the set needs client memory and there is none, so
+    it must say so rather than score every one of those rows a miss."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    monkeypatch.setenv("CLIENTS_DIR", "")
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "acme-memory")
+
+    with pytest.raises(SystemExit) as exc:
+        run_eval_module.main()
+    assert "CLIENTS_DIR" in str(exc.value)
+    assert "q2" in str(exc.value), "should name the rows that need client memory"
+    assert client_memory["ran"] is False
+
+
+def test_eval_runs_without_client_memory_when_the_set_does_not_need_it(corpus, monkeypatch):
+    """Omitting CLIENTS_DIR disables client memory and is a supported deployment, so a set
+    with no client-scoped rows must still run."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
+    monkeypatch.setenv("CLIENTS_DIR", "")
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "wave-replen")
+
+    run_eval_module.main()
+
+    assert corpus["ran"] is True
+    assert corpus["kwargs"]["clients_dir"] is None

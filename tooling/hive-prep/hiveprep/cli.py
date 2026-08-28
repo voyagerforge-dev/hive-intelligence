@@ -238,14 +238,21 @@ def stamp(plan_path, atomic_dir, overwrite):
     from hiveprep.curation_plan import load_plan
     from hiveprep.stamp import stamp_from_plan
     s = get_settings()
-    atomic = Path(atomic_dir or s.atomic_dir)
+    given = str(atomic_dir or s.atomic_dir).strip()
     # Refuse rather than glob a directory that is not there. Stamping nothing prints
     # "0 files stamped" and exits 0, which is also what a correctly-configured re-run over
     # an already-stamped corpus prints, so a wrong ATOMIC_DIR is invisible at the one
-    # moment it matters: the first run from a freshly copied .env.
+    # moment it matters: the first run from a freshly copied .env. Unset is the same
+    # failure wearing a disguise: Path("") is Path("."), which is a directory, so an
+    # unguarded check passes and the glob runs over the working directory instead.
+    if not given:
+        raise SystemExit(
+            "ATOMIC_DIR is not set, so there is nothing to stamp. It is written by "
+            "`transform` and read here; set ATOMIC_DIR, or pass --atomic. See .env.example.")
+    atomic = Path(given).expanduser()
     if not atomic.is_dir():
         raise SystemExit(
-            f"ATOMIC_DIR={atomic} is not a directory (resolved to {atomic.resolve()}), "
+            f"ATOMIC_DIR={given} is not a directory (resolved to {atomic.resolve()}), "
             "so there is nothing to stamp. It is written by `transform` and read here; "
             "set ATOMIC_DIR, or pass --atomic. See .env.example.")
     changed = stamp_from_plan(atomic, load_plan(Path(plan_path)), only_missing=not overwrite)

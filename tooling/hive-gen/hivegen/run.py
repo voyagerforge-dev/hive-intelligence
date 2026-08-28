@@ -60,8 +60,8 @@ def main() -> None:
     # Configured, never derived. This was `Path(__file__).parents[3]`, which stopped being
     # the corpus when the corpus became its own repository and started being the engine
     # checkout, where no approved taxonomy has ever lived.
-    root = require_dir(s.corpus_root, setting="CORPUS_ROOT",
-                       what="the corpus this pass generates into")
+    root = require_dir(s.card_corpus_root, setting="CARD_CORPUS_ROOT",
+                       what="the card corpus this pass generates into")
     profile = load_profile(atomic_dir=s.atomic_dir or None)
     area = s.slice_area.strip()
     is_sub = area in profile.subareas

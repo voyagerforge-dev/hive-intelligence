@@ -3,7 +3,8 @@
 Both of the things this needs are corpus-side and neither is derivable from here. The
 cards live in the corpus repository, separate from the engine since 2026-08-11, and the
 eval sets ship beside them because they name real card ids. So both come from settings:
-``CONCEPTS_DIR`` for the cards, ``EVAL_DIR`` for the sets.
+``CONCEPTS_DIR`` for the cards, ``EVAL_DIR`` for the sets, and ``CLIENTS_DIR`` for client
+memory when a set exercises it.
 
 This file used to walk up from ``__file__`` for both, which after the split resolved to
 the engine repository. It never raised. ``load_index`` over a directory that is not there
@@ -67,6 +68,30 @@ def corpus_cards(concepts_dir: str) -> Path:
     return path
 
 
+def corpus_clients(clients_dir: str, qa: list[dict]) -> Path | None:
+    """Client memory for the eval, matching the shape the served path builds.
+
+    ``CLIENTS_DIR`` is genuinely optional: omitting it disables client memory, which is a
+    supported deployment. What is not supported is scoring a set that exercises client
+    memory without it. ``load_index`` simply never returns the client-scoped cards, every
+    such row misses, and the aggregate is reported as a measurement of the served system.
+    """
+    given = str(clients_dir).strip()
+    path = Path(given).expanduser() if given else None
+    if path is not None and path.is_dir():
+        return path
+    needs = [str(row.get("id", "?")) for row in qa
+             if row.get("client") or row.get("expects_memory")]
+    if needs:
+        raise SystemExit(
+            f"CLIENTS_DIR={given or '(unset)'} is not a directory, but this eval set has "
+            f"{len(needs)} row(s) that exercise client memory ({', '.join(needs[:5])}"
+            f"{', ...' if len(needs) > 5 else ''}). Scored without it every one of them "
+            "misses and the aggregate reads as a property of the corpus. Point CLIENTS_DIR "
+            "at the corpus's client memory, or use a set that does not need it.")
+    return None
+
+
 def main() -> None:
     mode = sys.argv[1] if len(sys.argv) > 1 else "progressive"
     if mode not in ("progressive", "ceiling"):
@@ -77,6 +102,7 @@ def main() -> None:
     concepts = corpus_cards(s.concepts_dir)
     qa_path = qa_set_path(sys.argv[2], s.eval_dir)
     qa = load_qa(qa_path)
+    clients = corpus_clients(s.clients_dir, qa)
     select_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.select_model,
                              timeout_s=s.bifrost_timeout_s)
     answer_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.answer_model,
@@ -84,9 +110,10 @@ def main() -> None:
     judge_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.judge_model,
                             timeout_s=s.bifrost_timeout_s)
     res = run_eval(concepts, qa, select_llm=select_llm, answer_llm=answer_llm,
-                   judge_llm=judge_llm, get_card_fn=lambda cid: get_card(concepts, cid),
+                   judge_llm=judge_llm,
+                   get_card_fn=lambda cid: get_card(concepts, cid, clients),
                    mode=mode, depth=s.resolve_depth, max_cards=s.max_cards,
-                   max_chars=s.max_chars)
+                   max_chars=s.max_chars, clients_dir=clients)
     # The report is this service's own scratch, so it goes where the other non-ledger
     # scratch goes. It used to be written inside the installed package, which is neither
     # writable nor findable once hive-serve is installed rather than checked out.

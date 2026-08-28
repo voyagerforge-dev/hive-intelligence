@@ -40,9 +40,11 @@ def test_generate_drafts_skips_existing_draft(tmp_path):
 
 # --------------------------------------------------------------------------
 # Where the corpus is. Since the 2026-08-11 split it is a separate repository,
-# so `main` is told through CORPUS_ROOT rather than walking up from __file__:
-# that arithmetic lands in the engine repository, where an approved taxonomy
-# never is, and the run silently re-proposes one instead of distilling.
+# so `main` is told through CARD_CORPUS_ROOT rather than walking up from
+# __file__: that arithmetic lands in the engine repository, where an approved
+# taxonomy never is, and the run silently re-proposes one instead of distilling.
+# The name is hive-gen's own: hive-prep's CORPUS_ROOT is the raw documents going
+# in, and one exported name would have been read as both.
 # --------------------------------------------------------------------------
 
 from pathlib import Path
@@ -77,7 +79,8 @@ def corpus_run(tmp_path, monkeypatch):
     monkeypatch.setenv("BIFROST_BASE", "http://bf/v1")
     monkeypatch.setenv("BIFROST_API_KEY", "k")
     monkeypatch.delenv("SLICE_AREA", raising=False)
-    monkeypatch.delenv("CORPUS_ROOT", raising=False)
+    monkeypatch.delenv("CARD_CORPUS_ROOT", raising=False)
+    monkeypatch.delenv("CORPUS_ROOT", raising=False)  # hive-prep's, a different tree
     get_settings.cache_clear()
 
     rec: dict = {"corpus": corpus, "proposed": False}
@@ -102,7 +105,7 @@ def corpus_run(tmp_path, monkeypatch):
 def test_run_distils_from_the_approved_taxonomy_in_the_configured_corpus(corpus_run, monkeypatch):
     """The whole point of gate 1: an approved taxonomy already in the corpus must be FOUND
     and distilled from, not silently re-proposed from scratch."""
-    monkeypatch.setenv("CORPUS_ROOT", str(corpus_run["corpus"]))
+    monkeypatch.setenv("CARD_CORPUS_ROOT", str(corpus_run["corpus"]))
     get_settings.cache_clear()
 
     hivegen.run.main()
@@ -118,16 +121,35 @@ def test_run_refuses_when_the_corpus_root_is_not_configured(corpus_run):
     lookup in the wrong repository."""
     with pytest.raises(SystemExit) as exc:
         hivegen.run.main()
-    assert "CORPUS_ROOT" in str(exc.value)
+    assert "CARD_CORPUS_ROOT" in str(exc.value)
     assert corpus_run["proposed"] is False
 
 
 def test_run_refuses_when_the_corpus_root_does_not_exist(corpus_run, monkeypatch, tmp_path):
     missing = tmp_path / "not-a-corpus"
-    monkeypatch.setenv("CORPUS_ROOT", str(missing))
+    monkeypatch.setenv("CARD_CORPUS_ROOT", str(missing))
     get_settings.cache_clear()
 
     with pytest.raises(SystemExit) as exc:
         hivegen.run.main()
-    assert "CORPUS_ROOT" in str(exc.value) and str(missing) in str(exc.value)
+    assert "CARD_CORPUS_ROOT" in str(exc.value) and str(missing) in str(exc.value)
     assert corpus_run["proposed"] is False
+
+
+def test_run_does_not_take_the_raw_document_tree_from_hive_preps_corpus_root(corpus_run,
+                                                                            monkeypatch,
+                                                                            tmp_path):
+    """The two settings name different trees. An operator who exported CORPUS_ROOT for the
+    ingest stage and then ran hive-gen must not have that tree accepted as the card corpus:
+    it is a real directory, so the "set, and a directory" guard cannot catch it, and hive-gen
+    would find no taxonomy in it and re-propose one straight into the raw documents."""
+    ingest = tmp_path / "ingest_content"
+    ingest.mkdir()
+    monkeypatch.setenv("CORPUS_ROOT", str(ingest))
+    get_settings.cache_clear()
+
+    with pytest.raises(SystemExit) as exc:
+        hivegen.run.main()
+    assert "CARD_CORPUS_ROOT" in str(exc.value)
+    assert corpus_run["proposed"] is False
+    assert list(ingest.iterdir()) == [], "wrote a draft taxonomy into the raw document tree"

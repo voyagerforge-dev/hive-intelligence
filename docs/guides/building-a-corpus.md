@@ -94,11 +94,12 @@ Given the documents for one functional area, the model proposes the distinct con
 which documents cover each. It writes `taxonomy.<area>.draft.yaml` and **stops**.
 
 ```bash
-CORPUS_ROOT=/path/to/your/corpus SLICE_AREA=<area> uv run python -m hivegen.run
+CARD_CORPUS_ROOT=/path/to/your/corpus SLICE_AREA=<area> uv run python -m hivegen.run
 ```
 
-`CORPUS_ROOT` is your corpus working tree, and is required: the taxonomy is written there, not
-beside the engine. Review it, edit it, save it as `taxonomy.<area>.yaml`.
+`CARD_CORPUS_ROOT` is your card corpus working tree, and is required: the taxonomy is written there,
+not beside the engine. It is a different tree from the `CORPUS_ROOT` the ingest stage above used -
+that one is the raw documents going in, this one is the cards coming out. Review it, edit it, save it as `taxonomy.<area>.yaml`.
 
 Getting the concept list right is most of getting the corpus right, and a list of titles is far
 cheaper to fix than a directory of distilled prose. Expect to merge concepts that are really one

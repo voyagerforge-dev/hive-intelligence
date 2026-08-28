@@ -11,8 +11,8 @@ git tag. Nothing here should read or write a corpus path it was not given.
 **Never derive a corpus path by walking up from `__file__`.** That arithmetic used to stay inside
 one tree and now lands in this repository, where no cards or taxonomies exist, and it fails
 silently: a glob over a directory that is not there yields nothing and raises nothing. Corpus
-locations are settings (`CORPUS_ROOT`, `CONCEPTS_DIR`, `CLIENTS_DIR`, `EVAL_DIR`), validated at the
-point of use. See [docs/reference/configuration.md](docs/reference/configuration.md), section
+locations are settings (`CORPUS_ROOT` for hive-prep's raw input, `CARD_CORPUS_ROOT` for hive-gen's
+card corpus output, `CONCEPTS_DIR`, `CLIENTS_DIR`, `EVAL_DIR`), validated at the point of use. See [docs/reference/configuration.md](docs/reference/configuration.md), section
 "Where the corpus is". `__file__` arithmetic is still right for a package's own files.
 
 The same rule covers `.env.example`: no absolute path under anyone's home directory. Those files

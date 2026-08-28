@@ -31,3 +31,23 @@ def test_stamp_refuses_an_atomic_dir_that_is_not_there(tmp_path):
                                  "--atomic", str(tmp_path / "gone")])
     assert r.exit_code != 0
     assert "ATOMIC_DIR" in r.output or "ATOMIC_DIR" in str(r.exception)
+
+
+def test_stamp_refuses_a_blank_atomic_dir_rather_than_stamping_the_working_directory(
+        tmp_path, monkeypatch):
+    """`ATOMIC_DIR=` in a copied .env is Path(""), which is Path("."), which IS a
+    directory - so an is_dir() check passes and the pass globs the working directory
+    instead. Nothing there matches the plan, so it prints "0 files stamped in ." and
+    exits 0: the same silent success a missing directory used to produce."""
+    from hiveprep.config import get_settings
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ATOMIC_DIR", "")
+    get_settings.cache_clear()
+    plan = tmp_path / "plan.yaml"
+    plan.write_text("scope: s\ncorpus_root: /tmp\nsubtree: ''\ninclude: []\nexclude: []\n")
+
+    r = CliRunner().invoke(cli, ["stamp", "--plan", str(plan)])
+
+    get_settings.cache_clear()
+    assert r.exit_code != 0
+    assert "ATOMIC_DIR" in r.output or "ATOMIC_DIR" in str(r.exception)

@@ -22,12 +22,13 @@ load area  ──►  taxonomy  ──►  ⟨gate: edit and save the taxonomy�
 ```
 
 ```bash
-CORPUS_ROOT=/path/to/your/corpus SLICE_AREA=<area> uv run python -m hivegen.run
+CARD_CORPUS_ROOT=/path/to/your/corpus SLICE_AREA=<area> uv run python -m hivegen.run
 ```
 
-`CORPUS_ROOT` is the corpus working tree, and is required. The taxonomies, `drafts/` and
-`.pipeline/` are read and written there. See
-[where the corpus is](configuration.md#where-the-corpus-is) for why it is not derived.
+`CARD_CORPUS_ROOT` is the card corpus working tree, and is required. The taxonomies, `drafts/` and
+`.pipeline/` are read and written there. It is **not** hive-prep's `CORPUS_ROOT`, which names the raw
+documents going in. See [where the corpus is](configuration.md#where-the-corpus-is) for why it is not
+derived and why the two are named apart.
 
 If no `taxonomy.<area>.yaml` exists **there**, the run proposes one to
 `taxonomy.<area>.draft.yaml` and stops. Edit it, save it under the non-draft name, and run again to
@@ -219,7 +220,7 @@ allowlist and a client id must match `\A[a-z0-9-]+\Z`. They parse attacker-influ
 
 ## Tests
 
-98 tests, 3 of which skip without a live corpus. Fakes only; the model client is injected. Nothing in the suite makes a network
+107 tests, 3 of which skip without a live corpus. Fakes only; the model client is injected. Nothing in the suite makes a network
 call.
 
 ## Configuration

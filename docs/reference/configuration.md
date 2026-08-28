@@ -69,7 +69,7 @@ why an authenticating proxy is mandatory rather than advisable for any wider exp
 
 | Variable | Default | Notes |
 |---|---|---|
-| `CORPUS_ROOT` | empty | **required**. The corpus working tree: taxonomies, `drafts/`, `.pipeline/` |
+| `CARD_CORPUS_ROOT` | empty | **required**. The card corpus working tree: taxonomies, `drafts/`, `.pipeline/`. Not hive-prep's `CORPUS_ROOT` |
 | `ATOMIC_DIR` | empty | atomic markdown from `hive-prep` |
 | `SLICE_AREA` | empty | which functional area to generate |
 | `BIFROST_BASE` | required | model gateway |
@@ -89,7 +89,7 @@ first built against. See [known limitations](../concepts/principles.md#known-lim
 
 | Variable | Default | Notes |
 |---|---|---|
-| `CORPUS_ROOT` | empty | the raw document tree |
+| `CORPUS_ROOT` | empty | the raw document tree to ingest. Not hive-gen's `CARD_CORPUS_ROOT` |
 | `WORK_DIR` | `./hive-work` | scratch space |
 | `ATOMIC_DIR` | `./hive-work/atomic` | output, and `hive-gen`'s input |
 | `DOCLING_BASE` | empty | document converter endpoint |
@@ -153,8 +153,8 @@ you have never heard of. Empty and validated is louder and cheaper.
 
 ## Where the corpus is
 
-`CORPUS_ROOT`, `CONCEPTS_DIR`, `CLIENTS_DIR` and `EVAL_DIR` all name parts of the **corpus**, which
-has been a separate repository from the engine since 2026-08-11. Nothing about where it sits on disk
+`CORPUS_ROOT`, `CARD_CORPUS_ROOT`, `CONCEPTS_DIR`, `CLIENTS_DIR` and `EVAL_DIR` all name parts of
+the **corpus**, which has been a separate repository from the engine since 2026-08-11. Nothing about where it sits on disk
 follows from where this code is installed, so every one of them is configuration and none of them is
 derived.
 
@@ -170,3 +170,11 @@ corpus that has not been generated yet legitimately holds almost nothing.
 
 Directory arithmetic from `__file__` is still correct for a package finding its **own** files. It is
 never correct for finding another repository's.
+
+`CORPUS_ROOT` and `CARD_CORPUS_ROOT` are two different trees and are deliberately named apart.
+`CORPUS_ROOT` is hive-prep's input, the raw documents going **in**; `CARD_CORPUS_ROOT` is hive-gen's
+output, the card corpus coming **out** and the tree hive-serve then serves. A single name would have
+been read by both, and the process environment outranks a per-package `.env`, so an operator running
+the [build guide](../guides/building-a-corpus.md) stages back to back would have exported one value
+for both. The check here is "set, and a directory" by design, so the raw document tree would have
+passed hive-gen's guard and the taxonomy lookup would have gone missing all over again.
