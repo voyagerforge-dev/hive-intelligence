@@ -60,3 +60,48 @@ def test_list_concepts_tool_client_scoped(tmp_path, ledger_dsn):
     assert {c["id"] for c in tools.list_concepts(concepts, clients, client=None)} == {"widgets/a"}
     assert {c["id"] for c in tools.list_concepts(concepts, clients, client="alpha")} == {
         "widgets/a", "clients/alpha/memory/m"}
+
+
+# --------------------------------------------------------------------------
+# An unset CONCEPTS_DIR is Path(""), which is Path("."), which exists. The
+# catalogue was therefore built out of whatever markdown sat in the process
+# working directory - in an engine checkout, this repository's own docs -
+# and served as OKF concept cards. Refuse at startup, like LEDGER_DSN does.
+# --------------------------------------------------------------------------
+
+import pytest
+
+
+def _decoy_working_directory(tmp_path, monkeypatch):
+    """A working directory holding markdown that would pass for a card."""
+    (tmp_path / "AGENTS.md").write_text(
+        "---\ntitle: Engine notes\ndescription: not a card\n---\n\nengine prose\n")
+    monkeypatch.chdir(tmp_path)
+
+
+def test_mcp_door_refuses_an_unset_concepts_dir_instead_of_serving_the_working_directory(
+        tmp_path, monkeypatch):
+    _decoy_working_directory(tmp_path, monkeypatch)
+
+    with pytest.raises(SystemExit) as exc:
+        build_mcp(Settings(concepts_dir=""), lambda: None)
+    assert "CONCEPTS_DIR" in str(exc.value)
+
+
+def test_mcp_door_refuses_a_concepts_dir_that_is_not_there(tmp_path, monkeypatch):
+    _decoy_working_directory(tmp_path, monkeypatch)
+    missing = tmp_path / "gone"
+
+    with pytest.raises(SystemExit) as exc:
+        build_mcp(Settings(concepts_dir=str(missing)), lambda: None)
+    assert "CONCEPTS_DIR" in str(exc.value) and str(missing) in str(exc.value)
+
+
+def test_rest_door_refuses_an_unset_concepts_dir(tmp_path, monkeypatch):
+    from hiveserve.app import build_rest_router
+
+    _decoy_working_directory(tmp_path, monkeypatch)
+
+    with pytest.raises(SystemExit) as exc:
+        build_rest_router(Settings(concepts_dir=""))
+    assert "CONCEPTS_DIR" in str(exc.value)

@@ -220,3 +220,45 @@ def test_eval_runs_without_client_memory_when_the_set_does_not_need_it(corpus, m
 
     assert corpus["ran"] is True
     assert corpus["kwargs"]["clients_dir"] is None
+
+
+def test_eval_refuses_a_corpus_that_holds_only_things_the_index_does_not_count(corpus,
+                                                                              monkeypatch,
+                                                                              tmp_path):
+    """`load_index` skips index.md, log.md and the <product>/db/ tier, so a corpus holding
+    only those has .md files and still indexes nothing. Counting files rather than cards
+    let it through, and every question then scored zero against an empty index."""
+    shell = tmp_path / "shell"
+    (shell / "wms" / "db").mkdir(parents=True)
+    (shell / "index.md").write_text("---\ntitle: Index\n---\n\nlisting\n")
+    (shell / "log.md").write_text("---\ntitle: Log\n---\n\nchangelog\n")
+    (shell / "wms" / "db" / "table-x.md").write_text("---\ntitle: TABLE_X\n---\n\ncols\n")
+    monkeypatch.setenv("CONCEPTS_DIR", str(shell))
+    monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "wave-replen")
+
+    with pytest.raises(SystemExit) as exc:
+        run_eval_module.main()
+    assert "CONCEPTS_DIR" in str(exc.value)
+    assert corpus["ran"] is False
+
+
+def test_eval_says_out_loud_that_a_dead_clients_dir_disabled_client_memory(corpus, monkeypatch,
+                                                                          tmp_path, capsys):
+    """A typo'd CLIENTS_DIR does not make this aggregate wrong - no row here selects a
+    client-scoped card - so it must not refuse. It must also not degrade in silence, which
+    is how the operator finds out only on the next set that does need it."""
+    dead = tmp_path / "clients-typo"
+    monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(dead))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "wave-replen")
+
+    run_eval_module.main()
+
+    out = capsys.readouterr().out
+    assert "CLIENTS_DIR" in out and str(dead) in out
+    assert corpus["ran"] is True
+    assert corpus["kwargs"]["clients_dir"] is None

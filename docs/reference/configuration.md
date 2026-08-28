@@ -40,8 +40,8 @@ flagged where they appear.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `CONCEPTS_DIR` | `../../concepts` | corpus concept cards. The default assumes a layout that will not be yours |
-| `CLIENTS_DIR` | `../../clients` | client-scoped cards. Omit to disable client memory entirely |
+| `CONCEPTS_DIR` | `../../concepts` | **required in practice**. Corpus concept cards; the server refuses to start unless it is a directory. The default assumes a layout that will not be yours |
+| `CLIENTS_DIR` | `../../clients` | client-scoped cards. Leave empty to disable client memory entirely; never a startup refusal |
 | `EVAL_DIR` | empty | labelled eval sets, **evaluation only**. No default: they ship with a corpus |
 | `LEDGER_DSN` | empty | **required**. Postgres for the objective and memory ledger. **The only state not in git** |
 | `OKF_DATA_DIR` | `./.data` | non-ledger scratch, including `run_eval` reports |
@@ -144,8 +144,9 @@ No environment configuration. Everything is command-line: `--src`, `--out`, `--l
 
 ## Settings that have no default on purpose
 
-`CONNECTOR_BASE`, `GITHUB_REPO`, `LEDGER_DSN` and the gateway addresses are empty by default and
-validated at startup.
+`CONNECTOR_BASE`, `GITHUB_REPO`, `LEDGER_DSN`, `EVAL_DIR`, `CARD_CORPUS_ROOT` and the gateway
+addresses are empty by default and validated at startup or at the point of use. `CONCEPTS_DIR`
+carries a default that will not be yours and is validated the same way.
 
 A default that points somewhere plausible does not save you configuration. It moves the failure from
 startup, where it is obvious, to first use, where it appears as a connection error against a host
@@ -167,6 +168,22 @@ there yields nothing and raises nothing, so `hive-gen` re-proposed a taxonomy it
 So the tools that read the corpus check first and refuse with a message naming the setting, rather
 than proceeding over nothing. The check is "set, and a directory", never "looks like a corpus": a
 corpus that has not been generated yet legitimately holds almost nothing.
+
+Unset counts as wrong, and is the easier one to miss. `Path("")` is `Path(".")`, which exists, so an
+empty setting that reaches `pathlib` resolves to the working directory rather than failing - an
+empty `CONCEPTS_DIR` used to build the served catalogue out of whatever markdown happened to sit
+beside the process. So `hiveserve serve` refuses at startup, alongside its `LEDGER_DSN` refusal, and
+an empty answer is never allowed to become a wrong one.
+
+`CLIENTS_DIR` is the deliberate exception, because omitting it disables client memory and that is a
+supported deployment. It is never a startup refusal. Empty is coerced to "off" once, in
+`hiveserve/resolver.py`, so every door agrees; `run_eval` refuses only when the eval set it was
+handed actually has rows that exercise client memory, and otherwise says out loud that the path is
+dead rather than degrading quietly.
+
+An emptiness check counts what the consumer counts. `run_eval` asks `load_index` rather than
+counting `*.md`, because `index.md`, `log.md` and the `<product>/db/` tier are not cards: a corpus
+holding only those passes a file count and still scores zero on every question.
 
 Directory arithmetic from `__file__` is still correct for a package finding its **own** files. It is
 never correct for finding another repository's.

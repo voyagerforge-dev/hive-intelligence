@@ -8,12 +8,21 @@ The Hive **engine** only. The corpus (cards, taxonomies, eval sets, corpus profi
 separate repository since the 2026-08-11 split, and consumers pin this one by annotated `vX.Y.Z`
 git tag. Nothing here should read or write a corpus path it was not given.
 
-**Never derive a corpus path by walking up from `__file__`.** That arithmetic used to stay inside
-one tree and now lands in this repository, where no cards or taxonomies exist, and it fails
-silently: a glob over a directory that is not there yields nothing and raises nothing. Corpus
-locations are settings (`CORPUS_ROOT` for hive-prep's raw input, `CARD_CORPUS_ROOT` for hive-gen's
-card corpus output, `CONCEPTS_DIR`, `CLIENTS_DIR`, `EVAL_DIR`), validated at the point of use. See [docs/reference/configuration.md](docs/reference/configuration.md), section
-"Where the corpus is". `__file__` arithmetic is still right for a package's own files.
+**A corpus path that is unset, empty, or not a directory must refuse with a message naming the
+setting.** Never resolve it to something plausible instead. Deriving one by walking up from
+`__file__` is the loudest version of that mistake - the arithmetic used to stay inside one tree and
+now lands in this repository, where no cards or taxonomies exist - but empty and set-but-wrong fail
+the same silent way, and more often. `Path("")` is `Path(".")`, which exists, so an unset setting
+that reaches pathlib scans the working directory and answers out of this repository; a glob over a
+directory that is not there yields nothing and raises nothing. Where a value is legitimately
+optional (`CLIENTS_DIR` disables client memory), empty must mean *off* at the shared boundary, not
+*the working directory*.
+
+Corpus locations are settings (`CORPUS_ROOT` for hive-prep's raw input, `CARD_CORPUS_ROOT` for
+hive-gen's card corpus output, `CONCEPTS_DIR`, `CLIENTS_DIR`, `EVAL_DIR`), validated at the point of
+use, and an emptiness check must count what the consumer counts. See
+[docs/reference/configuration.md](docs/reference/configuration.md), section "Where the corpus is".
+`__file__` arithmetic is still right for a package's own files.
 
 The same rule covers `.env.example`: no absolute path under anyone's home directory. Those files
 are what a new operator copies, and a dead path there is invisible until it produces nothing.

@@ -22,7 +22,7 @@ from hivegen.llm import BifrostChat
 
 from hiveserve.config import get_settings
 from hiveserve.eval import load_qa, run_eval
-from hiveserve.resolver import get_card
+from hiveserve.resolver import get_card, load_index
 
 USAGE = (
     "usage: run_eval <progressive|ceiling> <qa-set>\n"
@@ -57,14 +57,18 @@ def corpus_cards(concepts_dir: str) -> Path:
     """The concept cards to evaluate, refusing an empty corpus as loudly as a missing one.
 
     An empty result is the failure mode this guards: zero cards scores zero on every
-    question, which is indistinguishable from a corpus that is simply bad.
+    question, which is indistinguishable from a corpus that is simply bad. "Empty" is
+    therefore the loader's own definition, not "holds no .md": ``load_index`` skips
+    index.md, log.md and the ``<product>/db/`` tier, so a corpus holding only those
+    passes a file count and still indexes nothing.
     """
     path = require_dir(concepts_dir, setting="CONCEPTS_DIR", what="the corpus concept cards")
-    if not any(path.rglob("*.md")):
+    if not load_index(path):
         raise SystemExit(
-            f"CONCEPTS_DIR={path} holds no cards, so there is nothing to evaluate. "
-            "An eval over an empty corpus scores zero on every question and reports it "
-            "as a result.")
+            f"CONCEPTS_DIR={path} holds no cards the index can load, so there is nothing "
+            "to evaluate. An eval over an empty corpus scores zero on every question and "
+            "reports it as a result. index.md, log.md and the <product>/db/ tier are not "
+            "cards, so a corpus holding only those counts as empty here.")
     return path
 
 
@@ -89,6 +93,11 @@ def corpus_clients(clients_dir: str, qa: list[dict]) -> Path | None:
             f"{', ...' if len(needs) > 5 else ''}). Scored without it every one of them "
             "misses and the aggregate reads as a property of the corpus. Point CLIENTS_DIR "
             "at the corpus's client memory, or use a set that does not need it.")
+    if path is not None:
+        print(f"[run_eval] CLIENTS_DIR={given} is not a directory (resolved to "
+              f"{path.resolve()}), so client memory is disabled for this run. No row in "
+              "this eval set exercises it, so the aggregate is unaffected - but the path "
+              "is dead, and the next set that needs it will refuse.", flush=True)
     return None
 
 

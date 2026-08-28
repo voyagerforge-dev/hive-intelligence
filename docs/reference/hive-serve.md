@@ -111,7 +111,11 @@ name resolves under `EVAL_DIR`; a path with a suffix is taken as given. The card
 
 Both are checked before any model is called. An absent or empty corpus scores zero on every question
 and reports an aggregate as though it had measured something, so `run_eval` refuses instead, naming
-the setting. Reports are written under `OKF_DATA_DIR`.
+the setting. "Empty" is `load_index`'s definition, not "holds no `.md`", since `index.md`, `log.md`
+and the `<product>/db/` tier are not cards. `CLIENTS_DIR` stays optional: `run_eval` refuses only
+when the set it was handed has rows carrying `client` or `expects_memory`, and otherwise prints that
+a dead path disabled client memory rather than degrading quietly. Reports are written under
+`OKF_DATA_DIR`.
 
 ## Internals
 
@@ -124,6 +128,12 @@ Everything selection-related lives here, which is why both doors cannot drift ap
 **`card_path`** maps a card id to a file. Ids starting `clients/` resolve under `CLIENTS_DIR`,
 everything else under `CONCEPTS_DIR`. Both are resolved and bounds-checked, so a crafted id cannot
 escape its directory.
+
+**`clients_base`** is where "empty means client memory is off" is decided, once, for every caller.
+`Path("")` is `Path(".")` and exists, so an empty `CLIENTS_DIR` that reached `card_path` or
+`load_index` directly would have scanned the working directory and answered `clients/…` ids out of
+it. Both doors, the metrics collector and the eval all funnel through here, so none of them can
+disagree about what "unset" means.
 
 **`load_index`** builds the lean index. It reads frontmatter only, never bodies. Client cards get a
 `client` facet **derived from the id path**, not from author-supplied frontmatter, so a card cannot
@@ -202,7 +212,7 @@ deploy gate.
 
 ## Tests
 
-160 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
+168 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
 datasets, or the GitHub
 submission surface skip with a stated reason when their subject is absent, so the suite is green in
 this repository and meaningful in a deployment that has a corpus.

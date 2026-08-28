@@ -24,11 +24,27 @@ def _client_of_id(card_id: str):
     return None
 
 
+def clients_base(clients_dir):
+    """The client-memory tree, or None when client memory is off.
+
+    Empty means disabled, everywhere, which is what the docs and `.env.example` promise.
+    Only `None` used to mean that: an empty string is not None, and `Path("")` is
+    `Path(".")`, which exists - so an unset CLIENTS_DIR that reached pathlib scanned the
+    working directory for `<name>/memory/*.md` and answered `clients/...` card ids out of
+    it. Every caller converges here, so the coercion belongs here rather than at each door.
+    """
+    if clients_dir is None:
+        return None
+    given = str(clients_dir).strip()
+    return Path(given).expanduser() if given else None
+
+
 def card_path(concepts_dir, card_id, clients_dir=None):
     """Map a card id to its file. `clients/…` ids resolve under clients_dir, all others
     under concepts_dir. Returns None if the file is missing or the path escapes its base."""
-    if clients_dir is not None and card_id.startswith("clients/"):
-        base = Path(clients_dir).resolve()
+    clients = clients_base(clients_dir)
+    if clients is not None and card_id.startswith("clients/"):
+        base = clients.resolve()
         p = (base / f"{card_id[len('clients/'):]}.md").resolve()
     else:
         base = Path(concepts_dir).resolve()
@@ -55,25 +71,24 @@ def load_index(concepts_dir, clients_dir=None) -> list[dict]:
                     "version": fm.get("version"), "product": fm.get("product"),
                     "client": None,
                     "corrects": fm.get("corrects"), "status": fm.get("status")})
-    if clients_dir is not None:
-        cdir = Path(clients_dir)
-        if cdir.exists():
-            for p in sorted(cdir.rglob("*.md")):
-                if p.name in ("index.md", "log.md"):
-                    continue
-                rel = p.relative_to(cdir).with_suffix("")
-                parts = rel.parts
-                if len(parts) < 3 or parts[1] not in ("memory", "issues"):
-                    continue  # <client>/memory/<slug>.md and <client>/issues/<slug>.md
-                kind = "memory" if parts[1] == "memory" else "issue"
-                fm = parse_frontmatter(p.read_text())
-                out.append({"id": "clients/" + rel.as_posix(),
-                            "title": fm.get("title", rel.as_posix()),
-                            "description": fm.get("description", ""),
-                            "regime": fm.get("regime"), "type": kind,
-                            "version": fm.get("version"), "product": fm.get("product"),
-                            "client": parts[0],
-                            "corrects": fm.get("corrects"), "status": fm.get("status")})
+    cdir = clients_base(clients_dir)
+    if cdir is not None and cdir.exists():
+        for p in sorted(cdir.rglob("*.md")):
+            if p.name in ("index.md", "log.md"):
+                continue
+            rel = p.relative_to(cdir).with_suffix("")
+            parts = rel.parts
+            if len(parts) < 3 or parts[1] not in ("memory", "issues"):
+                continue  # <client>/memory/<slug>.md and <client>/issues/<slug>.md
+            kind = "memory" if parts[1] == "memory" else "issue"
+            fm = parse_frontmatter(p.read_text())
+            out.append({"id": "clients/" + rel.as_posix(),
+                        "title": fm.get("title", rel.as_posix()),
+                        "description": fm.get("description", ""),
+                        "regime": fm.get("regime"), "type": kind,
+                        "version": fm.get("version"), "product": fm.get("product"),
+                        "client": parts[0],
+                        "corrects": fm.get("corrects"), "status": fm.get("status")})
     return out
 
 
