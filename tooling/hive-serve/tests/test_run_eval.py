@@ -309,38 +309,6 @@ def test_eval_refuses_a_client_tree_whose_cards_the_index_does_not_load(client_m
     assert client_memory["ran"] is False
 
 
-def test_the_eval_scores_against_one_index_that_includes_the_client_memory(client_memory,
-                                                                          monkeypatch):
-    """The index the corpus guards had to build is the index the eval scores against, so
-    the corpus is walked and parsed once for the guards rather than once per guard."""
-    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
-    monkeypatch.setenv("CLIENTS_DIR", str(client_memory["clients"]))
-    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
-    get_settings.cache_clear()
-    _argv(monkeypatch, "progressive", "acme-memory")
-
-    run_eval_module.main()
-
-    handed = client_memory["kwargs"]["index"]
-    assert {c["id"] for c in handed} == {
-        c["id"] for c in load_index(client_memory["concepts"], client_memory["clients"])}
-    assert "clients/acme/memory/wave-note" in {c["id"] for c in handed}
-
-
-def test_the_eval_scores_against_the_concepts_index_when_client_memory_is_off(corpus,
-                                                                              monkeypatch):
-    monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
-    monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
-    monkeypatch.setenv("CLIENTS_DIR", "")
-    get_settings.cache_clear()
-    _argv(monkeypatch, "progressive", "wave-replen")
-
-    run_eval_module.main()
-
-    assert {c["id"] for c in corpus["kwargs"]["index"]} == {
-        c["id"] for c in load_index(corpus["concepts"])}
-
-
 def test_an_unconfigured_clients_dir_default_is_not_reported_as_a_dead_path(corpus,
                                                                            monkeypatch,
                                                                            capsys):
@@ -374,3 +342,25 @@ def test_an_unconfigured_clients_dir_default_still_refuses_a_set_that_needs_clie
         run_eval_module.main()
     assert "CLIENTS_DIR" in str(exc.value)
     assert client_memory["ran"] is False
+
+
+def test_a_clients_dir_explicitly_set_to_the_default_value_is_still_reported_when_dead(
+        corpus, monkeypatch, capsys):
+    """Whether it was configured is provenance, not a guess from the value. The default is
+    the value docs publish, so it is a plausible thing to write down - an operator who did
+    write it down and whose corpus then moved must still be told the path is dead."""
+    from hiveserve.config import Settings
+
+    default = Settings.model_fields["clients_dir"].default
+    monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
+    monkeypatch.setenv("CLIENTS_DIR", default)
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "wave-replen")
+
+    run_eval_module.main()
+
+    out = capsys.readouterr().out
+    assert "CLIENTS_DIR" in out and default in out
+    assert corpus["ran"] is True
+    assert corpus["kwargs"]["clients_dir"] is None

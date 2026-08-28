@@ -20,7 +20,7 @@ from pathlib import Path
 from hivegen.corpus import require_dir
 from hivegen.llm import BifrostChat
 
-from hiveserve.config import Settings, get_settings
+from hiveserve.config import get_settings
 from hiveserve.eval import load_qa, run_eval
 from hiveserve.resolver import clients_base, get_card, load_index
 
@@ -53,31 +53,27 @@ def qa_set_path(qa_arg: str, eval_dir: str) -> Path:
     return path
 
 
-def corpus_cards(concepts_dir: str) -> tuple[Path, list[dict]]:
-    """The concept cards to evaluate, and the index of them, refusing an empty corpus.
+def corpus_cards(concepts_dir: str) -> Path:
+    """The concept cards to evaluate, refusing an empty corpus as loudly as a missing one.
 
     An empty result is the failure mode this guards: zero cards scores zero on every
     question, which is indistinguishable from a corpus that is simply bad. "Empty" is
     therefore the loader's own definition, not "holds no .md": ``load_index`` skips
     index.md, log.md and the ``<product>/db/`` tier, so a corpus holding only those
     passes a file count and still indexes nothing.
-
-    The index it had to build to answer that is returned rather than discarded, so one
-    invocation walks and parses the corpus once rather than once per guard.
     """
     path = require_dir(concepts_dir, setting="CONCEPTS_DIR", what="the corpus concept cards")
-    index = load_index(path)
-    if not index:
+    if not load_index(path):
         raise SystemExit(
             f"CONCEPTS_DIR={path} holds no cards the index can load, so there is nothing "
             "to evaluate. An eval over an empty corpus scores zero on every question and "
             "reports it as a result. index.md, log.md and the <product>/db/ tier are not "
             "cards, so a corpus holding only those counts as empty here.")
-    return path, index
+    return path
 
 
 def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
-                   index: list[dict]) -> tuple[Path | None, list[dict]]:
+                   configured: bool) -> Path | None:
     """Client memory for the eval, matching the shape the served path builds.
 
     ``CLIENTS_DIR`` is genuinely optional: omitting it disables client memory, which is a
@@ -89,16 +85,15 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
     one in :func:`corpus_cards`: the check asks ``load_index`` which clients it can
     actually serve, and the rows name the clients they need, so no heuristic is required.
 
-    Takes the concepts-only index from :func:`corpus_cards` and returns the index the eval
-    should score against: the same one when client memory is off, and the combined one when
-    it is on, which is the single extra load the client check needs anyway.
+    ``configured`` says whether any source actually supplied ``CLIENTS_DIR``, which is
+    provenance rather than a guess from the value: it decides only whether a dead path is
+    worth reporting, never whether the set is allowed to run.
     """
     given = str(clients_dir).strip()
     path = clients_base(clients_dir)
     if path is not None and path.is_dir():
-        index = load_index(concepts, path)
         exercised = sorted({str(row["client"]) for row in qa if row.get("client")})
-        served = {c["client"] for c in index if c["client"]}
+        served = {c["client"] for c in load_index(concepts, path) if c["client"]}
         absent = [c for c in exercised if c not in served]
         if absent:
             raise SystemExit(
@@ -107,7 +102,7 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
                 "live at <client>/memory/<slug>.md and <client>/issues/<slug>.md, so a "
                 "directory that merely exists serves none of them: every row naming those "
                 "clients misses and the aggregate reads as a property of the corpus.")
-        return path, index
+        return path
     needs = [str(row.get("id", "?")) for row in qa
              if row.get("client") or row.get("expects_memory")]
     if needs:
@@ -117,15 +112,15 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
             f"{', ...' if len(needs) > 5 else ''}). Scored without it every one of them "
             "misses and the aggregate reads as a property of the corpus. Point CLIENTS_DIR "
             "at the corpus's client memory, or use a set that does not need it.")
-    # Only when it was actually configured. The class default is a relative guess that is
-    # a directory almost nowhere, so warning on it would name a dead path the operator
-    # never set on every run of a deployment that simply has no client memory.
-    if path is not None and given != Settings.model_fields["clients_dir"].default:
+    # Only when some source actually supplied it. The class default is a relative guess
+    # that is a directory almost nowhere, so warning on an untouched one would name a dead
+    # path the operator never set, on every run of a deployment with no client memory.
+    if path is not None and configured:
         print(f"[run_eval] CLIENTS_DIR={given} is not a directory (resolved to "
               f"{path.resolve()}), so client memory is disabled for this run. No row in "
               "this eval set exercises it, so the aggregate is unaffected - but the path "
               "is dead, and the next set that needs it will refuse.", flush=True)
-    return None, index
+    return None
 
 
 def main() -> None:
@@ -135,10 +130,11 @@ def main() -> None:
     if len(sys.argv) < 3:
         raise SystemExit(USAGE)
     s = get_settings()
-    concepts, index = corpus_cards(s.concepts_dir)
+    concepts = corpus_cards(s.concepts_dir)
     qa_path = qa_set_path(sys.argv[2], s.eval_dir)
     qa = load_qa(qa_path)
-    clients, index = corpus_clients(s.clients_dir, qa, concepts=concepts, index=index)
+    clients = corpus_clients(s.clients_dir, qa, concepts=concepts,
+                             configured="clients_dir" in s.model_fields_set)
     select_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.select_model,
                              timeout_s=s.bifrost_timeout_s)
     answer_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.answer_model,
@@ -149,7 +145,7 @@ def main() -> None:
                    judge_llm=judge_llm,
                    get_card_fn=lambda cid: get_card(concepts, cid, clients),
                    mode=mode, depth=s.resolve_depth, max_cards=s.max_cards,
-                   max_chars=s.max_chars, clients_dir=clients, index=index)
+                   max_chars=s.max_chars, clients_dir=clients)
     # The report is this service's own scratch, so it goes where the other non-ledger
     # scratch goes. It used to be written inside the installed package, which is neither
     # writable nor findable once hive-serve is installed rather than checked out.

@@ -71,11 +71,9 @@ def judge_answer(question, answer, reference_text, llm) -> dict:
 
 def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn,
              mode: str = "progressive", depth: int = 1, max_cards: int = 8,
-             max_chars: int | None = None, clients_dir=None, index=None) -> dict:
+             max_chars: int | None = None, clients_dir=None) -> dict:
     from hiveserve.resolver import load_index
-    # `index` is the same list a caller already had to build to validate the corpus.
-    # Loading it again here would parse every card's frontmatter a second time.
-    idx = load_index(concepts_dir, clients_dir) if index is None else index
+    idx = load_index(concepts_dir, clients_dir)
     regime_of = {c["id"]: c.get("regime") for c in idx}
     version_of = {c["id"]: c.get("version") for c in idx}
     product_of = {c["id"]: c.get("product") for c in idx}

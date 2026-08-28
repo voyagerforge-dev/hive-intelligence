@@ -251,10 +251,17 @@ def stamp(plan_path, atomic_dir, overwrite):
             "`transform` and read here; set ATOMIC_DIR, or pass --atomic. See .env.example.")
     atomic = Path(given).expanduser()
     if not atomic.is_dir():
+        # Name the source the value came from. Labelling a bad --atomic as ATOMIC_DIR
+        # sends an operator whose .env is correct off to inspect it, and to a
+        # .env.example the value never came from.
+        source = "--atomic" if atomic_dir else "ATOMIC_DIR"
+        remedy = ("pass an existing directory to --atomic, or drop the flag to use "
+                  "ATOMIC_DIR." if atomic_dir else
+                  "set ATOMIC_DIR, or pass --atomic. See .env.example.")
         raise SystemExit(
-            f"ATOMIC_DIR={given} is not a directory (resolved to {atomic.resolve()}), "
-            "so there is nothing to stamp. It is written by `transform` and read here; "
-            "set ATOMIC_DIR, or pass --atomic. See .env.example.")
+            f"{source}={given} is not a directory (resolved to {atomic.resolve()}), "
+            f"so there is nothing to stamp. It is written by `transform` and read here; "
+            f"{remedy}")
     changed = stamp_from_plan(atomic, load_plan(Path(plan_path)), only_missing=not overwrite)
     console.print(f"[bold]{len(changed)} files stamped[/] in {atomic}")
 
