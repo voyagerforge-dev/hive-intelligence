@@ -42,7 +42,9 @@ flagged where they appear.
 |---|---|---|
 | `CONCEPTS_DIR` | `../../concepts` | corpus concept cards. The default assumes a layout that will not be yours |
 | `CLIENTS_DIR` | `../../clients` | client-scoped cards. Omit to disable client memory entirely |
-| `OKF_DATA_DIR` | `./.data` | the SQLite work ledger. **The only state not in git** |
+| `EVAL_DIR` | empty | labelled eval sets, **evaluation only**. No default: they ship with a corpus |
+| `LEDGER_DSN` | empty | **required**. Postgres for the objective and memory ledger. **The only state not in git** |
+| `OKF_DATA_DIR` | `./.data` | non-ledger scratch, including `run_eval` reports |
 | `HOST` | `127.0.0.1` | loopback by default, deliberately |
 | `PORT` | `8000` | |
 | `TRANSPORT` | `stdio` | `stdio` for direct MCP clients, or HTTP via `serve --http` |
@@ -67,6 +69,7 @@ why an authenticating proxy is mandatory rather than advisable for any wider exp
 
 | Variable | Default | Notes |
 |---|---|---|
+| `CORPUS_ROOT` | empty | **required**. The corpus working tree: taxonomies, `drafts/`, `.pipeline/` |
 | `ATOMIC_DIR` | empty | atomic markdown from `hive-prep` |
 | `SLICE_AREA` | empty | which functional area to generate |
 | `BIFROST_BASE` | required | model gateway |
@@ -96,7 +99,7 @@ first built against. See [known limitations](../concepts/principles.md#known-lim
 | `PREFER_DOCLING` | `true` | falls back to local conversion when unavailable |
 | `QWEN_BASE` | empty | vision model, for pages with no extractable text |
 | `QWEN_API_KEY` | empty | |
-| `QWEN_MODEL` | `qwen3.6-27b` | |
+| `QWEN_MODEL` | `qwen3.8-27b` | |
 | `QWEN_TIMEOUT_S` | `600` | |
 | `VISION_MIN_CHARS` | `100` | below this, a page is treated as needing vision |
 | `LO_JOBS` | `8` | local converter concurrency |
@@ -141,9 +144,29 @@ No environment configuration. Everything is command-line: `--src`, `--out`, `--l
 
 ## Settings that have no default on purpose
 
-`CONNECTOR_BASE`, `GITHUB_REPO` and the gateway addresses are empty by default and validated at
-startup.
+`CONNECTOR_BASE`, `GITHUB_REPO`, `LEDGER_DSN` and the gateway addresses are empty by default and
+validated at startup.
 
 A default that points somewhere plausible does not save you configuration. It moves the failure from
 startup, where it is obvious, to first use, where it appears as a connection error against a host
 you have never heard of. Empty and validated is louder and cheaper.
+
+## Where the corpus is
+
+`CORPUS_ROOT`, `CONCEPTS_DIR`, `CLIENTS_DIR` and `EVAL_DIR` all name parts of the **corpus**, which
+has been a separate repository from the engine since 2026-08-11. Nothing about where it sits on disk
+follows from where this code is installed, so every one of them is configuration and none of them is
+derived.
+
+They were derived once, by walking up the directory tree from the source file. That arithmetic used
+to land inside the same tree and now lands in the engine repository, which contains no cards, no
+taxonomies and no eval sets. It failed silently in every case: a glob over a directory that is not
+there yields nothing and raises nothing, so `hive-gen` re-proposed a taxonomy it already had and
+`run_eval` scored an absent corpus zero and printed the result.
+
+So the tools that read the corpus check first and refuse with a message naming the setting, rather
+than proceeding over nothing. The check is "set, and a directory", never "looks like a corpus": a
+corpus that has not been generated yet legitimately holds almost nothing.
+
+Directory arithmetic from `__file__` is still correct for a package finding its **own** files. It is
+never correct for finding another repository's.

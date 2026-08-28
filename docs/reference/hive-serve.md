@@ -105,7 +105,13 @@ database-object tier and that tier is usually most of the corpus.
 call a model, through `hivegen`, and are never on the serving path.
 
 Question sets name real card ids, so they are corpus-specific and ship with a corpus rather than
-with the product. `run_eval` therefore requires the set as an argument and has no default.
+with the product. `run_eval` therefore requires the set as an argument and has no default. A bare
+name resolves under `EVAL_DIR`; a path with a suffix is taken as given. The cards come from
+`CONCEPTS_DIR`.
+
+Both are checked before any model is called. An absent or empty corpus scores zero on every question
+and reports an aggregate as though it had measured something, so `run_eval` refuses instead, naming
+the setting. Reports are written under `OKF_DATA_DIR`.
 
 ## Internals
 
@@ -196,7 +202,7 @@ deploy gate.
 
 ## Tests
 
-146 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
+153 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
 datasets, or the GitHub
 submission surface skip with a stated reason when their subject is absent, so the suite is green in
 this repository and meaningful in a deployment that has a corpus.

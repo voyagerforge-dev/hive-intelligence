@@ -196,7 +196,7 @@ fields unless overwrite is set, so a hand-corrected value survives a re-stamp.
 
 ## Tests
 
-122 tests. Fakes only. The Docling and vision clients are injected, so the suite runs with
+126 tests. Fakes only. The Docling and vision clients are injected, so the suite runs with
 no network, no GPU
 and no converter service. Tests that need LibreOffice skip with a stated reason when it is absent.
 

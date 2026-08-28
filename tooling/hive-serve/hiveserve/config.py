@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     resolve_depth: int = 1
     concepts_dir: str = "../../concepts"
     clients_dir: str = "../../clients"
+    # Labelled eval sets, for the evaluation harness only. No default, deliberately: sets
+    # name real card ids, so they ship with a corpus and there is nowhere here they could
+    # plausibly be. A bare qa-set name used to resolve inside this package, a directory
+    # the 2026-08-11 corpus split removed.
+    eval_dir: str = ""
     # Retained: hive-serve still writes non-ledger scratch here. The LEDGER no longer
     # lives in it, see ledger_dsn below.
     okf_data_dir: str = "./.data"

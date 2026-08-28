@@ -22,11 +22,18 @@ load area  ──►  taxonomy  ──►  ⟨gate: edit and save the taxonomy�
 ```
 
 ```bash
-SLICE_AREA=<area> uv run python -m hivegen.run
+CORPUS_ROOT=/path/to/your/corpus SLICE_AREA=<area> uv run python -m hivegen.run
 ```
 
-If no `taxonomy.<area>.yaml` exists, the run proposes one to `taxonomy.<area>.draft.yaml` and stops.
-Edit it, save it under the non-draft name, and run again to get drafts.
+`CORPUS_ROOT` is the corpus working tree, and is required. The taxonomies, `drafts/` and
+`.pipeline/` are read and written there. See
+[where the corpus is](configuration.md#where-the-corpus-is) for why it is not derived.
+
+If no `taxonomy.<area>.yaml` exists **there**, the run proposes one to
+`taxonomy.<area>.draft.yaml` and stops. Edit it, save it under the non-draft name, and run again to
+get drafts. Both gates print the full path they read and wrote, because a taxonomy proposed while an
+approved one sits in a directory nobody looked at is the one failure a bare filename cannot show
+you.
 
 Draft generation is **idempotent** (an existing draft is never overwritten) and **per-concept fault
 tolerant** (a failure on one concept is reported and skipped rather than killing the run).
@@ -212,7 +219,7 @@ allowlist and a client id must match `\A[a-z0-9-]+\Z`. They parse attacker-influ
 
 ## Tests
 
-93 tests, 3 of which skip without a live corpus. Fakes only; the model client is injected. Nothing in the suite makes a network
+98 tests, 3 of which skip without a live corpus. Fakes only; the model client is injected. Nothing in the suite makes a network
 call.
 
 ## Configuration

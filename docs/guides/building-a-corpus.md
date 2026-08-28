@@ -94,10 +94,11 @@ Given the documents for one functional area, the model proposes the distinct con
 which documents cover each. It writes `taxonomy.<area>.draft.yaml` and **stops**.
 
 ```bash
-SLICE_AREA=<area> uv run python -m hivegen.run
+CORPUS_ROOT=/path/to/your/corpus SLICE_AREA=<area> uv run python -m hivegen.run
 ```
 
-Review it, edit it, save it as `taxonomy.<area>.yaml`.
+`CORPUS_ROOT` is your corpus working tree, and is required: the taxonomy is written there, not
+beside the engine. Review it, edit it, save it as `taxonomy.<area>.yaml`.
 
 Getting the concept list right is most of getting the corpus right, and a list of titles is far
 cheaper to fix than a directory of distilled prose. Expect to merge concepts that are really one
@@ -141,8 +142,12 @@ writes the `resource` URL, reading its base from `CARD_BASE_URL`. `index_generat
 Then check isolation before you serve anything:
 
 ```bash
-cd ../hive-serve && uv run python -m hiveserve.run_eval progressive <your-qa-set>
+cd ../hive-serve
+CONCEPTS_DIR=/path/to/your/corpus/concepts EVAL_DIR=/path/to/your/corpus/eval \
+  uv run python -m hiveserve.run_eval progressive <your-qa-set>
 ```
+
+`<your-qa-set>` is a bare set name, resolved under `EVAL_DIR`, or a path to a `.jsonl`.
 
 ## The corpus profile
 

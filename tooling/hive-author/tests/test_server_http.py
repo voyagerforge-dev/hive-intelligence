@@ -4,8 +4,8 @@ from fastapi.testclient import TestClient
 from hiveauthor.config import Settings
 from hiveauthor.server import build_http_app
 
-CONFIGURED = dict(forge_api="http://forge/api/v1", forge_repo="example/corpus", forge_token="tok",
-                  forge_kind="forgejo")
+CONFIGURED = {"forge_api": "http://forge/api/v1", "forge_repo": "example/corpus",
+              "forge_token": "tok", "forge_kind": "forgejo"}
 
 
 def test_healthz_and_mcp_mounted():

@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from mcp.server.fastmcp import Context, FastMCP
 
-from hiveauthor import metrics
-
-from hiveauthor import submissions
+from hiveauthor import metrics, submissions
 from hiveauthor.identity import resolve_owner
 
 

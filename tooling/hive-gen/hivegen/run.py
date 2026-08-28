@@ -49,14 +49,19 @@ def generate_drafts(docs: list[Doc], concepts: list[Concept], assign_llm: ChatLL
     return sorted(written)
 
 
-def main() -> None:  # pragma: no cover, live wiring (detached)
+def main() -> None:
     from hivegen.config import get_settings
+    from hivegen.corpus import require_dir
     from hivegen.load import load_area_local, load_docs, load_docs_local, load_subarea_local
     from hivegen.profile import load_profile, missing_profile_error
     from hivegen.taxonomy import load_taxonomy, propose_taxonomy, write_taxonomy
 
     s = get_settings()
-    root = Path(__file__).resolve().parents[3]  # corpus root
+    # Configured, never derived. This was `Path(__file__).parents[3]`, which stopped being
+    # the corpus when the corpus became its own repository and started being the engine
+    # checkout, where no approved taxonomy has ever lived.
+    root = require_dir(s.corpus_root, setting="CORPUS_ROOT",
+                       what="the corpus this pass generates into")
     profile = load_profile(atomic_dir=s.atomic_dir or None)
     area = s.slice_area.strip()
     is_sub = area in profile.subareas
@@ -91,9 +96,13 @@ def main() -> None:  # pragma: no cover, live wiring (detached)
         tx_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.taxonomy_model,
                              timeout_s=s.bifrost_timeout_s)
         concepts = propose_taxonomy(docs, tx_llm)
-        write_taxonomy(root / f"{stem}.draft.yaml", concepts)
-        print(f"GATE 1 [{label}]: proposed {len(concepts)} concepts → {stem}.draft.yaml. "
-              f"Review, then save as {stem}.yaml and re-run.", flush=True)
+        draft_path = root / f"{stem}.draft.yaml"
+        write_taxonomy(draft_path, concepts)
+        # Name the full paths, not bare filenames. Proposing a taxonomy while an approved
+        # one sits in a directory nobody looked at is the failure this whole lookup is
+        # about, and a bare filename is the one thing that cannot show you it happened.
+        print(f"GATE 1 [{label}]: no {taxonomy_path}, so proposed {len(concepts)} concepts "
+              f"→ {draft_path}. Review, then save as {stem}.yaml and re-run.", flush=True)
         return
 
     from hivegen.llm import BifrostChat
@@ -106,8 +115,9 @@ def main() -> None:  # pragma: no cover, live wiring (detached)
                               drafts_dir=root / "drafts", max_chars=s.max_chars,
                               today=datetime.now(UTC).date().isoformat(),
                               pipeline_dir=root / ".pipeline" / (area or "wave-replen"))
-    print(f"GATE 2 [{label}]: wrote {len(written)} draft cards → drafts/. Review, flip "
-          "status: approved, then run promote.", flush=True)
+    print(f"GATE 2 [{label}]: distilled {taxonomy_path} into {len(written)} draft cards "
+          f"→ {root / 'drafts'}. Review, flip status: approved, then run promote.",
+          flush=True)
 
 
 if __name__ == "__main__":
