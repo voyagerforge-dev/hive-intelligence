@@ -487,3 +487,60 @@ def test_no_vacuous_notice_when_client_cards_are_actually_served(client_memory, 
     out = capsys.readouterr().out
     assert client_memory["ran"] is True
     assert "VACUOUS" not in out
+
+
+def test_isolation_is_vacuous_when_the_only_served_client_is_the_one_being_asked_as(
+        client_memory, monkeypatch, tmp_path, capsys):
+    """A non-empty clients tree is not enough. `score_memory` counts a card only when its
+    client DIFFERS from the row's, so a tree holding only beta's own cards serves nothing
+    that could count against a set asking as beta: every row passes with nothing to leak."""
+    beta_only = tmp_path / "beta-only"
+    (beta_only / "beta" / "memory").mkdir(parents=True)
+    (beta_only / "beta" / "memory" / "note.md").write_text(CLIENT_CARD)
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(beta_only))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "isolation")
+
+    run_eval_module.main()
+
+    assert client_memory["ran"] is True
+    assert "VACUOUS" in capsys.readouterr().out
+
+
+def test_the_persisted_report_records_that_the_isolation_columns_were_vacuous(client_memory,
+                                                                             monkeypatch,
+                                                                             tmp_path):
+    """The terminal scrollback is gone by the time anyone reads the result. The report is
+    what the deploy gate is judged on, so the caveat has to be in it."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    monkeypatch.setenv("CLIENTS_DIR", "")
+    monkeypatch.setenv("OKF_DATA_DIR", str(tmp_path / "data"))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "isolation")
+
+    run_eval_module.main()
+
+    report = json.loads(
+        (tmp_path / "data" / "eval" / "report-progressive-isolation.json").read_text())
+    assert report["aggregate"]["isolation_vacuous"] is True
+
+
+def test_a_measurable_isolation_run_is_not_flagged_in_the_report(client_memory, monkeypatch,
+                                                                tmp_path):
+    """acme's cards are served and the set asks as beta, so a leak would have something to
+    show. That run is a real result and must not carry the caveat."""
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(client_memory["clients"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    monkeypatch.setenv("OKF_DATA_DIR", str(tmp_path / "data"))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "isolation")
+
+    run_eval_module.main()
+
+    report = json.loads(
+        (tmp_path / "data" / "eval" / "report-progressive-isolation.json").read_text())
+    assert report["aggregate"]["isolation_vacuous"] is False

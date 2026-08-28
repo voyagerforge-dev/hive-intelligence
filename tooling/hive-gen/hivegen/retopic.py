@@ -22,7 +22,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from hivegen.config import get_settings
 from hivegen.corpus import require_dir
 from hivegen.llm import BifrostChat, extract_json
-from hivegen.profile import load_profile
+from hivegen.profile import load_profile, missing_profile_error
 
 _PROFILE = load_profile()
 
@@ -44,6 +44,33 @@ def docs_dir() -> pathlib.Path:
 BUCKET = _PROFILE.retopic_bucket
 TOPICS: dict[str, str] = dict(_PROFILE.guide_topics)
 
+
+def retopic_vocabulary() -> tuple[str, dict[str, str]]:
+    """The bucket to re-classify and the topics to classify into, or a refusal saying why.
+
+    `load_profile` returns an empty profile rather than raising, by design: a missing
+    profile becomes an error only where something asks for a vocabulary nothing defines.
+    This is that point, and it is resolved here rather than at import so that importing
+    this module stays free of side effects.
+
+    Without a profile BUCKET is "" and TOPICS is {}, so every document carrying a topic is
+    skipped, anything without one classifies to UNCLASSIFIED and is never applied, and the
+    pass prints "total: 0  applied: True" and exits 0 - indistinguishable from a corpus
+    with nothing left to re-topic.
+    """
+    missing = [key for key, value in (("retopic_bucket", BUCKET), ("guide_topics", TOPICS))
+               if not value]
+    if not missing:
+        return BUCKET, TOPICS
+    if _PROFILE.path is None:
+        raise SystemExit(missing_profile_error("guide topics", "the re-topic pass"))
+    raise SystemExit(
+        f"{_PROFILE.path} defines no {' and no '.join(missing)}, so there is nothing to "
+        "re-topic. retopic_bucket names the catch-all topic to re-classify and "
+        "guide_topics the controlled topics to classify into; both describe one corpus's "
+        "vocabulary. Without them every document is skipped and the pass reports zero "
+        "changed, which reads exactly like a corpus with nothing left to do.")
+
 def frontmatter(text):
     m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
     return m.group(1) if m else None
@@ -64,10 +91,11 @@ def basename(stem):
 
 def newest_docs():
     """One path per guide base-name: the one with the highest version year."""
+    bucket, _ = retopic_vocabulary()
     best = {}
     for p in sorted(docs_dir().glob("*.md")):
         fm = frontmatter(p.read_text())
-        if not fm or get_field(fm, "topic") != BUCKET:
+        if not fm or get_field(fm, "topic") != bucket:
             continue
         ver = get_field(fm, "version") or "0"
         base = basename(p.stem)
@@ -81,7 +109,8 @@ _SYSTEM = (
 )
 
 def classify(text, llm):
-    opts = "\n".join(f"- {k}: {v}" for k, v in TOPICS.items())
+    _, topics = retopic_vocabulary()
+    opts = "\n".join(f"- {k}: {v}" for k, v in topics.items())
     title = ""
     fm = frontmatter(text)
     if fm:
@@ -90,7 +119,7 @@ def classify(text, llm):
     prompt = f"TOPICS:\n{opts}\n\nTITLE: {title}\nDOCUMENT:\n{body[:1200]}"
     data = extract_json(llm.complete(_SYSTEM, prompt) or "")
     t = (data or {}).get("topic", "")
-    return t if t in TOPICS else "UNCLASSIFIED"
+    return t if t in topics else "UNCLASSIFIED"
 
 def set_topic(text, topic):
     return re.sub(r'^(topic:\s*).*$', f'topic: "{topic}"', text, count=1, flags=re.MULTILINE)

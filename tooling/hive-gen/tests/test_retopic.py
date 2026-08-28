@@ -28,6 +28,7 @@ def atomic(tmp_path, monkeypatch):
     monkeypatch.setenv("BIFROST_API_KEY", "k")
     monkeypatch.delenv("ATOMIC_DIR", raising=False)
     monkeypatch.setattr(retopic, "BUCKET", "reference")
+    monkeypatch.setattr(retopic, "TOPICS", {"waves": "wave planning and release"})
     get_settings.cache_clear()
     yield d
     get_settings.cache_clear()
@@ -70,3 +71,48 @@ def test_importing_retopic_does_not_need_the_atomic_dir(tmp_path, monkeypatch):
     importlib.reload(retopic)  # must not raise
 
     get_settings.cache_clear()
+
+
+def test_the_pass_refuses_rather_than_reporting_zero_when_no_vocabulary_is_defined(
+        atomic, monkeypatch, capsys):
+    """The sibling of the dead ATOMIC_DIR, reached with ATOMIC_DIR correct. With no corpus
+    profile, BUCKET is "" and TOPICS is {}, so every document carrying a topic is skipped
+    and the pass prints "total: 0  applied: True" and exits 0 - indistinguishable from a
+    corpus with nothing left to re-topic. It must name the vocabulary it needs instead."""
+    before = (atomic / "wave-guide-2021.md").read_text()
+    monkeypatch.setenv("ATOMIC_DIR", str(atomic))
+    monkeypatch.setattr(retopic, "BUCKET", "")
+    monkeypatch.setattr(retopic, "TOPICS", {})
+    monkeypatch.setattr(retopic, "BifrostChat", lambda *a, **k: object())
+    monkeypatch.setattr("sys.argv", ["retopic", "--apply"])
+    get_settings.cache_clear()
+
+    with pytest.raises(SystemExit) as exc:
+        retopic.main()
+
+    message = str(exc.value)
+    assert "CORPUS_PROFILE" in message, "should name how to supply the vocabulary"
+    assert "corpus-profile.yaml" in message
+    assert "total:" not in capsys.readouterr().out, "reported a zero instead of refusing"
+    assert (atomic / "wave-guide-2021.md").read_text() == before
+
+
+def test_the_pass_refuses_when_a_profile_is_present_but_defines_no_guide_topics(atomic,
+                                                                                monkeypatch):
+    """A profile that exists but declares nothing to classify into is not a missing profile,
+    so the refusal names the file and the keys rather than sending the operator to set
+    CORPUS_PROFILE, which is already set correctly."""
+    profile = atomic.parent / "corpus-profile.yaml"
+    profile.write_text("products: {WIDGETS: widgets}\n")
+    monkeypatch.setenv("ATOMIC_DIR", str(atomic))
+    monkeypatch.setattr(retopic, "_PROFILE", retopic.load_profile(str(profile)))
+    monkeypatch.setattr(retopic, "BUCKET", "")
+    monkeypatch.setattr(retopic, "TOPICS", {})
+    get_settings.cache_clear()
+
+    with pytest.raises(SystemExit) as exc:
+        retopic.newest_docs()
+
+    message = str(exc.value)
+    assert str(profile) in message
+    assert "retopic_bucket" in message and "guide_topics" in message

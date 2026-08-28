@@ -226,7 +226,7 @@ allowlist and a client id must match `\A[a-z0-9-]+\Z`. They parse attacker-influ
 
 ## Tests
 
-110 tests, 3 of which skip without a live corpus. Fakes only; the model client is injected. Nothing in the suite makes a network
+112 tests, 3 of which skip without a live corpus. Fakes only; the model client is injected. Nothing in the suite makes a network
 call.
 
 ## Configuration
