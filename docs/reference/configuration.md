@@ -70,7 +70,7 @@ why an authenticating proxy is mandatory rather than advisable for any wider exp
 | Variable | Default | Notes |
 |---|---|---|
 | `CARD_CORPUS_ROOT` | empty | **required**. The card corpus working tree: taxonomies, `drafts/`, `.pipeline/`. Not hive-prep's `CORPUS_ROOT` |
-| `ATOMIC_DIR` | empty | atomic markdown from `hive-prep` |
+| `ATOMIC_DIR` | empty | atomic markdown from `hive-prep`. Optional - empty falls back to R2 - but validated when set, and a run that loads no documents refuses |
 | `SLICE_AREA` | empty | which functional area to generate |
 | `BIFROST_BASE` | required | model gateway |
 | `BIFROST_API_KEY` | required | |
@@ -89,7 +89,7 @@ first built against. See [known limitations](../concepts/principles.md#known-lim
 
 | Variable | Default | Notes |
 |---|---|---|
-| `CORPUS_ROOT` | empty | the raw document tree to ingest. Not hive-gen's `CARD_CORPUS_ROOT` |
+| `CORPUS_ROOT` | empty | corpus-profile lookup hint only, and read from the environment, so it must be **exported**. The raw tree comes from the curation plan or the command argument. Not hive-gen's `CARD_CORPUS_ROOT` |
 | `WORK_DIR` | `./hive-work` | scratch space |
 | `ATOMIC_DIR` | `./hive-work/atomic` | output, and `hive-gen`'s input |
 | `DOCLING_BASE` | empty | document converter endpoint |

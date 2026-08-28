@@ -75,20 +75,38 @@ def main() -> None:
     stem = f"taxonomy.{area}" if area else "taxonomy"  # per-area taxonomy, areas never clobber
 
     if s.atomic_dir:
+        # Optional by design - empty falls back to R2 below - so it is validated only when
+        # it is set. Set-but-wrong is the case that used to pass straight through.
+        atomic = require_dir(s.atomic_dir, setting="ATOMIC_DIR",
+                             what="the atomic documents to generate from")
         if is_sub:
-            docs = load_subarea_local(s.atomic_dir, area, profile)
+            docs = load_subarea_local(atomic, area, profile)
         elif area:
-            docs = load_area_local(s.atomic_dir, area, profile)
+            docs = load_area_local(atomic, area, profile)
         else:
-            docs = load_docs_local(s.atomic_dir)
-        print(f"loaded {len(docs)} {label} docs from {s.atomic_dir}", flush=True)
+            docs = load_docs_local(atomic)
+        source = f"ATOMIC_DIR={atomic}"
     else:
         import boto3
         s3 = boto3.client("s3", endpoint_url=s.r2_endpoint,
                           aws_access_key_id=s.r2_access_key_id,
                           aws_secret_access_key=s.r2_secret_access_key)
         docs = load_docs(s3, s.r2_bucket, s.r2_prefix)
-        print(f"loaded {len(docs)} {label} docs from R2 {s.r2_prefix}", flush=True)
+        source = f"R2 {s.r2_bucket}/{s.r2_prefix}"
+    print(f"loaded {len(docs)} {label} docs from {source}", flush=True)
+    if not docs:
+        # Before gate 1, because gate 1 is where zero documents stops being empty and
+        # starts being wrong: propose_taxonomy hands an empty inventory to a prompt that
+        # asks for 25-45 concepts, so the model invents them and write_taxonomy persists
+        # the invention as though it had been derived from documents.
+        which = (f"the sub-area filter SLICE_AREA={area!r}" if is_sub else
+                 f"the area filter SLICE_AREA={area!r}" if area else
+                 "no SLICE_AREA filter, so every document under it")
+        raise SystemExit(
+            f"{source} yielded no documents for {label} ({which}). There is nothing to "
+            "generate from, and a taxonomy proposed from an empty inventory is invented "
+            f"rather than derived - it would have been written into {root}. Either the "
+            "source holds no atomic markdown, or the filter matches none of it.")
 
     taxonomy_path = root / f"{stem}.yaml"
     if not taxonomy_path.exists():

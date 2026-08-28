@@ -153,3 +153,38 @@ def test_run_does_not_take_the_raw_document_tree_from_hive_preps_corpus_root(cor
     assert "CARD_CORPUS_ROOT" in str(exc.value)
     assert corpus_run["proposed"] is False
     assert list(ingest.iterdir()) == [], "wrote a draft taxonomy into the raw document tree"
+
+
+def test_run_refuses_an_atomic_dir_that_is_not_there(corpus_run, monkeypatch, tmp_path):
+    """ATOMIC_DIR is optional, but set-but-wrong is not the same as unset: a typo used to
+    glob a directory that is not there, load nothing, and carry on into gate 1."""
+    missing = tmp_path / "atomik"
+    monkeypatch.setenv("CARD_CORPUS_ROOT", str(corpus_run["corpus"]))
+    monkeypatch.setenv("ATOMIC_DIR", str(missing))
+    get_settings.cache_clear()
+
+    with pytest.raises(SystemExit) as exc:
+        hivegen.run.main()
+    assert "ATOMIC_DIR" in str(exc.value) and str(missing) in str(exc.value)
+    assert corpus_run["proposed"] is False
+
+
+def test_run_refuses_a_zero_document_load_before_proposing_anything(corpus_run, monkeypatch,
+                                                                   tmp_path):
+    """Zero documents is where empty stops being empty and becomes wrong: gate 1 hands the
+    inventory to a prompt that asks for 25-45 concepts, so an empty one makes the model
+    invent them, and write_taxonomy persists the invention into the corpus as though it
+    had been derived from documents. The refusal has to come first."""
+    fresh = tmp_path / "fresh-corpus"
+    fresh.mkdir()  # a corpus with no approved taxonomy, so gate 1 is what runs next
+    empty_atomic = tmp_path / "atomic-but-empty"
+    empty_atomic.mkdir()
+    monkeypatch.setenv("CARD_CORPUS_ROOT", str(fresh))
+    monkeypatch.setenv("ATOMIC_DIR", str(empty_atomic))
+    get_settings.cache_clear()
+
+    with pytest.raises(SystemExit) as exc:
+        hivegen.run.main()
+    assert "ATOMIC_DIR" in str(exc.value) and str(empty_atomic) in str(exc.value)
+    assert corpus_run["proposed"] is False, "proposed a taxonomy from an empty inventory"
+    assert list(fresh.iterdir()) == [], "wrote a taxonomy derived from no documents"

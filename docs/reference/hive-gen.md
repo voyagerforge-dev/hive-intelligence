@@ -30,6 +30,12 @@ CARD_CORPUS_ROOT=/path/to/your/corpus SLICE_AREA=<area> uv run python -m hivegen
 documents going in. See [where the corpus is](configuration.md#where-the-corpus-is) for why it is not
 derived and why the two are named apart.
 
+The documents come from `ATOMIC_DIR`, or from R2 when it is empty. It is optional, so it is
+validated only when set - but a run that loads **no documents** refuses either way, naming the
+source and the filter that produced zero. That is not fussiness: gate 1 hands the inventory to a
+prompt asking for 25-45 concepts, so an empty one makes the model invent a taxonomy and
+`write_taxonomy` persists the invention into the corpus as though it had been derived.
+
 If no `taxonomy.<area>.yaml` exists **there**, the run proposes one to
 `taxonomy.<area>.draft.yaml` and stops. Edit it, save it under the non-draft name, and run again to
 get drafts. Both gates print the full path they read and wrote, because a taxonomy proposed while an
@@ -220,7 +226,7 @@ allowlist and a client id must match `\A[a-z0-9-]+\Z`. They parse attacker-influ
 
 ## Tests
 
-107 tests, 3 of which skip without a live corpus. Fakes only; the model client is injected. Nothing in the suite makes a network
+109 tests, 3 of which skip without a live corpus. Fakes only; the model client is injected. Nothing in the suite makes a network
 call.
 
 ## Configuration

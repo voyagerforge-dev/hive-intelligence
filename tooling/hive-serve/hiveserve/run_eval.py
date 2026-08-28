@@ -22,7 +22,7 @@ from hivegen.llm import BifrostChat
 
 from hiveserve.config import get_settings
 from hiveserve.eval import load_qa, run_eval
-from hiveserve.resolver import get_card, load_index
+from hiveserve.resolver import clients_base, get_card, load_index
 
 USAGE = (
     "usage: run_eval <progressive|ceiling> <qa-set>\n"
@@ -72,17 +72,31 @@ def corpus_cards(concepts_dir: str) -> Path:
     return path
 
 
-def corpus_clients(clients_dir: str, qa: list[dict]) -> Path | None:
+def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path) -> Path | None:
     """Client memory for the eval, matching the shape the served path builds.
 
     ``CLIENTS_DIR`` is genuinely optional: omitting it disables client memory, which is a
     supported deployment. What is not supported is scoring a set that exercises client
     memory without it. ``load_index`` simply never returns the client-scoped cards, every
     such row misses, and the aggregate is reported as a measurement of the served system.
+
+    A directory that merely exists is not a guard, for the same reason a file count is not
+    one in :func:`corpus_cards`: the check asks ``load_index`` which clients it can
+    actually serve, and the rows name the clients they need, so no heuristic is required.
     """
     given = str(clients_dir).strip()
-    path = Path(given).expanduser() if given else None
+    path = clients_base(clients_dir)
     if path is not None and path.is_dir():
+        exercised = sorted({str(row["client"]) for row in qa if row.get("client")})
+        served = {c["client"] for c in load_index(concepts, path) if c["client"]}
+        absent = [c for c in exercised if c not in served]
+        if absent:
+            raise SystemExit(
+                f"CLIENTS_DIR={given} is a directory, but the index loads no client memory "
+                f"for {', '.join(absent)}, which this eval set scores against. Client cards "
+                "live at <client>/memory/<slug>.md and <client>/issues/<slug>.md, so a "
+                "directory that merely exists serves none of them: every row naming those "
+                "clients misses and the aggregate reads as a property of the corpus.")
         return path
     needs = [str(row.get("id", "?")) for row in qa
              if row.get("client") or row.get("expects_memory")]
@@ -111,7 +125,7 @@ def main() -> None:
     concepts = corpus_cards(s.concepts_dir)
     qa_path = qa_set_path(sys.argv[2], s.eval_dir)
     qa = load_qa(qa_path)
-    clients = corpus_clients(s.clients_dir, qa)
+    clients = corpus_clients(s.clients_dir, qa, concepts=concepts)
     select_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.select_model,
                              timeout_s=s.bifrost_timeout_s)
     answer_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.answer_model,

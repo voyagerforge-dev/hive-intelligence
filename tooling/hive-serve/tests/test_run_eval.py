@@ -18,6 +18,7 @@ import pytest
 
 import hiveserve.run_eval as run_eval_module
 from hiveserve.config import get_settings
+from hiveserve.resolver import load_index
 
 CARD = ("---\ntitle: Wave Replen\ndescription: replen feeds waves\nrelated: []\n"
         "sources: [widgets.md]\n---\nBody.\n")
@@ -159,15 +160,15 @@ def test_eval_names_the_sets_it_can_see_when_the_one_asked_for_is_absent(corpus,
 CLIENT_CARD = ("---\ntitle: Acme Wave Note\ndescription: acme's own wave rule\nrelated: []\n"
                "---\nAcme body.\n")
 CLIENT_QA_ROW = {"id": "q2", "question": "what does acme do for waves?",
-                 "expected_card_ids": ["clients/acme/wave-note"], "client": "acme"}
+                 "expected_card_ids": ["clients/acme/memory/wave-note"], "client": "acme"}
 
 
 @pytest.fixture
 def client_memory(corpus, tmp_path):
     """Client memory beside the corpus, plus an eval set that needs it."""
     clients = tmp_path / "corpus" / "clients"
-    (clients / "acme").mkdir(parents=True)
-    (clients / "acme" / "wave-note.md").write_text(CLIENT_CARD)
+    (clients / "acme" / "memory").mkdir(parents=True)
+    (clients / "acme" / "memory" / "wave-note.md").write_text(CLIENT_CARD)
     (corpus["evals"] / "acme-memory.jsonl").write_text(json.dumps(CLIENT_QA_ROW) + "\n")
     corpus["clients"] = clients
     return corpus
@@ -186,8 +187,11 @@ def test_eval_scores_client_memory_with_the_configured_clients_dir(client_memory
 
     assert client_memory["kwargs"]["clients_dir"] == client_memory["clients"]
     get_card_fn = client_memory["kwargs"]["get_card_fn"]
-    assert get_card_fn("clients/acme/wave-note") == CLIENT_CARD, \
+    assert get_card_fn("clients/acme/memory/wave-note") == CLIENT_CARD, \
         "the reference text for a client-scoped card was not resolvable"
+    assert "clients/acme/memory/wave-note" in {
+        c["id"] for c in load_index(client_memory["concepts"], client_memory["clients"])}, \
+        "the eval ran against an index that never loaded the client card it scores"
 
 
 def test_eval_refuses_a_client_scoped_set_when_clients_dir_is_not_configured(client_memory,
@@ -262,3 +266,44 @@ def test_eval_says_out_loud_that_a_dead_clients_dir_disabled_client_memory(corpu
     assert "CLIENTS_DIR" in out and str(dead) in out
     assert corpus["ran"] is True
     assert corpus["kwargs"]["clients_dir"] is None
+
+
+def test_eval_refuses_a_clients_dir_that_serves_none_of_the_clients_the_set_names(
+        client_memory, monkeypatch, tmp_path):
+    """CLIENTS_DIR=/corpus/client, a singular typo landing on a real but empty scratch dir.
+    is_dir() passes, load_index finds no client cards, every acme row misses, and the
+    aggregate is printed as a measurement. Existing is not a guard."""
+    typo = tmp_path / "client"
+    typo.mkdir()
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(typo))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "acme-memory")
+
+    with pytest.raises(SystemExit) as exc:
+        run_eval_module.main()
+    assert "CLIENTS_DIR" in str(exc.value)
+    assert "acme" in str(exc.value), "should name the client it cannot serve"
+    assert client_memory["ran"] is False
+
+
+def test_eval_refuses_a_client_tree_whose_cards_the_index_does_not_load(client_memory,
+                                                                       monkeypatch,
+                                                                       tmp_path):
+    """The client directory is there and holds markdown, but not at the paths load_index
+    reads - only <client>/memory/ and <client>/issues/ are cards. The guard has to count
+    what the consumer counts, not what happens to exist."""
+    hollow = tmp_path / "hollow"
+    (hollow / "acme" / "notes").mkdir(parents=True)
+    (hollow / "acme" / "notes" / "scratch.md").write_text(CLIENT_CARD)
+    monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
+    monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
+    monkeypatch.setenv("CLIENTS_DIR", str(hollow))
+    get_settings.cache_clear()
+    _argv(monkeypatch, "progressive", "acme-memory")
+
+    with pytest.raises(SystemExit) as exc:
+        run_eval_module.main()
+    assert "CLIENTS_DIR" in str(exc.value) and "acme" in str(exc.value)
+    assert client_memory["ran"] is False

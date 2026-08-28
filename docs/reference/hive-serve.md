@@ -114,7 +114,9 @@ and reports an aggregate as though it had measured something, so `run_eval` refu
 the setting. "Empty" is `load_index`'s definition, not "holds no `.md`", since `index.md`, `log.md`
 and the `<product>/db/` tier are not cards. `CLIENTS_DIR` stays optional: `run_eval` refuses only
 when the set it was handed has rows carrying `client` or `expects_memory`, and otherwise prints that
-a dead path disabled client memory rather than degrading quietly. Reports are written under
+a dead path disabled client memory rather than degrading quietly. When it is set, existing is not
+enough either - the rows name their clients, so `run_eval` asks `load_index` which clients it can
+serve and refuses naming the ones it cannot. Reports are written under
 `OKF_DATA_DIR`.
 
 ## Internals
@@ -212,7 +214,7 @@ deploy gate.
 
 ## Tests
 
-168 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
+170 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
 datasets, or the GitHub
 submission surface skip with a stated reason when their subject is absent, so the suite is green in
 this repository and meaningful in a deployment that has a corpus.
