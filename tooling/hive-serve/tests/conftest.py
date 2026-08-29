@@ -66,14 +66,14 @@ def ledger_dsn():
     try:
         for _ in range(60):
             if subprocess.run([rt, "exec", name, "pg_isready", "-U", "test", "-q"],
-                              capture_output=True).returncode == 0:
+                              capture_output=True, check=False).returncode == 0:
                 break
             time.sleep(1)
         else:
             pytest.fail(f"Postgres in {name} never became ready.")
         yield f"postgresql://test:test@127.0.0.1:{PORT}/test"
     finally:
-        subprocess.run([rt, "rm", "-f", name], capture_output=True)
+        subprocess.run([rt, "rm", "-f", name], capture_output=True, check=False)
 
 
 @pytest.fixture

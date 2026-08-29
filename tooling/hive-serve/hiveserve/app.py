@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
+from hivegen.corpus import require_dir
 from pydantic import BaseModel, ConfigDict
 
 from hiveserve import metrics, tools
@@ -23,7 +24,8 @@ class ResolveRequest(BaseModel):
 
 def build_rest_router(settings) -> APIRouter:
     router = APIRouter()
-    cdir = settings.concepts_dir
+    cdir = require_dir(settings.concepts_dir, setting="CONCEPTS_DIR",
+                       what="the concept cards this server serves")
 
     @router.get("/healthz")
     def healthz() -> dict:

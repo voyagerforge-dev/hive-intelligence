@@ -189,14 +189,17 @@ split before you pay for it.
 ### `stamp.py`, `validate.py`
 
 `stamp` writes plan metadata into atomic frontmatter, **matched by slug**, filling only missing
-fields unless overwrite is set, so a hand-corrected value survives a re-stamp.
+fields unless overwrite is set, so a hand-corrected value survives a re-stamp. It refuses when
+neither `ATOMIC_DIR` nor `--atomic` is set, and when the directory they name is not there, naming
+whichever of the two the value came from: stamping nothing prints "0 files stamped" and exits 0,
+which is also what a correct re-run over an already-stamped corpus prints.
 
 `validate` checks unique slugs, `doc_type` enum membership and resolvable links, and derives
 `relations.yaml`. It exits non-zero on any error, which is what makes it usable as a gate in CI.
 
 ## Tests
 
-122 tests. Fakes only. The Docling and vision clients are injected, so the suite runs with
+128 tests. Fakes only. The Docling and vision clients are injected, so the suite runs with
 no network, no GPU
 and no converter service. Tests that need LibreOffice skip with a stated reason when it is absent.
 

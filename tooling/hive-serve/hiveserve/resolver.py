@@ -14,7 +14,7 @@ def parse_frontmatter(text: str) -> dict:
     return fm if isinstance(fm, dict) else {}
 
 
-def _client_of_id(card_id: str):
+def client_of_id(card_id: str):
     """Client scope of a card, derived structurally from its id path (matches load_index):
     clients/<client>/... -> <client>; any other id -> None (core)."""
     if card_id.startswith("clients/"):
@@ -24,11 +24,27 @@ def _client_of_id(card_id: str):
     return None
 
 
+def clients_base(clients_dir):
+    """The client-memory tree, or None when client memory is off.
+
+    Empty means disabled, everywhere, which is what the docs and `.env.example` promise.
+    Only `None` used to mean that: an empty string is not None, and `Path("")` is
+    `Path(".")`, which exists - so an unset CLIENTS_DIR that reached pathlib scanned the
+    working directory for `<name>/memory/*.md` and answered `clients/...` card ids out of
+    it. Every caller converges here, so the coercion belongs here rather than at each door.
+    """
+    if clients_dir is None:
+        return None
+    given = str(clients_dir).strip()
+    return Path(given).expanduser() if given else None
+
+
 def card_path(concepts_dir, card_id, clients_dir=None):
     """Map a card id to its file. `clients/…` ids resolve under clients_dir, all others
     under concepts_dir. Returns None if the file is missing or the path escapes its base."""
-    if clients_dir is not None and card_id.startswith("clients/"):
-        base = Path(clients_dir).resolve()
+    clients = clients_base(clients_dir)
+    if clients is not None and card_id.startswith("clients/"):
+        base = clients.resolve()
         p = (base / f"{card_id[len('clients/'):]}.md").resolve()
     else:
         base = Path(concepts_dir).resolve()
@@ -55,25 +71,24 @@ def load_index(concepts_dir, clients_dir=None) -> list[dict]:
                     "version": fm.get("version"), "product": fm.get("product"),
                     "client": None,
                     "corrects": fm.get("corrects"), "status": fm.get("status")})
-    if clients_dir is not None:
-        cdir = Path(clients_dir)
-        if cdir.exists():
-            for p in sorted(cdir.rglob("*.md")):
-                if p.name in ("index.md", "log.md"):
-                    continue
-                rel = p.relative_to(cdir).with_suffix("")
-                parts = rel.parts
-                if len(parts) < 3 or parts[1] not in ("memory", "issues"):
-                    continue  # <client>/memory/<slug>.md and <client>/issues/<slug>.md
-                kind = "memory" if parts[1] == "memory" else "issue"
-                fm = parse_frontmatter(p.read_text())
-                out.append({"id": "clients/" + rel.as_posix(),
-                            "title": fm.get("title", rel.as_posix()),
-                            "description": fm.get("description", ""),
-                            "regime": fm.get("regime"), "type": kind,
-                            "version": fm.get("version"), "product": fm.get("product"),
-                            "client": parts[0],
-                            "corrects": fm.get("corrects"), "status": fm.get("status")})
+    cdir = clients_base(clients_dir)
+    if cdir is not None and cdir.exists():
+        for p in sorted(cdir.rglob("*.md")):
+            if p.name in ("index.md", "log.md"):
+                continue
+            rel = p.relative_to(cdir).with_suffix("")
+            parts = rel.parts
+            if len(parts) < 3 or parts[1] not in ("memory", "issues"):
+                continue  # <client>/memory/<slug>.md and <client>/issues/<slug>.md
+            kind = "memory" if parts[1] == "memory" else "issue"
+            fm = parse_frontmatter(p.read_text())
+            out.append({"id": "clients/" + rel.as_posix(),
+                        "title": fm.get("title", rel.as_posix()),
+                        "description": fm.get("description", ""),
+                        "regime": fm.get("regime"), "type": kind,
+                        "version": fm.get("version"), "product": fm.get("product"),
+                        "client": parts[0],
+                        "corrects": fm.get("corrects"), "status": fm.get("status")})
     return out
 
 
@@ -102,7 +117,7 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
         return parse_frontmatter(p.read_text()) if p is not None else {}
 
     def in_scope(cid):
-        cl = _client_of_id(cid)
+        cl = client_of_id(cid)
         return cl is None or cl == client          # client-scoped cards only in their own scope
 
     selected: list[str] = []
@@ -129,7 +144,7 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
                     rfm = parse_frontmatter(rp.read_text())
                     if parent_regime and rfm.get("regime") and parent_regime != rfm.get("regime"):
                         continue  # cross-regime auto-expansion guard (do NOT mark seen)
-                    rcl = _client_of_id(rid)
+                    rcl = client_of_id(rid)
                     if rcl is not None and rcl != client:
                         continue  # cross-client / out-of-scope memory guard (do NOT mark seen)
                     seen.add(rid)

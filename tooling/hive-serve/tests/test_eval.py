@@ -104,3 +104,4 @@ def test_score_memory_hit_isolation_and_cross_client():
     assert r["memory_ok"] is False and r["cross_client"] == 1
     # expected memory missing from bundle -> not ok
     assert score_memory("clients/alpha/memory/m", ["widgets/a"], "alpha", [None])["memory_ok"] is False
+

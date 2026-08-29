@@ -7,7 +7,6 @@ from hiveauthor import metrics
 from hiveauthor.config import get_settings
 from hiveauthor.mcp_app import build_mcp
 
-
 CLIENTS = {"forgejo": "ForgejoIssueClient", "github": "GitHubIssueClient"}
 
 

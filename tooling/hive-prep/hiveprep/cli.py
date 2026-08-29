@@ -238,9 +238,32 @@ def stamp(plan_path, atomic_dir, overwrite):
     from hiveprep.curation_plan import load_plan
     from hiveprep.stamp import stamp_from_plan
     s = get_settings()
-    changed = stamp_from_plan(Path(atomic_dir or s.atomic_dir), load_plan(Path(plan_path)),
-                              only_missing=not overwrite)
-    console.print(f"[bold]{len(changed)} files stamped[/]")
+    given = str(atomic_dir or s.atomic_dir).strip()
+    # Refuse rather than glob a directory that is not there. Stamping nothing prints
+    # "0 files stamped" and exits 0, which is also what a correctly-configured re-run over
+    # an already-stamped corpus prints, so a wrong ATOMIC_DIR is invisible at the one
+    # moment it matters: the first run from a freshly copied .env. Unset is the same
+    # failure wearing a disguise: Path("") is Path("."), which is a directory, so an
+    # unguarded check passes and the glob runs over the working directory instead.
+    if not given:
+        raise SystemExit(
+            "ATOMIC_DIR is not set, so there is nothing to stamp. It is written by "
+            "`transform` and read here; set ATOMIC_DIR, or pass --atomic. See .env.example.")
+    atomic = Path(given).expanduser()
+    if not atomic.is_dir():
+        # Name the source the value came from. Labelling a bad --atomic as ATOMIC_DIR
+        # sends an operator whose .env is correct off to inspect it, and to a
+        # .env.example the value never came from.
+        source = "--atomic" if atomic_dir else "ATOMIC_DIR"
+        remedy = ("pass an existing directory to --atomic, or drop the flag to use "
+                  "ATOMIC_DIR." if atomic_dir else
+                  "set ATOMIC_DIR, or pass --atomic. See .env.example.")
+        raise SystemExit(
+            f"{source}={given} is not a directory (resolved to {atomic.resolve()}), "
+            f"so there is nothing to stamp. It is written by `transform` and read here; "
+            f"{remedy}")
+    changed = stamp_from_plan(atomic, load_plan(Path(plan_path)), only_missing=not overwrite)
+    console.print(f"[bold]{len(changed)} files stamped[/] in {atomic}")
 
 
 @cli.command(name="validate-atomic")

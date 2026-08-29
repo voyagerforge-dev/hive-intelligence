@@ -414,3 +414,49 @@ def test_load_index_excludes_db_tier(tmp_path):
     assert "widgets/replenishment" in ids
     assert "widgets/db/tables/T" not in ids                     # excluded from the concept index
     assert get_card(tmp_path, "widgets/db/tables/T") is not None  # but fetchable by id
+
+
+# --------------------------------------------------------------------------
+# "Leave CLIENTS_DIR empty to disable client memory" is what the docs and the
+# shipped .env.example promise. Only `None` used to mean that: an empty string
+# is not None, and Path("") is Path("."), which exists - so an unset setting
+# scanned the working directory for <name>/memory/*.md and answered
+# `clients/...` ids out of it.
+# --------------------------------------------------------------------------
+
+CLIENT_DECOY = "---\ntitle: Alpha Secret\ndescription: not ours\n---\n\nleaked body.\n"
+
+
+def _corpus_with_a_client_shaped_decoy_in_the_working_dir(tmp_path, monkeypatch):
+    concepts = tmp_path / "concepts"
+    concepts.mkdir()
+    (concepts / "alpha.md").write_text(CARD_A)
+    decoy = tmp_path / "acme" / "memory"
+    decoy.mkdir(parents=True)
+    (decoy / "secret.md").write_text(CLIENT_DECOY)
+    monkeypatch.chdir(tmp_path)
+    return concepts
+
+
+def test_an_empty_clients_dir_disables_client_memory_in_the_index(tmp_path, monkeypatch):
+    concepts = _corpus_with_a_client_shaped_decoy_in_the_working_dir(tmp_path, monkeypatch)
+
+    assert [c["id"] for c in load_index(concepts, "")] == ["alpha"]
+
+
+def test_an_empty_clients_dir_does_not_serve_cards_out_of_the_working_directory(tmp_path,
+                                                                                monkeypatch):
+    concepts = _corpus_with_a_client_shaped_decoy_in_the_working_dir(tmp_path, monkeypatch)
+
+    assert get_card(concepts, "clients/acme/memory/secret", "") is None
+
+
+def test_a_configured_clients_dir_still_resolves_client_memory(tmp_path, monkeypatch):
+    concepts = _corpus_with_a_client_shaped_decoy_in_the_working_dir(tmp_path, monkeypatch)
+    clients = tmp_path / "clients" / "acme" / "memory"
+    clients.mkdir(parents=True)
+    (clients / "note.md").write_text(CLIENT_DECOY)
+
+    idx = load_index(concepts, tmp_path / "clients")
+    assert "clients/acme/memory/note" in {c["id"] for c in idx}
+    assert get_card(concepts, "clients/acme/memory/note", tmp_path / "clients") == CLIENT_DECOY

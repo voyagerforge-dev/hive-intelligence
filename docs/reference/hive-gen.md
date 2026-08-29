@@ -22,11 +22,25 @@ load area  ──►  taxonomy  ──►  ⟨gate: edit and save the taxonomy�
 ```
 
 ```bash
-SLICE_AREA=<area> uv run python -m hivegen.run
+CARD_CORPUS_ROOT=/path/to/your/corpus SLICE_AREA=<area> uv run python -m hivegen.run
 ```
 
-If no `taxonomy.<area>.yaml` exists, the run proposes one to `taxonomy.<area>.draft.yaml` and stops.
-Edit it, save it under the non-draft name, and run again to get drafts.
+`CARD_CORPUS_ROOT` is the card corpus working tree, and is required. The taxonomies, `drafts/` and
+`.pipeline/` are read and written there. It is **not** hive-prep's `CORPUS_ROOT`, which names the raw
+documents going in. See [where the corpus is](configuration.md#where-the-corpus-is) for why it is not
+derived and why the two are named apart.
+
+The documents come from `ATOMIC_DIR`, or from R2 when it is empty. It is optional, so it is
+validated only when set - but a run that loads **no documents** refuses either way, naming the
+source and the filter that produced zero. That is not fussiness: gate 1 hands the inventory to a
+prompt asking for 25-45 concepts, so an empty one makes the model invent a taxonomy and
+`write_taxonomy` persists the invention into the corpus as though it had been derived.
+
+If no `taxonomy.<area>.yaml` exists **there**, the run proposes one to
+`taxonomy.<area>.draft.yaml` and stops. Edit it, save it under the non-draft name, and run again to
+get drafts. Both gates print the full path they read and wrote, because a taxonomy proposed while an
+approved one sits in a directory nobody looked at is the one failure a bare filename cannot show
+you.
 
 Draft generation is **idempotent** (an existing draft is never overwritten) and **per-concept fault
 tolerant** (a failure on one concept is reported and skipped rather than killing the run).
@@ -48,6 +62,7 @@ tolerant** (a failure on one concept is reported and skipped rather than killing
 | `run.py` | orchestrate the gate-aware pipeline |
 | `llm.py` | OpenAI-compatible chat client with defensive JSON extraction |
 | `config.py` | typed settings |
+| `corpus.py` | `require_dir`: refuse a configured corpus path that is unset or not a directory, naming the setting. Shared with `hive-serve` |
 
 ## Slicing
 
@@ -212,7 +227,7 @@ allowlist and a client id must match `\A[a-z0-9-]+\Z`. They parse attacker-influ
 
 ## Tests
 
-93 tests, 3 of which skip without a live corpus. Fakes only; the model client is injected. Nothing in the suite makes a network
+116 tests, 3 of which skip without a live corpus. Fakes only; the model client is injected. Nothing in the suite makes a network
 call.
 
 ## Configuration

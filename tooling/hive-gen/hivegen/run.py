@@ -49,15 +49,29 @@ def generate_drafts(docs: list[Doc], concepts: list[Concept], assign_llm: ChatLL
     return sorted(written)
 
 
-def main() -> None:  # pragma: no cover, live wiring (detached)
+def main() -> None:
     from hivegen.config import get_settings
+    from hivegen.corpus import require_dir
     from hivegen.load import load_area_local, load_docs, load_docs_local, load_subarea_local
     from hivegen.profile import load_profile, missing_profile_error
     from hivegen.taxonomy import load_taxonomy, propose_taxonomy, write_taxonomy
 
     s = get_settings()
-    root = Path(__file__).resolve().parents[3]  # corpus root
-    profile = load_profile(atomic_dir=s.atomic_dir or None)
+    # Configured, never derived. This was `Path(__file__).parents[3]`, which stopped being
+    # the corpus when the corpus became its own repository and started being the engine
+    # checkout, where no approved taxonomy has ever lived.
+    root = require_dir(s.card_corpus_root, setting="CARD_CORPUS_ROOT",
+                       what="the card corpus this pass generates into")
+    # Validated before load_profile, not after: load_profile looks for corpus-profile.yaml
+    # beside ATOMIC_DIR, so a typo there surfaces one step later as "no corpus profile
+    # found" and sends the operator after CORPUS_PROFILE, which is not the setting that is
+    # wrong. Optional by design - empty falls back to the R2 reader below - so the check
+    # runs only when it is set.
+    atomic = (require_dir(s.atomic_dir, setting="ATOMIC_DIR",
+                          what="the atomic documents to generate from")
+              if s.atomic_dir else None)
+    profile = load_profile(explicit=s.corpus_profile or None,
+                           atomic_dir=str(atomic) if atomic is not None else None)
     area = s.slice_area.strip()
     is_sub = area in profile.subareas
     if area and not is_sub and area not in profile.areas:
@@ -69,21 +83,35 @@ def main() -> None:  # pragma: no cover, live wiring (detached)
     label = area or "the whole corpus"
     stem = f"taxonomy.{area}" if area else "taxonomy"  # per-area taxonomy, areas never clobber
 
-    if s.atomic_dir:
+    if atomic is not None:
         if is_sub:
-            docs = load_subarea_local(s.atomic_dir, area, profile)
+            docs = load_subarea_local(atomic, area, profile)
         elif area:
-            docs = load_area_local(s.atomic_dir, area, profile)
+            docs = load_area_local(atomic, area, profile)
         else:
-            docs = load_docs_local(s.atomic_dir)
-        print(f"loaded {len(docs)} {label} docs from {s.atomic_dir}", flush=True)
+            docs = load_docs_local(atomic)
+        source = f"ATOMIC_DIR={atomic}"
     else:
         import boto3
         s3 = boto3.client("s3", endpoint_url=s.r2_endpoint,
                           aws_access_key_id=s.r2_access_key_id,
                           aws_secret_access_key=s.r2_secret_access_key)
         docs = load_docs(s3, s.r2_bucket, s.r2_prefix)
-        print(f"loaded {len(docs)} {label} docs from R2 {s.r2_prefix}", flush=True)
+        source = f"R2 {s.r2_bucket}/{s.r2_prefix}"
+    print(f"loaded {len(docs)} {label} docs from {source}", flush=True)
+    if not docs:
+        # Before gate 1, because gate 1 is where zero documents stops being empty and
+        # starts being wrong: propose_taxonomy hands an empty inventory to a prompt that
+        # asks for 25-45 concepts, so the model invents them and write_taxonomy persists
+        # the invention as though it had been derived from documents.
+        which = (f"the sub-area filter SLICE_AREA={area!r}" if is_sub else
+                 f"the area filter SLICE_AREA={area!r}" if area else
+                 "no SLICE_AREA filter, so every document under it")
+        raise SystemExit(
+            f"{source} yielded no documents for {label} ({which}). There is nothing to "
+            "generate from, and a taxonomy proposed from an empty inventory is invented "
+            f"rather than derived - it would have been written into {root}. Either the "
+            "source holds no atomic markdown, or the filter matches none of it.")
 
     taxonomy_path = root / f"{stem}.yaml"
     if not taxonomy_path.exists():
@@ -91,9 +119,13 @@ def main() -> None:  # pragma: no cover, live wiring (detached)
         tx_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.taxonomy_model,
                              timeout_s=s.bifrost_timeout_s)
         concepts = propose_taxonomy(docs, tx_llm)
-        write_taxonomy(root / f"{stem}.draft.yaml", concepts)
-        print(f"GATE 1 [{label}]: proposed {len(concepts)} concepts → {stem}.draft.yaml. "
-              f"Review, then save as {stem}.yaml and re-run.", flush=True)
+        draft_path = root / f"{stem}.draft.yaml"
+        write_taxonomy(draft_path, concepts)
+        # Name the full paths, not bare filenames. Proposing a taxonomy while an approved
+        # one sits in a directory nobody looked at is the failure this whole lookup is
+        # about, and a bare filename is the one thing that cannot show you it happened.
+        print(f"GATE 1 [{label}]: no {taxonomy_path}, so proposed {len(concepts)} concepts "
+              f"→ {draft_path}. Review, then save as {stem}.yaml and re-run.", flush=True)
         return
 
     from hivegen.llm import BifrostChat
@@ -106,8 +138,9 @@ def main() -> None:  # pragma: no cover, live wiring (detached)
                               drafts_dir=root / "drafts", max_chars=s.max_chars,
                               today=datetime.now(UTC).date().isoformat(),
                               pipeline_dir=root / ".pipeline" / (area or "wave-replen"))
-    print(f"GATE 2 [{label}]: wrote {len(written)} draft cards → drafts/. Review, flip "
-          "status: approved, then run promote.", flush=True)
+    print(f"GATE 2 [{label}]: distilled {taxonomy_path} into {len(written)} draft cards "
+          f"→ {root / 'drafts'}. Review, flip status: approved, then run promote.",
+          flush=True)
 
 
 if __name__ == "__main__":

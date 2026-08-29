@@ -1,6 +1,7 @@
 """MCP door: read + ledger tools over one resolver+ledger core."""
 from __future__ import annotations
 
+from hivegen.corpus import require_dir
 from mcp.server.fastmcp import Context, FastMCP
 
 from hiveserve import dbobjects, ledger, tools
@@ -16,7 +17,11 @@ def owner_from_ctx(ctx: Context, settings) -> str:
 
 def build_mcp(settings, conn_factory) -> FastMCP:
     mcp = FastMCP("okf", stateless_http=True, host=settings.host, port=settings.port)
-    cdir = settings.concepts_dir
+    # Refuse here rather than on the first tool call, the same reason LEDGER_DSN does.
+    # An unset CONCEPTS_DIR is Path("."), which exists, so the catalogue used to be built
+    # out of whatever markdown sat in the working directory and served as concept cards.
+    cdir = require_dir(settings.concepts_dir, setting="CONCEPTS_DIR",
+                       what="the concept cards this server serves")
     cldir = settings.clients_dir
 
     @mcp.tool()
