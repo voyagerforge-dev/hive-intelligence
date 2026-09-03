@@ -18,9 +18,9 @@
 #   - vf-hive-serve not pinning vf-hive-gen exactly    (it did not: a mixed engine, one number)
 #   - HEAD sitting on a tag that contradicts the built version
 #   - a built artefact whose recorded metadata is not the version we asked for
-#   - anything in the output directory that is not one of those wheels: the publish job
-#     uploads everything there, so a stray artefact would be published having been proved
-#     by nothing
+#   - anything in the output directory that is not one of those wheels: this directory is
+#     what the install proof covers and what each publish job stages its own wheel out of,
+#     so a stray artefact is a file nothing proved sitting where a release is cut from
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -159,15 +159,17 @@ for pkg in packages:
             failures.append(f"{wheel.name}: Requires-Dist lacks vf-hive-gen=={version}: {reqs}")
     print(f"  {wheel.name}  {wheel.stat().st_size // 1024} KB")
 
-# Exactly the released set, and nothing beside it. A publish step uploads the whole directory,
-# so a wheel nobody asked for is a distribution that reaches PyPI - irreversibly - without the
-# install proof ever having requested, installed or run it.
+# Exactly the released set, and nothing beside it. Each publish job stages its own wheel out of
+# this directory, so a wheel nobody asked for is one the install proof never requested, installed
+# or ran - and a second wheel matching a released name makes that job refuse mid-release, on a tag
+# whose version is already spent.
 expected = {f"{dist_of[p].replace('-', '_')}-{version}-py3-none-any.whl" for p in packages}
 stray = sorted(f.name for f in outdir.iterdir()
                if f.is_file() and f.name != ".gitignore" and f.name not in expected)
 if stray:
     failures.append(f"{outdir} holds files that are not one of the {len(packages)} released "
-                    f"wheels, and a publish step uploads everything in it: {stray}")
+                    f"wheels, and this directory is what the install proof covers and what a "
+                    f"release is cut from: {stray}")
 
 if failures:
     print("\nartefact verification FAILED:", file=sys.stderr)

@@ -91,24 +91,50 @@ undo the reason this design was chosen.
 
 Trusted Publishing has to be told which workflow may claim each name, and for a project that does
 not exist yet that is a **pending publisher**, registered once per distribution at
-<https://pypi.org/manage/account/publishing/>:
+<https://pypi.org/manage/account/publishing/>. Owner `voyagerforge-dev`, repository
+`hive-intelligence`, workflow `release.yml` for all five - and **one environment each**:
 
-| field | value |
+| PyPI project name | GitHub environment |
 |---|---|
-| PyPI project name | `vf-hive-gen`, then `vf-hive-prep`, `vf-hive-serve`, `vf-hive-dbparse`, `vf-hive-zendesk` |
-| Owner | `voyagerforge-dev` |
-| Repository name | `hive-intelligence` |
-| Workflow name | `release.yml` |
-| Environment name | `pypi` |
+| `vf-hive-gen` | `pypi-vf-hive-gen` |
+| `vf-hive-prep` | `pypi-vf-hive-prep` |
+| `vf-hive-serve` | `pypi-vf-hive-serve` |
+| `vf-hive-dbparse` | `pypi-vf-hive-dbparse` |
+| `vf-hive-zendesk` | `pypi-vf-hive-zendesk` |
+
+These are exact strings, not a naming convention to re-derive. PyPI matches all four fields, and a
+field that does not match is not an error message - it is a refused upload.
+
+**One environment each is forced, not chosen.** PyPI treats owner + repository + workflow +
+environment as one identity, so registering a second project against an identical configuration is
+refused: *"A pending trusted publisher matching this configuration has already been registered for
+a different project name."* Five names therefore need five environments, five GitHub environments
+to match, and one publish job each in `release.yml`.
+
+**And they cannot all be registered at once.** PyPI allows at most three publishers to be *pending*
+simultaneously - *"You can't register more than 3 pending trusted publishers at once"* - and one
+stops being pending only when its project has actually published something. So the first release is
+deliberately a partial one:
+
+1. register `vf-hive-gen`, `vf-hive-prep`, `vf-hive-serve`, and create the three matching
+   GitHub environments under *Settings > Environments* (that is also the only place a required
+   reviewer can be added, and it gates one distribution, not the release);
+2. tag a version. Those three publish; `report` fails the run and names the two that did not;
+3. their three publishers are now real rather than pending, so register `vf-hive-dbparse` and
+   `vf-hive-zendesk`, add their jobs to `release.yml`, and cut the **next** version.
+
+The two missing distributions cannot be added to the version that skipped them - PyPI never allows
+a version to be re-uploaded - so step 3 is a new version number, not a re-run of the tag.
 
 A pending publisher **does not reserve the name** - if someone else registers it before the first
-publish, the pending publisher is invalidated. So check the five names are still free immediately
-before tagging, not on yesterday's reading:
+publish, the pending publisher is invalidated. So check the names still unclaimed are still free
+immediately before tagging, not on yesterday's reading (a name this project has already published
+answers 200, and that is the answer you want for it):
 
 ```
 for n in vf-hive-gen vf-hive-prep vf-hive-serve vf-hive-dbparse vf-hive-zendesk; do
   printf '%-18s ' "$n"; curl -s -o /dev/null -w '%{http_code}\n' "https://pypi.org/simple/$n/"
-done      # 404 five times means still free
+done      # 404 means the name is still free; 200 on one already published here is expected
 ```
 
 Publication is **irreversible**: PyPI does not allow re-uploading a version, and yanking one does
@@ -126,11 +152,24 @@ git tag -a v0.5.0 -m "0.5.0" && git push origin v0.5.0
 ```
 
 Pushing the tag is what publishes, and it is the only thing that does.
-`.github/workflows/release.yml` builds and installs on every trigger; the publish job requires a
-`push` event AND a `refs/tags/v*` ref, and runs in the `pypi` environment, so a pull request or a
-manual dispatch cannot reach PyPI however it is run. The event half of that guard is not
-decoration: `workflow_dispatch` accepts a tag as its ref, so a ref-only test would publish from
+`.github/workflows/release.yml` builds and installs on every trigger; each publish job requires a
+`push` event AND a `refs/tags/v*` ref, and runs in that distribution's own environment, so a pull
+request or a manual dispatch cannot reach PyPI however it is run. The event half of that guard is
+not decoration: `workflow_dispatch` accepts a tag as its ref, so a ref-only test would publish from
 `gh workflow run release.yml --ref v0.5.0`.
+
+Each publish job uploads **one** wheel, staged into a directory of its own from the artefact the
+`build` job made; an identity that may claim one name uploading the whole of `dist/` would collect
+four rejections after the first wheel had already gone out and could not be recalled. The jobs are
+independent (`fail-fast: false`), so one refused upload neither cancels nor invalidates another,
+and what each one did is a separate green or red job on the run.
+
+The `report` job is the one that must not be ignored. It compares `tools/released-packages.sh` -
+the one place the released set is stated - against what this run actually uploaded, writes the
+whole set as a table on the run summary, and **fails the run** whenever any distribution is
+missing, whether because no publisher is registered for it yet or because its upload failed. A
+partial release is therefore a red run naming the gap, never a green one that quietly shipped four
+of five. It cannot be completed afterwards: register what was missing and cut a new version.
 
 `tools/build-release.sh` refuses rather than producing a release that is quietly wrong:
 

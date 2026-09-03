@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Report whether each released distribution is resolvable on PyPI right now.
 
-Informational on purpose. Before the first publish every name is a 404 and afterwards every
-name is a 200, so asserting either way would give a check that starts failing on the day the
-work succeeds. What the run actually proves is in tools/provenance.py, which reads where pip
-downloaded each distribution from.
+Informational on purpose. A name answers 404 until its distribution has published and 200
+afterwards, and the five do not get there together - the first release publishes only the
+three that have a trusted publisher - so asserting either way would give a check that starts
+failing on the day the work succeeds. What the run actually proves is in tools/provenance.py,
+which reads where pip downloaded each distribution from.
 
 Uses urllib rather than curl so it runs on a bare `python:*-slim` image with nothing installed.
 """

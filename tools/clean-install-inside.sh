@@ -40,10 +40,9 @@ for url in ("https://github.com/voyagerforge-dev/hive-intelligence",
 PY
 
 say "2. where each distribution can be resolved from, right now"
-# Informational, and deliberately not an assertion either way: before the first publish these
-# are 404, afterwards they are 200, and a proof that flips from passing to failing on the day
-# the work succeeds is not a proof. Provenance is established in step 3 instead, from what pip
-# actually downloaded, which is the fact that matters and is true in both worlds.
+# Informational, and deliberately not an assertion either way - tools/index_probe.py says why.
+# Provenance is established in step 3 instead, from what pip actually downloaded, which is the
+# fact that matters whether or not a name has published yet.
 python /proof/index_probe.py
 
 # The released set is handed in rather than restated here: tools/verify-clean-install.sh

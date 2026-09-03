@@ -4,13 +4,18 @@ name: Release artefacts
 # machine that built them, and publish them to PyPI.
 #
 # PUBLICATION IS IRREVERSIBLE. PyPI does not allow re-uploading a version, and yanking one
-# does not un-copy what mirrors and caches already took. So the publish job is reachable ONLY
-# from a pushed `v*` tag - never a pull request, never a manual dispatch - and it additionally
-# runs in the `pypi` environment, which is where a required reviewer belongs. Its guard tests
+# does not un-copy what mirrors and caches already took. So the publish jobs are reachable ONLY
+# from a pushed `v*` tag - never a pull request, never a manual dispatch - and each additionally
+# runs in its own environment, which is where a required reviewer belongs. Their guard tests
 # the EVENT as well as the ref, because `workflow_dispatch` accepts a tag as its ref: a ref
 # test on its own would let `gh workflow run release.yml --ref v0.5.0` publish. Building and
 # installing happen on every trigger; publishing happens only when someone deliberately tags a
 # release.
+#
+# One publish job per distribution, because a PyPI trusted publisher is the tuple (owner,
+# repository, workflow, environment) and two distributions cannot share one. `publish` below
+# has the whole of that constraint, and `report` is what stops a distribution with no publisher
+# yet from disappearing quietly from a release.
 #
 # No PyPI token exists anywhere, on purpose: this uses Trusted Publishing, where PyPI verifies
 # a short-lived OIDC token minted by this workflow for this repository. There is nothing to
@@ -40,7 +45,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   # Never on a release tag. A cancel mid-upload leaves some of the five wheels on PyPI and
   # the rest not, and PyPI refuses the re-upload that would finish the job - so that version
-  # is burnt. Superseding a pull-request or dispatch run costs nothing, so it keeps happening.
+  # is burnt. Splitting publication into one job per distribution does not soften this: the
+  # group is the whole run, so a cancellation would take every in-flight upload with it.
+  # Superseding a pull-request or dispatch run costs nothing, so it keeps happening.
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
 
 # The floor for every job that does not state its own: read the repository, nothing else. It
@@ -48,6 +55,8 @@ concurrency:
 # executes the shell scripts as that pull request edited them. A job-level `permissions:` block
 # REPLACES this one rather than adding to it, which is why `publish` below states its whole set
 # and inherits none of this: it checks nothing out, so `id-token: write` alone is enough there.
+# `report` states none and so inherits this floor: it checks out, and it must never be able to
+# publish anything.
 # Artifact upload and download use the Actions runtime token, not this one.
 permissions:
   contents: read
@@ -131,11 +140,48 @@ jobs:
   # against a tag and would otherwise satisfy a ref-only test. `needs` makes this unreachable
   # unless the artefacts built and then installed and ran somewhere clean, so a release that
   # works only where it was built cannot reach PyPI.
+  #
+  # ONE JOB PER DISTRIBUTION, because PyPI says so. A trusted publisher is the tuple (owner,
+  # repository, workflow, environment), so a second distribution registered against an identical
+  # tuple is refused - "A pending trusted publisher matching this configuration has already been
+  # registered for a different project name." Five names therefore need five environments, and
+  # each job uploads only its own wheel: an identity that may claim one name uploading all of
+  # dist/ gets four rejections after the first has already gone out and cannot be recalled.
+  #
+  # The environment names below are what is registered on PyPI, not a convention to re-derive.
+  # A mismatch in any field is not an error message, it is a refused upload.
+  #
+  # Only three are here, and that is also PyPI's doing: at most three publishers may be PENDING
+  # at once ("You can't register more than 3 pending trusted publishers at once"), and one stops
+  # being pending only once its project has actually published. `vf-hive-dbparse` and
+  # `vf-hive-zendesk` cannot be registered until these three have published, so their jobs
+  # cannot exist yet - referencing an environment whose publisher does not exist buys nothing
+  # but a 403 and a GitHub environment that misrepresents itself as configured. `report` below
+  # is what keeps that gap loud: this workflow publishes what it can and then fails, naming what
+  # it could not.
+  #
+  # `fail-fast: false` is load-bearing twice over. One distribution's upload failing must not
+  # cancel another's mid-flight - a cancelled upload is the single thing this workflow must
+  # never risk - and the whole point of this release is that three of five getting out beats
+  # nothing getting out.
   publish:
+    name: publish ${{ matrix.package }}
     needs: [build, install]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    environment: pypi
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: vf-hive-gen
+            environment: pypi-vf-hive-gen
+          - package: vf-hive-prep
+            environment: pypi-vf-hive-prep
+          - package: vf-hive-serve
+            environment: pypi-vf-hive-serve
+    # A required reviewer, if one is ever wanted, is configured per environment, so approving
+    # one approves one distribution rather than the release.
+    environment: ${{ matrix.environment }}
     permissions:
       id-token: write   # mint the OIDC token PyPI verifies. No secret, and none is read.
     steps:
@@ -144,15 +190,108 @@ jobs:
           name: hive-engine-dist
           path: dist
       # tools/build-release.sh already refuses to leave anything but wheels in dist/, and this
-      # is the second lock on the same door: whatever is here is what goes to PyPI forever.
-      - name: Show exactly what is about to become public
+      # is the second lock on the same door: whatever is staged here is what goes to PyPI
+      # forever. The staging directory is the third: this job may claim exactly one name, so it
+      # uploads from a directory that can hold exactly one wheel, and an unexpected count is a
+      # refusal rather than a guess.
+      - name: Stage exactly the one wheel this job may publish
+        env:
+          PACKAGE: ${{ matrix.package }}
         run: |
           ls -l dist
           test -z "$(find dist -type f ! -name '*.whl')" \
             || { echo "::error::dist/ holds a non-wheel file"; exit 1; }
-      # Version-pinned rather than the `@release/v1` branch PyPA documents: this is the
-      # only job in the repository that holds a publishing identity, and every other
-      # action here and in fastapi-svcs.yml is tag-pinned, so this is the outlier coming
-      # into line. Not a commit SHA: this path runs a few times a year, and PyPA publish
-      # both this action and the index it uploads to.
-      - uses: pypa/gh-action-pypi-publish@v1.14.2
+          prefix="${PACKAGE//-/_}"
+          mapfile -t wheels < <(find dist -maxdepth 1 -type f -name "$prefix-*.whl" | sort)
+          [ "${#wheels[@]}" -eq 1 ] \
+            || { echo "::error::expected one $prefix wheel in dist/, found ${#wheels[@]}"; exit 1; }
+          mkdir upload
+          cp "${wheels[0]}" upload/
+          ls -l upload
+      # Version-pinned rather than the `@release/v1` branch PyPA documents: these are the only
+      # jobs in the repository that hold a publishing identity, and every other action here and
+      # in fastapi-svcs.yml is tag-pinned, so this is the outlier coming into line. Not a commit
+      # SHA: this path runs a few times a year, and PyPA publish both this action and the index
+      # it uploads to.
+      - id: upload
+        uses: pypa/gh-action-pypi-publish@v1.14.2
+        with:
+          packages-dir: upload
+      # Read by `report`, which is why it is recorded whatever happened rather than only on
+      # success: a job that died before it could say anything reads as not published, which is
+      # the direction that sends a human to look at PyPI rather than the direction that claims
+      # an upload nobody made.
+      - name: Record this distribution's outcome for the report
+        if: always()
+        env:
+          PACKAGE: ${{ matrix.package }}
+          OUTCOME: ${{ steps.upload.outcome }}
+        run: mkdir -p outcome && printf '%s %s\n' "$PACKAGE" "$OUTCOME" > outcome/line
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: publish-outcome-${{ matrix.package }}
+          path: outcome/line
+          if-no-files-found: error
+
+  # What did NOT go out is the thing that must not be quiet, because nobody notices a missing
+  # distribution until a consumer cannot install it, and by then the version number is spent.
+  # This is the only place the whole released set is compared against what this run uploaded,
+  # and it takes that set from tools/released-packages.sh - the one place it is stated - so a
+  # distribution added there without a publisher is reported, not forgotten. It holds no
+  # publishing identity: `contents: read` inherited from the top of the file, no `id-token`.
+  #
+  # It fails the run whenever anything is missing. Both halves of that matter: the three that
+  # could publish did, and the run still ends red with the two named.
+  #
+  # `always()` rather than `!cancelled()`, deliberately: a run cancelled mid-upload is precisely
+  # when a human most needs to be told which wheels are already permanent on PyPI, and
+  # `!cancelled()` would skip this job in exactly that case. The `!= 'skipped'` half stays: it
+  # is what keeps the report silent on the triggers where nothing was ever published.
+  report:
+    name: publication report
+    needs: [build, publish]
+    if: ${{ always() && needs.publish.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: publish-outcome-*
+          path: outcomes
+      - name: Say which distributions this run published, and fail if any did not
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          . tools/released-packages.sh
+          published=$( { find outcomes -type f -name line -exec cat {} + 2>/dev/null || true; } \
+                       | awk '$2 == "success" { print $1 }')
+          {
+            echo "## PyPI publication - ${VERSION:-unknown version}"
+            echo
+            echo "| distribution | this run |"
+            echo "|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          missing=()
+          for pkg in "${RELEASED_PACKAGES[@]}"; do
+            dist="vf-$pkg"
+            if grep -qxF "$dist" <<<"$published"; then
+              echo "| \`$dist\` | published |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| \`$dist\` | **NOT PUBLISHED** |" >> "$GITHUB_STEP_SUMMARY"
+              missing+=("$dist")
+            fi
+          done
+          if [ "${#missing[@]}" -ne 0 ]; then
+            {
+              echo
+              echo "**${VERSION:-This version} is a partial release.** PyPI never allows a version to be"
+              echo "re-uploaded, so the missing distributions cannot be added to it later: register"
+              echo "their trusted publishers, then cut a new version. A distribution missing here"
+              echo "either has no publisher registered yet or failed its own upload - its job above"
+              echo "says which."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Partial release::not published at ${VERSION:-this version}: ${missing[*]}"
+            exit 1
+          fi
+          echo "::notice title=Released::every released distribution published at $VERSION"

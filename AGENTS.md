@@ -60,7 +60,11 @@ Publication is **PyPI, wheels only, Trusted Publishing, no token anywhere**, and
 from a pushed `v*` tag. It is irreversible - PyPI refuses a re-upload and a yank does not un-copy
 what mirrors took - so audit what is inside the wheels before tagging, not after, and re-check
 the names are still free immediately before. A new distribution name additionally needs a pending
-publisher registered on PyPI first.
+publisher registered on PyPI first, in **its own GitHub environment**: a trusted publisher is
+(owner, repository, workflow, environment), so distributions cannot share one, and only three may
+be pending at a time. A release can therefore legitimately be partial; the workflow's `report` job
+names what did not go out and fails the run, and the gap is closed by a NEW version, never by
+re-running the tag.
 [docs/architecture/engine-distribution.md](docs/architecture/engine-distribution.md) has all of
 it, including why a release on this private repository was not an option.
 
