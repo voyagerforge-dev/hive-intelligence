@@ -1,6 +1,6 @@
 [project]
 name = "vf-hive-serve"
-version = "0.5.0"
+version = "0.6.0"
 description = "Serve + test OKF concept cards as agent context (no RAG)"
 requires-python = ">=3.12"
 license = "Apache-2.0"
@@ -9,7 +9,7 @@ license-files = ["LICENSE", "NOTICE"]
 # engine at one version (tools/set-release-version.sh writes it), and an unconstrained
 # dependency would let a consumer pinning this version resolve a different hive-gen
 # behind it.
-dependencies = ["vf-hive-gen==0.5.0", "pydantic>=2.9", "pydantic-settings>=2.5", "PyYAML>=6.0", "mcp==1.28.1", "fastapi>=0.135", "uvicorn>=0.30", "prometheus_client>=0.20", "psycopg[binary]>=3.2"]
+dependencies = ["vf-hive-gen==0.6.0", "pydantic>=2.9", "pydantic-settings>=2.5", "PyYAML>=6.0", "mcp==1.28.1", "fastapi>=0.135", "uvicorn>=0.30", "prometheus_client>=0.20", "psycopg[binary]>=3.2"]
 
 [project.scripts]
 hiveserve = "hiveserve.server:main"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Set the engine version on every RELEASED package, in one place.
 #
-# The five packages are released as ONE engine: `v0.5.0` means these five distributions and
+# The five packages are released as ONE engine: one version means these five distributions and
 # no others, which is how the corpus repository consumes them (one pin, five packages). So
 # they carry one version, written here, and `tools/build-release.sh` refuses to build if any
 # of them disagrees.
@@ -14,7 +14,7 @@
 # consumer installs, and nothing pins it. Add it here on the day it is released, not before.
 set -euo pipefail
 
-usage() { echo "usage: $0 <version>   e.g. $0 0.5.0" >&2; exit 2; }
+usage() { echo "usage: $0 <version>   e.g. $0 <MAJOR.MINOR.PATCH>" >&2; exit 2; }
 [ $# -eq 1 ] || usage
 version="$1"
 

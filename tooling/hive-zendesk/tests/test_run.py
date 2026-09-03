@@ -1,7 +1,10 @@
 import json
+from importlib import metadata
 
 import pytest
 
+import hivezendesk
+from hivezendesk.fm import parse_frontmatter
 from hivezendesk.run import ingest
 
 
@@ -57,6 +60,23 @@ def test_real_run_emits_a_card(tmp_path):
     assert report.emitted == 1
     written = list((tmp_path / "clients" / "alpha" / "issues").glob("*.md"))
     assert len(written) == 1 and written[0].name.startswith("14872-")
+
+
+def test_emitted_card_is_stamped_with_the_installed_version(tmp_path):
+    """`distilled_by` is provenance committed to the corpus, so it must name the version the
+    operator actually installed - a hand-kept literal drifts from the released one silently."""
+    installed = metadata.version("vf-hive-zendesk")
+    assert hivezendesk.__version__ == installed
+
+    (tmp_path / "concepts").mkdir()
+    ingest(clients=["alpha"], org_ids={"alpha": [42]},
+           connector=FakeConnector([ROW], COMMENTS), llm=FakeLLM(),
+           clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts",
+           state_dir=tmp_path / "state")
+    written = list((tmp_path / "clients" / "alpha" / "issues").glob("*.md"))
+    assert len(written) == 1
+    fm = parse_frontmatter(written[0].read_text())
+    assert fm["distilled_by"] == f"hive-zendesk@{installed}"
 
 
 def test_run_records_skip_reasons(tmp_path):

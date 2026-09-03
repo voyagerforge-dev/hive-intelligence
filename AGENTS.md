@@ -63,8 +63,8 @@ the names are still free immediately before. A new distribution name additionall
 publisher registered on PyPI first, in **its own GitHub environment**: a trusted publisher is
 (owner, repository, workflow, environment), so distributions cannot share one, and only three may
 be pending at a time. A release can therefore legitimately be partial; the workflow's `report` job
-names what did not go out and fails the run, and the gap is closed by a NEW version, never by
-re-running the tag.
+fails the run and names what it could not account for, and the gap is closed by a NEW version,
+never by re-running the tag.
 [docs/architecture/engine-distribution.md](docs/architecture/engine-distribution.md) has all of
 it, including why a release on this private repository was not an option.
 

@@ -35,7 +35,7 @@ Five distributions, from `tooling/`, as **one engine at one version**:
 | `hive-zendesk` | `vf-hive-zendesk` |
 
 One version across all five, because that is how they are consumed: a corpus is validated
-against a specific distiller *and* a specific serving behaviour, so `v0.5.0` has to mean the same
+against a specific distiller *and* a specific serving behaviour, so `v0.6.0` has to mean the same
 five distributions every time. `tools/set-release-version.sh` writes it in one place and
 `tools/build-release.sh` refuses to build a set that disagrees with itself.
 
@@ -113,18 +113,41 @@ to match, and one publish job each in `release.yml`.
 
 **And they cannot all be registered at once.** PyPI allows at most three publishers to be *pending*
 simultaneously - *"You can't register more than 3 pending trusted publishers at once"* - and one
-stops being pending only when its project has actually published something. So the first release is
-deliberately a partial one:
+stops being pending only when its project has actually published something. So the first release
+was deliberately a partial one, and the last two could only be registered once it had published:
 
-1. register `vf-hive-gen`, `vf-hive-prep`, `vf-hive-serve`, and create the three matching
+1. `vf-hive-gen`, `vf-hive-prep` and `vf-hive-serve` were registered, with the three matching
    GitHub environments under *Settings > Environments* (that is also the only place a required
    reviewer can be added, and it gates one distribution, not the release);
-2. tag a version. Those three publish; `report` fails the run and names the two that did not;
-3. their three publishers are now real rather than pending, so register `vf-hive-dbparse` and
-   `vf-hive-zendesk`, add their jobs to `release.yml`, and cut the **next** version.
+2. `v0.5.0` was tagged. Those three published; `report` failed the run and named the two that
+   did not;
+3. those three publishers were then real rather than pending, so `vf-hive-dbparse` and
+   `vf-hive-zendesk` were registered and their jobs added to `release.yml`. `0.6.0` is the
+   version cut to carry all five.
 
-The two missing distributions cannot be added to the version that skipped them - PyPI never allows
-a version to be re-uploaded - so step 3 is a new version number, not a re-run of the tag.
+The two missing distributions could not be added to the version that skipped them - PyPI never
+allows a version to be re-uploaded - so step 3 is a new version number, not a re-run of the tag.
+`0.5.0` stays on the index forever as a three-of-five release, and nothing a later run does
+changes that. Of the three published at `0.5.0`, `vf-hive-gen` and `vf-hive-prep` are rebuilt at
+`0.6.0` with nothing changed at all, while `vf-hive-serve`'s wheel differs from its `0.5.0` one in
+recorded dependency metadata: its exact pin moved to `vf-hive-gen==0.6.0`, which is precisely why
+the set has to move together. A sixth distribution repeats the same order: register its publisher
+and create its environment first, then add its job, then cut a new version.
+
+A pushed `v*` tag is the only thing that uploads anything. `report` does not gate that and cannot:
+it runs after the publish jobs and has no way to undo an upload. So a red `report` does **not**
+mean nothing was published. It means the run could not account for the whole set, and a version
+that really is short of the set can never be completed afterwards.
+
+What the per-distribution publish jobs and `report`'s table show is what the run *believes* went
+out: a distribution counts as published only if its job recorded a successful upload, so a job
+that died before recording one - a cancelled run, a dead runner - reads as not published even when
+its wheel is already on the index. That direction is deliberate, because it sends a human to look
+rather than claiming an upload nobody made, and it is why **PyPI itself is the authority on what
+actually landed**. The two directions are not symmetric, and the asymmetry is the useful part: a
+run can only go green when every distribution recorded its upload, so green is worth trusting,
+while red says the run could not account for the set - not what is sitting on the index. Check the
+index itself before believing a name is still free or a version unused.
 
 A pending publisher **does not reserve the name** - if someone else registers it before the first
 publish, the pending publisher is invalidated. So check the names still unclaimed are still free
@@ -144,11 +167,11 @@ not after.
 ## Cutting a version
 
 ```
-tools/set-release-version.sh 0.5.0     # one version: pyprojects, the pin, every uv.lock
+tools/set-release-version.sh 0.6.0     # one version: pyprojects, the pin, every uv.lock
 tools/build-release.sh                 # sync licences, verify, build wheels into dist/
 tools/verify-clean-install.sh          # install and run them where no credential of ours exists
-git commit -am "release: 0.5.0"
-git tag -a v0.5.0 -m "0.5.0" && git push origin v0.5.0
+git commit -am "release: 0.6.0"
+git tag -a v0.6.0 -m "0.6.0" && git push origin v0.6.0
 ```
 
 Pushing the tag is what publishes, and it is the only thing that does.
@@ -165,7 +188,7 @@ independent (`fail-fast: false`), so one refused upload neither cancels nor inva
 and what each one did is a separate green or red job on the run.
 
 The `report` job is the one that must not be ignored. It compares `tools/released-packages.sh` -
-the one place the released set is stated - against what this run actually uploaded, writes the
+the one place the released set is stated - against what this run recorded uploading, writes the
 whole set as a table on the run summary, and **fails the run** whenever any distribution is
 missing, whether because no publisher is registered for it yet or because its upload failed. A
 partial release is therefore a red run naming the gap, never a green one that quietly shipped four
@@ -199,13 +222,19 @@ secret.
 
 ```toml
 dependencies = [
-  "vf-hive-gen==0.5.0",
-  "vf-hive-prep==0.5.0",
-  "vf-hive-serve==0.5.0",
-  "vf-hive-dbparse==0.5.0",
-  "vf-hive-zendesk==0.5.0",
+  "vf-hive-gen==0.6.0",
+  "vf-hive-prep==0.6.0",
+  "vf-hive-serve==0.6.0",
+  "vf-hive-dbparse==0.6.0",
+  "vf-hive-zendesk==0.6.0",
 ]
 ```
+
+Pin a version whose release run went green: a run goes green only when every distribution
+recorded a successful upload, so that is the signal the whole set went out, and a version that
+really did carry only some of the set can never be completed afterwards. A red run is not the
+mirror image of that - it says the run could not account for the set, not what reached the index.
+PyPI answers that question, and only PyPI.
 
 A consumer that pins a version instead of a tag no longer needs `git describe` to know which
 engine it is running; `pip show vf-hive-serve` answers that from the installed artefact.

@@ -151,19 +151,21 @@ jobs:
   # The environment names below are what is registered on PyPI, not a convention to re-derive.
   # A mismatch in any field is not an error message, it is a refused upload.
   #
-  # Only three are here, and that is also PyPI's doing: at most three publishers may be PENDING
-  # at once ("You can't register more than 3 pending trusted publishers at once"), and one stops
-  # being pending only once its project has actually published. `vf-hive-dbparse` and
-  # `vf-hive-zendesk` cannot be registered until these three have published, so their jobs
-  # cannot exist yet - referencing an environment whose publisher does not exist buys nothing
-  # but a 403 and a GitHub environment that misrepresents itself as configured. `report` below
-  # is what keeps that gap loud: this workflow publishes what it can and then fails, naming what
-  # it could not.
+  # All five are here now, and the order they arrived in was PyPI's doing: at most three
+  # publishers may be PENDING at once ("You can't register more than 3 pending trusted
+  # publishers at once"), and one stops being pending only once its project has actually
+  # published. So `vf-hive-gen`, `vf-hive-prep` and `vf-hive-serve` went out at 0.5.0 - a run
+  # `report` failed on purpose, naming the two that could not - and only then could
+  # `vf-hive-dbparse` and `vf-hive-zendesk` be registered. That staging is history; the rule
+  # behind it is not. A SIXTH name needs its publisher registered and its environment created
+  # before its job is added here, or the job earns a 403 and a GitHub environment that
+  # misrepresents itself as configured. 0.5.0 stays a three-of-five release forever: the gap
+  # can only be closed by a new version, never by re-running that tag.
   #
   # `fail-fast: false` is load-bearing twice over. One distribution's upload failing must not
   # cancel another's mid-flight - a cancelled upload is the single thing this workflow must
-  # never risk - and the whole point of this release is that three of five getting out beats
-  # nothing getting out.
+  # never risk - and however many of the set get out, that beats none of them getting out.
+  # Naming what did not is `report`'s job, and it fails the run for it.
   publish:
     name: publish ${{ matrix.package }}
     needs: [build, install]
@@ -179,6 +181,10 @@ jobs:
             environment: pypi-vf-hive-prep
           - package: vf-hive-serve
             environment: pypi-vf-hive-serve
+          - package: vf-hive-dbparse
+            environment: pypi-vf-hive-dbparse
+          - package: vf-hive-zendesk
+            environment: pypi-vf-hive-zendesk
     # A required reviewer, if one is ever wanted, is configured per environment, so approving
     # one approves one distribution rather than the release.
     environment: ${{ matrix.environment }}
@@ -241,8 +247,8 @@ jobs:
   # distribution added there without a publisher is reported, not forgotten. It holds no
   # publishing identity: `contents: read` inherited from the top of the file, no `id-token`.
   #
-  # It fails the run whenever anything is missing. Both halves of that matter: the three that
-  # could publish did, and the run still ends red with the two named.
+  # It fails the run whenever anything is missing. Both halves of that matter: whatever could
+  # publish did, and the run still ends red naming whatever did not.
   #
   # `always()` rather than `!cancelled()`, deliberately: a run cancelled mid-upload is precisely
   # when a human most needs to be told which wheels are already permanent on PyPI, and
