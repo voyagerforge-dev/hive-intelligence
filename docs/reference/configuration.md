@@ -72,6 +72,11 @@ why an authenticating proxy is mandatory rather than advisable for any wider exp
 | `CARD_CORPUS_ROOT` | empty | **required**. The card corpus working tree: taxonomies, `drafts/`, `.pipeline/`. Not hive-prep's `CORPUS_ROOT` |
 | `ATOMIC_DIR` | empty | atomic markdown from `hive-prep`. Optional - empty falls back to R2 - but validated when set, and a run that loads no documents refuses |
 | `SLICE_AREA` | empty | which functional area to generate |
+| `R2_ENDPOINT` | empty | **required when the R2 fallback is used**. No default, and an empty one is not usable: botocore raises `ValueError: Invalid endpoint:` as the client is built, several frames down, naming no setting |
+| `R2_ACCESS_KEY_ID` | empty | |
+| `R2_SECRET_ACCESS_KEY` | empty | |
+| `R2_BUCKET` | empty | **required when the R2 fallback is used**. No default: a bucket that is not yours lists nothing, which reads exactly like a bucket with nothing in it |
+| `R2_PREFIX` | empty | **required when the R2 fallback is used**. A bucket holds more than one dataset, so an empty prefix is not "everything I wanted", it is "everything anyone put there" |
 | `BIFROST_BASE` | required | model gateway |
 | `BIFROST_API_KEY` | required | |
 | `TAXONOMY_MODEL` | `minimax-m3` | gate 2, the concept list |
@@ -137,6 +142,10 @@ the corpus repository and nothing else.
 | `CAP_WARN_RATIO` | `0.95` | warn near the cap: a truncated pull looks like a complete one |
 | `RESHAPE_WORKERS` | `6` | `rebuild` concurrency |
 | `RESHAPE_BATCH_SIZE` | `5` | cards per model call in `rebuild` |
+| `R2_ENDPOINT` | empty | **required by `rebuild`**, refused at startup. No default, and an empty one is not usable: botocore raises `ValueError: Invalid endpoint:` as the client is built, several frames down, naming no setting |
+| `R2_ACCESS_KEY_ID` | empty | |
+| `R2_SECRET_ACCESS_KEY` | empty | |
+| `R2_BUCKET` | empty | **required by `rebuild`**, refused at startup. No default: a bucket that is not yours lists nothing, which reads exactly like a bucket with nothing staged in it |
 
 ## hive-dbparse
 
@@ -144,13 +153,25 @@ No environment configuration. Everything is command-line: `--src`, `--out`, `--l
 
 ## Settings that have no default on purpose
 
-`CONNECTOR_BASE`, `GITHUB_REPO`, `LEDGER_DSN`, `EVAL_DIR`, `CARD_CORPUS_ROOT` and the gateway
-addresses are empty by default and validated at startup or at the point of use. `CONCEPTS_DIR`
-carries a default that will not be yours and is validated the same way.
+`CONNECTOR_BASE`, `GITHUB_REPO`, `LEDGER_DSN`, `EVAL_DIR`, `CARD_CORPUS_ROOT`, `R2_ENDPOINT`,
+`R2_BUCKET`, `R2_PREFIX` and the gateway addresses are empty by default and validated at startup
+or at the point of use. `CONCEPTS_DIR` carries a default that will not be yours and is validated
+the same way.
 
 A default that points somewhere plausible does not save you configuration. It moves the failure from
 startup, where it is obvious, to first use, where it appears as a connection error against a host
 you have never heard of. Empty and validated is louder and cheaper.
+
+The R2 settings joined that list on 2026-09-03, from the audit of what the published wheels would
+contain. `R2_BUCKET` in hive-zendesk and `R2_PREFIX` in hive-gen named a real private bucket and a
+real prefix inside it, which was a disclosure to everyone who installed the package as well as the
+usual silent fallback. Object storage makes the silent version worse than a filesystem does: a
+listing against a bucket you cannot see returns an empty list, not an error. `R2_ENDPOINT` was
+already empty but unchecked, and it is refused alongside them for the other half of the rule: an
+empty `endpoint_url` reaches botocore and raises `ValueError: Invalid endpoint:` as the client is
+built, which is loud but names no setting, so the operator is told a URL is malformed rather than
+which of theirs is unset. It never reaches AWS - botocore falls back to an AWS endpoint only when
+`endpoint_url` is `None`, and these settings are strings that default to empty.
 
 ## Where the corpus is
 

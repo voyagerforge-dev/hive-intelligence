@@ -30,11 +30,16 @@ class Settings(BaseSettings):
     connector_page_cap: int = 3000
     # Treat >= this fraction of the cap as "probably truncated".
     cap_warn_ratio: float = 0.95
-    # R2: the retired service's staged cards, reused instead of re-distilling.
+    # R2: the retired service's staged cards, reused instead of re-distilling. The bucket
+    # has no default. It named a real private bucket, which disclosed that bucket to
+    # everyone who installed the package and let an operator who never set R2_BUCKET read
+    # one that was not theirs. hive-gen's equivalent setting has always been empty; this
+    # makes the two consistent rather than inventing a convention. `run.py` refuses in
+    # rebuild mode, naming the setting.
     r2_endpoint: str = ""
     r2_access_key_id: str = ""
     r2_secret_access_key: str = ""
-    r2_bucket: str = "example-bucket"
+    r2_bucket: str = ""
     # Concurrency for the reshape step. vLLM batches well; the connector is untouched
     # here (one list call per org), so this only loads the LLM.
     reshape_workers: int = 6

@@ -22,3 +22,13 @@ def test_rerank_model_is_selectable_without_changing_the_distiller():
 
 def test_changing_the_distiller_alone_leaves_the_reranker_on_its_default():
     assert _s(distill_model="host-d/qwen3.6-27b").rerank_model == "minimax-m3"
+
+
+def test_r2_bucket_has_no_default(monkeypatch, tmp_path):
+    """It shipped as a real private bucket name. That is two failures at once: everyone who
+    installed the wheel could read the bucket out of it, and an operator who never set
+    R2_BUCKET read a bucket that was not theirs - which lists nothing, and reads exactly
+    like a bucket with nothing staged in it. hive-gen's equivalent has always been empty."""
+    monkeypatch.chdir(tmp_path)  # no .env of the developer's own
+    monkeypatch.delenv("R2_BUCKET", raising=False)
+    assert _s().r2_bucket == ""

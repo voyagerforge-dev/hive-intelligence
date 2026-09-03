@@ -4,8 +4,8 @@ WHY POSTGRES, AND WHY NOT BOTH.
 
 This was SQLite on a bind-mounted file until 2026-08-19. It moved for one reason: it is the
 only mutable state this service holds, and a managed platform will back up a database it
-manages and will not back up a file in a volume. Coolify, which is what EXAMPLECO's deployment is
-heading for, schedules Postgres dumps to S3 and has no concept of "that SQLite file over
+manages and will not back up a file in a volume. A managed platform such as Coolify
+schedules Postgres dumps to object storage and has no concept of "that SQLite file over
 there". Being a database is what makes it get backed up.
 
 There is deliberately NO dual-engine support. Keeping both would mean two placeholder styles
@@ -24,7 +24,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 
 import psycopg
-from psycopg.rows import dict_row
+from psycopg.rows import DictRow, dict_row
 
 MODES = {"investigate", "implement", "learn"}
 STATUSES = {"open", "active", "resolved", "done"}
@@ -82,12 +82,16 @@ SCHEMA = (
 )
 
 
-def connect(dsn: str) -> psycopg.Connection:
+def connect(dsn: str) -> psycopg.Connection[DictRow]:
     """Open a connection with dict rows and the schema present.
 
     dict_row is not cosmetic: every reader here does `dict(r)` and indexes by column name,
     which is what sqlite3.Row gave for free. The default tuple rows would fail at the first
     `d["external_ref"]` rather than at the query.
+
+    The row type is spelled out rather than left bare because `psycopg.Connection` is not
+    `Connection[Any]`: psycopg gives its Row parameter a PEP 696 default of the TUPLE row, so
+    the unparameterised annotation claims the exact thing this function exists to avoid.
     """
     conn = psycopg.connect(dsn, row_factory=dict_row)
     init_db(conn)

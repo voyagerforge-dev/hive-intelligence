@@ -44,6 +44,7 @@ Look things up here.
 | | |
 |---|---|
 | [Product and deployment boundary](architecture/product-deployment-boundary.md) | what belongs in this repository, and what does not |
+| [Distributing the engine](architecture/engine-distribution.md) | what is released, how a version is cut, and what a consumer pins |
 
 ---
 

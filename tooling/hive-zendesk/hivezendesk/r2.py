@@ -45,8 +45,9 @@ def parse_key(key: str) -> tuple[str, int] | None:
 
 
 class R2Reader:
-    """Read-only view of the staged cards. Never writes: this bucket is the old service's
-    output and other datasets (example_prefix, okf, alpha_dataset) share it."""
+    """Read-only view of the staged cards. Never writes: the bucket is the old service's
+    output and other datasets share it, so a write here would land in data this tool does
+    not own."""
 
     def __init__(self, s3_client, bucket: str) -> None:
         self._s3 = s3_client

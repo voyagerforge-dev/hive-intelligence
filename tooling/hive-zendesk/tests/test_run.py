@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from hivezendesk.run import ingest
 
 
@@ -147,3 +149,44 @@ def test_limit_samples_without_breaking_reconciliation(tmp_path):
                     clients_dir=tmp_path / "clients", concepts_dir=tmp_path / "concepts",
                     state_dir=tmp_path / "state", dry_run=True, limit=2)
     assert report.fetched == 2 and report.emitted == 2
+
+
+def test_rebuild_refuses_without_a_bucket(monkeypatch, tmp_path, capsys):
+    """`rebuild` reads staged cards off R2. Unset must stop it, naming the setting, rather
+    than reaching boto3 and failing four frames down on an empty endpoint."""
+    import hivezendesk.run
+
+    monkeypatch.chdir(tmp_path)  # no .env of the developer's own
+    for key in ("R2_BUCKET", "R2_ENDPOINT"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("BIFROST_BASE", "http://bf/v1")
+    monkeypatch.setenv("BIFROST_API_KEY", "k")
+    monkeypatch.setattr("sys.argv", [
+        "hivezendesk", "rebuild", "--client", "alpha",
+        "--clients-dir", str(tmp_path / "clients"), "--concepts-dir", str(tmp_path / "concepts"),
+    ])
+
+    with pytest.raises(SystemExit):
+        hivezendesk.run.main()
+    assert "R2_BUCKET" in capsys.readouterr().err
+
+
+def test_rebuild_refuses_without_an_endpoint(monkeypatch, tmp_path, capsys):
+    """A bucket is not enough. An empty endpoint_url is rejected too, but by botocore and as
+    `ValueError: Invalid endpoint:` several frames down, naming no setting - which is the
+    failure this refusal replaces."""
+    import hivezendesk.run
+
+    monkeypatch.chdir(tmp_path)  # no .env of the developer's own
+    monkeypatch.setenv("R2_BUCKET", "some-bucket")
+    monkeypatch.delenv("R2_ENDPOINT", raising=False)
+    monkeypatch.setenv("BIFROST_BASE", "http://bf/v1")
+    monkeypatch.setenv("BIFROST_API_KEY", "k")
+    monkeypatch.setattr("sys.argv", [
+        "hivezendesk", "rebuild", "--client", "alpha",
+        "--clients-dir", str(tmp_path / "clients"), "--concepts-dir", str(tmp_path / "concepts"),
+    ])
+
+    with pytest.raises(SystemExit):
+        hivezendesk.run.main()
+    assert "R2_ENDPOINT" in capsys.readouterr().err

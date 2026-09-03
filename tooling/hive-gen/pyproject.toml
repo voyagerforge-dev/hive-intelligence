@@ -3,7 +3,7 @@
 # named "hivegen". The IMPORT package remains `hivegen` (see tool.hatch packages below);
 # consumers still `import hivegen`, but pip resolves the dependency as `vf-hive-gen`.
 name = "vf-hive-gen"
-version = "0.1.0"
+version = "0.5.0"
 description = "Generate OKF concept cards from a prepared reference corpus"
 requires-python = ">=3.12"
 license = "Apache-2.0"

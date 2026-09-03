@@ -12,7 +12,7 @@ def test_settings_reads_env(monkeypatch, tmp_path):
     }.items():
         monkeypatch.setenv(k, v)
     s = get_settings()
-    assert s.r2_prefix == "example_prefix/"
+    assert s.r2_bucket == "b"
     assert s.taxonomy_model == "minimax-m3"
     assert s.assign_model == "deepseek-v4-flash"
     assert s.max_chars == 24000
@@ -81,3 +81,18 @@ def test_env_example_does_not_name_hive_preps_corpus_root():
     reuse the raw ingest tree as the card corpus, which is a directory and so passes the
     guard - the exact failure the rename removes."""
     assert "CORPUS_ROOT" not in _pairs()
+
+
+def test_a_copied_env_example_leaves_the_r2_location_required_and_unset(tmp_path, monkeypatch):
+    """R2_PREFIX shipped as `example_prefix/`: a real prefix, inside a real private bucket.
+    A default that names a real location is two failures at once - it discloses that
+    location to everyone who installs the wheel, and an operator who never set one reads a
+    location that is not theirs rather than being told to name it. Buckets are shared
+    between datasets, so a prefix is not a nicety here. R2_ENDPOINT is refused for the
+    neighbouring reason: an empty endpoint_url is rejected by botocore, but as
+    `ValueError: Invalid endpoint:` several frames down, which names no setting."""
+    s = _settings_from_env_example(tmp_path, monkeypatch)
+    assert {"R2_ENDPOINT", "R2_BUCKET", "R2_PREFIX"} <= set(_pairs())
+    assert s.r2_endpoint == ""
+    assert s.r2_bucket == ""
+    assert s.r2_prefix == ""

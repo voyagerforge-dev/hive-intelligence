@@ -1,9 +1,10 @@
 """Frontmatter parsing that survives `---` appearing inside a value.
 
-An illustrative ticket subject is `EXAMPLE DC OLPN 0000000000 --- [#SR-000000] ...`. Splitting on
-the bare string `---` truncates that card's frontmatter mid-title, which made `verify_card`
-reject a perfectly good card as "missing required frontmatter" - a false positive that
-aborts the whole run, and does so *after* the card has been written to disk.
+Ticket subjects carry `---` in the wild, shaped like the invented
+`EXAMPLE DC OLPN 0000000000 --- [#SR-000000] ...`. Splitting on the bare string `---`
+truncates that card's frontmatter mid-title, which made `verify_card` reject a perfectly
+good card as "missing required frontmatter" - a false positive that aborts the whole run,
+and does so *after* the card has been written to disk.
 
 The delimiter is only a delimiter on a line of its own, so that is what we match.
 """

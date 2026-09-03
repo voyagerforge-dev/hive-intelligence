@@ -12,14 +12,14 @@ class Settings(BaseSettings):
     work_dir: str = "./hive-work"
     atomic_dir: str = "./hive-work/atomic"
 
-    # Docling (Host-A GPU), preferred text-tier converter. Empty base → pymupdf4llm only.
+    # Docling, the preferred text-tier converter. Empty base → pymupdf4llm only.
     docling_base: str = ""
     docling_api_key: str = ""
     docling_timeout_s: int = 300
     docling_ca_bundle: str = ""
     prefer_docling: bool = True
 
-    # Qwen3.8-27B (Host-D), vision tier (OpenAI-compatible /v1/chat/completions with image_url).
+    # Qwen3.8-27B, vision tier (OpenAI-compatible /v1/chat/completions with image_url).
     qwen_base: str = ""
     qwen_api_key: str = ""
     qwen_model: str = "qwen3.8-27b"

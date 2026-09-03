@@ -99,10 +99,11 @@ jobs:
       - name: Lint (ruff)
         working-directory: ${{ matrix.svc }}
         run: ruff check .
-      # Type-check services that opt in by mentioning mypy in pyproject (a [tool.mypy]
-      # section and/or a mypy dev dep). All services now carry a lenient [tool.mypy]
-      # (ignore_missing_imports), so this runs on every service; a future service without
-      # any mypy mention is simply skipped rather than failing on missing config.
+      # Type-checking is OPT-IN: this runs for a service that mentions mypy in its own
+      # pyproject.toml (a [tool.mypy] section and/or a mypy dev dep) and is skipped for one
+      # that does not, so a service that never declares mypy is never type-checked and never
+      # fails on missing config. The `grep -qi mypy` below is the authority on who opts in;
+      # for orientation only, at the time of writing hive-zendesk and hive-dbparse did not.
       - name: Type check (mypy — opt-in)
         working-directory: ${{ matrix.svc }}
         run: |

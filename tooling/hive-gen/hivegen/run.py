@@ -92,6 +92,23 @@ def main() -> None:
             docs = load_docs_local(atomic)
         source = f"ATOMIC_DIR={atomic}"
     else:
+        # ATOMIC_DIR is empty, so the documents come from R2 and the location has to be
+        # given. Refusing here beats the alternative: unset, botocore raises
+        # "Invalid endpoint:" from four frames down, which names nothing an operator can
+        # act on, and a wrong-but-set location reads as a corpus with nothing in it.
+        for value, setting, what in (
+            (s.r2_bucket, "R2_BUCKET", "the bucket the atomic documents are in"),
+            (s.r2_prefix, "R2_PREFIX",
+             "the prefix they sit under, since a bucket holds more than one dataset"),
+            (s.r2_endpoint, "R2_ENDPOINT",
+             ("the account the bucket is reached through - unset, botocore raises "
+              '"Invalid endpoint:" several frames down instead of naming this setting')),
+        ):
+            if not value.strip():
+                raise SystemExit(
+                    f"ATOMIC_DIR is empty, so this pass reads from R2, but {setting} is not "
+                    f"set and there is no way to find {what}. Set ATOMIC_DIR to read local "
+                    f"atomic markdown instead, or set {setting}. See .env.example.")
         import boto3
         s3 = boto3.client("s3", endpoint_url=s.r2_endpoint,
                           aws_access_key_id=s.r2_access_key_id,

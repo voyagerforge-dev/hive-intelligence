@@ -1,4 +1,3 @@
-# src/hiveprep/libreoffice.py
 """Convert DOCX/PPTX to PDF via LibreOffice headless.
 
 `soffice` is a system dependency (not pip). We pass an isolated

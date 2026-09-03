@@ -1,0 +1,172 @@
+# Distributing the engine
+
+This repository is consumed by others. A corpus repository installs the tools to run its card
+pipeline and its evaluation sets; a deployment installs `hive-serve` to serve them. How those
+consumers *get* the tools is a product decision, and until now it was not one: they pinned a git
+tag and resolved it from source.
+
+## What was wrong with pinning the source
+
+A consumer pinned each package at a git tag and a subdirectory:
+
+```toml
+[tool.uv.sources]
+vf-hive-gen = { git = "ssh://…/hive-intelligence.git", tag = "v0.4.0", subdirectory = "tooling/hive-gen" }
+```
+
+Resolving that needs read access to this repository, which is private. So every machine that
+builds the consumer needs a credential for the engine's **source**, and in practice that meant
+one person's key against one host: the consumer built on a single workstation, its CI never tried,
+and the deployed tree was placed by hand. Nothing announced any of this. It looked like a normal
+dependency until someone else tried to build it.
+
+A released artefact fixes the shape: a consumer pins a version, not a repository.
+
+## What is released
+
+Five distributions, from `tooling/`, as **one engine at one version**:
+
+| package | distribution |
+|---|---|
+| `hive-gen` | `vf-hive-gen` |
+| `hive-prep` | `vf-hive-prep` |
+| `hive-serve` | `vf-hive-serve` |
+| `hive-dbparse` | `vf-hive-dbparse` |
+| `hive-zendesk` | `vf-hive-zendesk` |
+
+One version across all five, because that is how they are consumed: a corpus is validated
+against a specific distiller *and* a specific serving behaviour, so `v0.5.0` has to mean the same
+five distributions every time. `tools/set-release-version.sh` writes it in one place and
+`tools/build-release.sh` refuses to build a set that disagrees with itself.
+
+`hive-author` is **not** released. It is a service that runs in a deployment, not a tool a
+consumer installs, and nothing pins it.
+
+Releasing a further distribution takes **two** edits, and the second is the one that matters.
+`tools/released-packages.sh` is the only place the set is stated: the build, the clean-container
+install, the index probe, the provenance check and the smoke run all derive it from there - the
+shell scripts source it, and the harness passes the same names into the container as
+`RELEASED_PACKAGES`, which `tools/released.py` reads. So the first edit is enough to get a new
+distribution built, installed and version-checked, and `tools/build-release.sh` additionally
+refuses a `dist/` holding anything that is not one of those wheels.
+
+What does not follow is a step that puts it to work. `tools/smoke-installed.py` binds each step
+to the distributions it exercises, and one that no step exercises makes the run exit non-zero
+with `SMOKE INCOMPLETE`, which fails the install job that `publish` depends on. The second edit
+is that step, and until it exists nothing new reaches PyPI.
+
+## Where the artefacts go, and why
+
+**PyPI, wheels only, published by GitHub Actions with Trusted Publishing. This repository stays
+private.**
+
+The finding that shaped the choice: **for pure Python, the artefact IS the source.** A wheel
+built here contains the package's `.py` files verbatim - `unzip -l` any of them. So "ship
+artefacts rather than source" is not a real distinction for these tools, and the question was
+only who may hold the artefact. That leaves two shapes and no third:
+
+1. the artefact is public, and no consumer needs a credential at all, or
+2. the artefact is gated, and someone holds a secret that must be issued, rotated and handed on.
+
+One candidate that looks like a third shape is not one. Attaching the artefacts to a **release on
+this private repository** does not remove source access: reading a release through the GitHub API
+requires the fine-grained token permission *Contents (read)*, which is the same permission that
+permits cloning the source. There is no download-only release permission. That option moves the
+credential rather than removing it.
+
+Shape 1 was chosen. What that publishes is the five packages' own modules and nothing else: a
+wheel carries the package directory plus `LICENSE` and `NOTICE`. The git history, `docs/`,
+`skills/`, the CI, every test suite, every `.env.example` and the whole of `hive-author` stay
+private, and a consumer sees **less** than it did when it resolved a git tag and got the entire
+repository. Sdists are deliberately not built: they would add tests, lockfiles and a deployment
+example that buy a consumer nothing, and every file in a published artefact is a file someone has
+to have audited.
+
+Trusted Publishing means **no PyPI token exists anywhere**. PyPI verifies a short-lived OIDC
+token minted by the release workflow for this repository; there is nothing to store, nothing to
+rotate, and nothing for a future maintainer to inherit. Adding a `PYPI_API_TOKEN` secret would
+undo the reason this design was chosen.
+
+### Before the first publish of a new name
+
+Trusted Publishing has to be told which workflow may claim each name, and for a project that does
+not exist yet that is a **pending publisher**, registered once per distribution at
+<https://pypi.org/manage/account/publishing/>:
+
+| field | value |
+|---|---|
+| PyPI project name | `vf-hive-gen`, then `vf-hive-prep`, `vf-hive-serve`, `vf-hive-dbparse`, `vf-hive-zendesk` |
+| Owner | `voyagerforge-dev` |
+| Repository name | `hive-intelligence` |
+| Workflow name | `release.yml` |
+| Environment name | `pypi` |
+
+A pending publisher **does not reserve the name** - if someone else registers it before the first
+publish, the pending publisher is invalidated. So check the five names are still free immediately
+before tagging, not on yesterday's reading:
+
+```
+for n in vf-hive-gen vf-hive-prep vf-hive-serve vf-hive-dbparse vf-hive-zendesk; do
+  printf '%-18s ' "$n"; curl -s -o /dev/null -w '%{http_code}\n' "https://pypi.org/simple/$n/"
+done      # 404 five times means still free
+```
+
+Publication is **irreversible**: PyPI does not allow re-uploading a version, and yanking one does
+not un-copy what mirrors and caches already took. Audit what is inside the wheels before tagging,
+not after.
+
+## Cutting a version
+
+```
+tools/set-release-version.sh 0.5.0     # one version: pyprojects, the pin, every uv.lock
+tools/build-release.sh                 # sync licences, verify, build wheels into dist/
+tools/verify-clean-install.sh          # install and run them where no credential of ours exists
+git commit -am "release: 0.5.0"
+git tag -a v0.5.0 -m "0.5.0" && git push origin v0.5.0
+```
+
+Pushing the tag is what publishes, and it is the only thing that does.
+`.github/workflows/release.yml` builds and installs on every trigger; the publish job requires a
+`push` event AND a `refs/tags/v*` ref, and runs in the `pypi` environment, so a pull request or a
+manual dispatch cannot reach PyPI however it is run. The event half of that guard is not
+decoration: `workflow_dispatch` accepts a tag as its ref, so a ref-only test would publish from
+`gh workflow run release.yml --ref v0.5.0`.
+
+`tools/build-release.sh` refuses rather than producing a release that is quietly wrong:
+
+- the five packages disagreeing on the version;
+- a `uv.lock` still recording the previous one, which no wheel reads and nothing else
+  would notice;
+- `vf-hive-serve` not requiring `vf-hive-gen==<that version>`, which would let a consumer pinning
+  one version resolve a different engine behind it;
+- a clean tree sitting on a tag that contradicts the packages;
+- a built wheel whose recorded metadata, or whose licence files, are not what was asked for.
+
+`tools/verify-clean-install.sh` is the part that matters most, because the failure being fixed is
+a thing everyone believed worked. It builds a container with no SSH key, no git credentials, no
+token and no checkout, shows that the container cannot read this repository at all, installs the
+five from the built artefacts, and reads pip's own `--report` to name the URL each of them actually
+resolved from - a check that reads the same before and after the names exist on PyPI. Then it runs
+each one for real - DDL parsed into cards, atomic markdown validated, a card bundle resolved across
+cross-links, and `hive-serve` answering over HTTP against a real Postgres ledger.
+`.github/workflows/release.yml` runs the same smoke script on a GitHub runner, so a release that
+only works on the machine that built it fails before it is tagged.
+
+## What a consumer does
+
+The `[tool.uv.sources]` git table goes away, and the five packages become ordinary pinned
+dependencies resolved from PyPI. Nothing else: no credential, no index configuration, no CI
+secret.
+
+```toml
+dependencies = [
+  "vf-hive-gen==0.5.0",
+  "vf-hive-prep==0.5.0",
+  "vf-hive-serve==0.5.0",
+  "vf-hive-dbparse==0.5.0",
+  "vf-hive-zendesk==0.5.0",
+]
+```
+
+A consumer that pins a version instead of a tag no longer needs `git describe` to know which
+engine it is running; `pip show vf-hive-serve` answers that from the installed artefact.

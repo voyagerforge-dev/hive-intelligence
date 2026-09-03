@@ -1,4 +1,3 @@
-# src/hiveprep/validate.py
 """Validate the subagent's atomic markdown corpus and derive relations.yaml.
 
 Checks: unique slugs, valid doc_type/status enums, every `related`/`supersedes`

@@ -1,0 +1,158 @@
+name: Release artefacts
+
+# Build the five released distributions, prove they install and run somewhere that is not the
+# machine that built them, and publish them to PyPI.
+#
+# PUBLICATION IS IRREVERSIBLE. PyPI does not allow re-uploading a version, and yanking one
+# does not un-copy what mirrors and caches already took. So the publish job is reachable ONLY
+# from a pushed `v*` tag - never a pull request, never a manual dispatch - and it additionally
+# runs in the `pypi` environment, which is where a required reviewer belongs. Its guard tests
+# the EVENT as well as the ref, because `workflow_dispatch` accepts a tag as its ref: a ref
+# test on its own would let `gh workflow run release.yml --ref v0.5.0` publish. Building and
+# installing happen on every trigger; publishing happens only when someone deliberately tags a
+# release.
+#
+# No PyPI token exists anywhere, on purpose: this uses Trusted Publishing, where PyPI verifies
+# a short-lived OIDC token minted by this workflow for this repository. There is nothing to
+# store, nothing to rotate, and nothing for a future maintainer to inherit. If you find
+# yourself adding a `PYPI_API_TOKEN` secret, stop: that is a different design and it was
+# rejected for a reason.
+#
+# `docs/architecture/engine-distribution.md` has the decision and what a consumer pins.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+  # Path-filtered, unlike fastapi-svcs.yml, and safely so: that workflow feeds the REQUIRED
+  # `ci-ok` check, which a filtered workflow would wedge on non-matching PRs by never
+  # reporting. This one is not required, so a PR it does not run on is simply a PR that
+  # changed no packaging.
+  pull_request:
+    paths:
+      - 'tooling/*/pyproject.toml'
+      - 'tools/**'
+      - '.github/workflows/release.yml'
+      - 'LICENSE'
+      - 'NOTICE'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Never on a release tag. A cancel mid-upload leaves some of the five wheels on PyPI and
+  # the rest not, and PyPI refuses the re-upload that would finish the job - so that version
+  # is burnt. Superseding a pull-request or dispatch run costs nothing, so it keeps happening.
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+
+# The floor for every job that does not state its own: read the repository, nothing else. It
+# matters because the `pull_request` trigger above is path-filtered on `tools/**`, so `build`
+# executes the shell scripts as that pull request edited them. A job-level `permissions:` block
+# REPLACES this one rather than adding to it, which is why `publish` below states its whole set
+# and inherits none of this: it checks nothing out, so `id-token: write` alone is enough there.
+# Artifact upload and download use the Actions runtime token, not this one.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.build.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tools/build-release.sh reads the tag on HEAD
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v5
+      - id: build
+        run: |
+          tools/build-release.sh
+          version=$(grep -m1 '^version = "' tooling/hive-gen/pyproject.toml \
+                    | sed -E 's|^version = "(.*)"$|\1|')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hive-engine-dist
+          path: dist/
+          if-no-files-found: error
+
+  # The point of the exercise. The current arrangement's defining failure is that it built
+  # on one workstation and everyone believed otherwise, so a build that is never installed
+  # anywhere else would be the same mistake with newer scripts.
+  install:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: hive-engine-dist
+          path: dist
+      # The set comes from tools/released-packages.sh, the one place it is stated, and is
+      # exported for the two steps below, which check the same set rather than a copy of it.
+      # A distribution added there is installed and proved here, or the job fails.
+      - name: Install the released set from the built artefacts only, into a fresh venv
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          . tools/released-packages.sh
+          echo "RELEASED_PACKAGES=${RELEASED_PACKAGES[*]}" >> "$GITHUB_ENV"
+          specs=()
+          for pkg in "${RELEASED_PACKAGES[@]}"; do specs+=("vf-$pkg==$VERSION"); done
+          python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet --report "$RUNNER_TEMP/report.json" \
+            --find-links dist "${specs[@]}"
+          "$RUNNER_TEMP/venv/bin/pip" list | grep -E '^vf-'
+      # `--find-links` ADDS to PyPI rather than replacing it, so once a version exists on the
+      # index a re-run of this tag could resolve them from there and smoke-test the
+      # published copy instead of what `build` just made - which would make this job, the
+      # evidence `publish` depends on, prove nothing. pip's own report says where each one
+      # came from. Not `--no-index`: the third-party dependencies do come from PyPI.
+      - name: Prove the released set came from dist/, not from an index
+        env:
+          EXPECT_SCHEME: file
+        run: python tools/provenance.py "$RUNNER_TEMP/report.json"
+      - name: Run them
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        # From RUNNER_TEMP, not the checkout: the smoke script refuses a package that
+        # resolved to a source tree, and running beside one invites exactly that.
+        working-directory: ${{ runner.temp }}
+        run: |
+          "$RUNNER_TEMP/venv/bin/python" "$GITHUB_WORKSPACE/tools/smoke-installed.py" \
+            --expect-version "$VERSION" \
+            --corpus "$GITHUB_WORKSPACE/tooling/hive-serve/tests/fixtures/corpus"
+
+  # Only from a PUSHED tag: the event is half the guard, because a manual dispatch can be run
+  # against a tag and would otherwise satisfy a ref-only test. `needs` makes this unreachable
+  # unless the artefacts built and then installed and ran somewhere clean, so a release that
+  # works only where it was built cannot reach PyPI.
+  publish:
+    needs: [build, install]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # mint the OIDC token PyPI verifies. No secret, and none is read.
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: hive-engine-dist
+          path: dist
+      # tools/build-release.sh already refuses to leave anything but wheels in dist/, and this
+      # is the second lock on the same door: whatever is here is what goes to PyPI forever.
+      - name: Show exactly what is about to become public
+        run: |
+          ls -l dist
+          test -z "$(find dist -type f ! -name '*.whl')" \
+            || { echo "::error::dist/ holds a non-wheel file"; exit 1; }
+      # Version-pinned rather than the `@release/v1` branch PyPA documents: this is the
+      # only job in the repository that holds a publishing identity, and every other
+      # action here and in fastapi-svcs.yml is tag-pinned, so this is the outlier coming
+      # into line. Not a commit SHA: this path runs a few times a year, and PyPA publish
+      # both this action and the index it uploads to.
+      - uses: pypa/gh-action-pypi-publish@v1.14.2

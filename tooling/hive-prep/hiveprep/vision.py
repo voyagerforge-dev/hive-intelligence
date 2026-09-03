@@ -1,4 +1,4 @@
-"""Qwen3.6-27B vision client (Host-D, OpenAI-compatible). Renders a document page image to
+"""Qwen3.6-27B vision client (OpenAI-compatible). Renders a document page image to
 clean markdown; describes figures/diagrams that text extraction drops. Replaces the retired
 GLM-4.1V tier, same OpenAI /v1/chat/completions image_url shape."""
 from __future__ import annotations

@@ -10,16 +10,16 @@ import re
 from .model import Ticket
 
 _EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-# Phone and SA-ID patterns carried over from the retired zendesk-ingest-svc, which ran
-# against this exact ticket corpus. Alpha and Beta are South African, so 13-digit national
-# ID numbers are a real presence and a real DPA exposure.
+# Phone and national-ID patterns carried over from the retired zendesk-ingest-svc. Support
+# tickets carry personal identifiers in free text, and a national ID number written into a
+# card on disk is a real data-protection exposure.
 _PHONE = re.compile(
     r"(?<!\d)(?:\+\d[\d\s\-]{6,}\d|\(?\d{2,4}\)?[\s\-]\d{3}[\s\-]?\d{2,4})(?!\d)"
 )
 # A bare 13-digit match is not enough: WMS ticket subjects carry long numeric LPN, wave
 # and item identifiers, and treating those as national IDs quarantined legitimate cards.
-# A real SA ID is YYMMDD + sequence + citizenship digit + Luhn check digit, so all three
-# structural properties are required before calling it PII.
+# The 13-digit format checked here is YYMMDD + sequence + citizenship digit + Luhn check
+# digit, so all three structural properties are required before calling it PII.
 _THIRTEEN = re.compile(r"(?<!\d)\d{13}(?!\d)")
 
 

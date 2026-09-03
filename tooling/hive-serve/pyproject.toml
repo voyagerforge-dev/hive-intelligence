@@ -1,11 +1,15 @@
 [project]
 name = "vf-hive-serve"
-version = "0.1.0"
+version = "0.5.0"
 description = "Serve + test OKF concept cards as agent context (no RAG)"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
-dependencies = ["vf-hive-gen", "pydantic>=2.9", "pydantic-settings>=2.5", "PyYAML>=6.0", "mcp==1.28.1", "fastapi>=0.135", "uvicorn>=0.30", "prometheus_client>=0.20", "psycopg[binary]>=3.2"]
+# vf-hive-gen is pinned exactly, not floored: the five packages are released as one
+# engine at one version (tools/set-release-version.sh writes it), and an unconstrained
+# dependency would let a consumer pinning this version resolve a different hive-gen
+# behind it.
+dependencies = ["vf-hive-gen==0.5.0", "pydantic>=2.9", "pydantic-settings>=2.5", "PyYAML>=6.0", "mcp==1.28.1", "fastapi>=0.135", "uvicorn>=0.30", "prometheus_client>=0.20", "psycopg[binary]>=3.2"]
 
 [project.scripts]
 hiveserve = "hiveserve.server:main"
@@ -13,6 +17,11 @@ hiveserve = "hiveserve.server:main"
 [project.optional-dependencies]
 dev = ["pytest>=8.3", "ruff>=0.7", "httpx>=0.27"]
 
+# Local development resolves hive-gen from the sibling directory; the published wheel
+# resolves it from wherever the release went, at the exact version pinned above. Note that
+# `uv.lock` records the path override INSTEAD of that `==` specifier, so `uv sync` will not
+# notice if the two versions drift apart. `tools/build-release.sh` is what refuses on that,
+# and it reads the built wheel's own metadata rather than either file.
 [tool.uv.sources]
 vf-hive-gen = { path = "../hive-gen", editable = true }
 

@@ -1,4 +1,3 @@
-# src/hiveprep/normalize.py
 """Normalize a source document to a PDF intermediate the transform step can render.
 
   DOCX                       -> strike-trim -> clean.docx -> (LibreOffice) PDF

@@ -209,3 +209,51 @@ def test_a_typo_in_atomic_dir_names_atomic_dir_and_not_the_corpus_profile(corpus
     assert "ATOMIC_DIR" in message and str(typo) in message
     assert "CORPUS_PROFILE" not in message, "sent the operator after the wrong setting"
     assert corpus_run["proposed"] is False
+
+
+def test_run_refuses_the_r2_fallback_without_a_bucket(corpus_run, monkeypatch):
+    """An empty ATOMIC_DIR puts the pass on the R2 reader, and neither R2 setting may be
+    guessed there. R2_PREFIX used to default to a real prefix inside a real private bucket,
+    so the value was both a disclosure to everyone who installed the wheel and a silent
+    fallback for an operator who never set one."""
+    monkeypatch.setenv("CARD_CORPUS_ROOT", str(corpus_run["corpus"]))
+    monkeypatch.setenv("ATOMIC_DIR", "")
+    monkeypatch.delenv("R2_BUCKET", raising=False)
+    monkeypatch.delenv("R2_PREFIX", raising=False)
+    get_settings.cache_clear()
+
+    with pytest.raises(SystemExit) as exc:
+        hivegen.run.main()
+    assert "R2_BUCKET" in str(exc.value)
+    assert corpus_run["proposed"] is False
+
+
+def test_run_refuses_the_r2_fallback_without_a_prefix(corpus_run, monkeypatch):
+    """A bucket without a prefix reads the WHOLE bucket. Buckets are shared between
+    datasets, so that is not 'everything I wanted', it is 'everything anyone put there'."""
+    monkeypatch.setenv("CARD_CORPUS_ROOT", str(corpus_run["corpus"]))
+    monkeypatch.setenv("ATOMIC_DIR", "")
+    monkeypatch.setenv("R2_BUCKET", "some-bucket")
+    monkeypatch.delenv("R2_PREFIX", raising=False)
+    get_settings.cache_clear()
+
+    with pytest.raises(SystemExit) as exc:
+        hivegen.run.main()
+    assert "R2_PREFIX" in str(exc.value)
+
+
+def test_run_refuses_the_r2_fallback_without_an_endpoint(corpus_run, monkeypatch):
+    """The third setting is refused for the same reason as the other two: unguarded, the run
+    reached botocore and died there on `ValueError: Invalid endpoint:`, which names no
+    setting an operator could act on."""
+    monkeypatch.setenv("CARD_CORPUS_ROOT", str(corpus_run["corpus"]))
+    monkeypatch.setenv("ATOMIC_DIR", "")
+    monkeypatch.setenv("R2_BUCKET", "some-bucket")
+    monkeypatch.setenv("R2_PREFIX", "some/prefix")
+    monkeypatch.delenv("R2_ENDPOINT", raising=False)
+    get_settings.cache_clear()
+
+    with pytest.raises(SystemExit) as exc:
+        hivegen.run.main()
+    assert "R2_ENDPOINT" in str(exc.value)
+    assert corpus_run["proposed"] is False

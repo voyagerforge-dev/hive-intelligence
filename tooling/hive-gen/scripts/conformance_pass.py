@@ -18,8 +18,8 @@ import yaml
 #
 # The comment here used to say cards are portable so the host cannot be baked in, and then
 # defaulted to a host anyway, which is an invitation to run the pass with a real one. The
-# EXAMPLECO corpus took that invitation: 991 cards were written with an absolute URI and every one
-# of them had to be rewritten on 2026-07-29 when the deployment moved domains. A card
+# first corpus to run it took that invitation: 991 cards were written with an absolute URI
+# and every one had to be rewritten on 2026-07-29 when the deployment moved domains. A card
 # outlives any one deployment's hostname, so the default is the thing that stays true.
 #
 # Override with CARD_BASE_URL only where a deployment genuinely needs absolute URIs, and

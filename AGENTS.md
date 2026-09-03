@@ -5,8 +5,9 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 ## What this repository is
 
 The Hive **engine** only. The corpus (cards, taxonomies, eval sets, corpus profile) has lived in a
-separate repository since the 2026-08-11 split, and consumers pin this one by annotated `vX.Y.Z`
-git tag. Nothing here should read or write a corpus path it was not given.
+separate repository since the 2026-08-11 split, and consumers pin this one at a version - see
+"Releasing it" for what a version means here and where it is recorded. Nothing here should read
+or write a corpus path it was not given.
 
 **A corpus path that is unset, empty, or not a directory must refuse with a message naming the
 setting.** Never resolve it to something plausible instead. Deriving one by walking up from
@@ -43,6 +44,25 @@ can disagree with CI in both directions, so check with the pinned range before c
 
 `hive-serve`'s ledger tests start a real Postgres container (docker or podman) and deliberately fail
 rather than skip when they cannot.
+
+## Releasing it
+
+Five distributions (`hive-author` is not one of them) ship as **one engine at one version**:
+`tools/set-release-version.sh` writes that version everywhere it is recorded - the five
+pyprojects, hive-serve's pin on hive-gen, and every `uv.lock` under `tooling/`, hive-author's
+included because it pins hive-gen. `tools/build-release.sh` refuses a set that disagrees with
+itself, a lockfile still on the previous version, or a wheel whose own metadata is wrong, and
+`tools/verify-clean-install.sh` installs and runs the built artefacts in a container holding no
+credential of ours. Run all three before believing a release works; a build nobody installed
+elsewhere is the failure this path exists to end.
+
+Publication is **PyPI, wheels only, Trusted Publishing, no token anywhere**, and it happens ONLY
+from a pushed `v*` tag. It is irreversible - PyPI refuses a re-upload and a yank does not un-copy
+what mirrors took - so audit what is inside the wheels before tagging, not after, and re-check
+the names are still free immediately before. A new distribution name additionally needs a pending
+publisher registered on PyPI first.
+[docs/architecture/engine-distribution.md](docs/architecture/engine-distribution.md) has all of
+it, including why a release on this private repository was not an option.
 
 ## Maintaining this file
 

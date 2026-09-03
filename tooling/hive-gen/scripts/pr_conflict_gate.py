@@ -1,5 +1,5 @@
-"""Orchestration core for the memory-conflict PR gate (used by the Windmill runnable
-f/example/okf/memory_conflict_gate). Composes the tested memory_lint + memory_conflict_score
+"""Orchestration core for the memory-conflict PR gate (invoked by a Windmill runnable that
+lives with the deployment). Composes the tested memory_lint + memory_conflict_score
 over a checked-out PR tree and turns the verdict into a GitHub commit-status payload.
 Pure/testable: the LLM and all I/O are injected by the caller."""
 from __future__ import annotations

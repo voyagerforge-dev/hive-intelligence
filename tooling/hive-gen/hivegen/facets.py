@@ -1,4 +1,3 @@
-# knowledge/okf/tooling/hive-gen/hivegen/facets.py
 """Pure facet helpers over OKF card frontmatter: read, idempotent stamp, cross-facet edge lint."""
 from __future__ import annotations
 

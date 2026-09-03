@@ -8,3 +8,6 @@ __pycache__/
 # out of the package directory and packaging must not silently drop the licence.
 tooling/*/LICENSE
 tooling/*/NOTICE
+
+# Release artefacts. `uv build` self-ignores its out-dir, but the rule belongs here too.
+/dist/

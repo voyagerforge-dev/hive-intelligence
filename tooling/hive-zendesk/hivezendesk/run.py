@@ -159,6 +159,22 @@ def main() -> int:
                  rep.scanned, rep.linked, rep.declined, rep.no_shortlist, rep.cleared)
         return 0
 
+    # Before any work, and before boto3: neither setting has a default. R2_BUCKET used to
+    # name a real private bucket, and an operator who never set one then read somebody
+    # else's staged cards instead of being told to name their own.
+    if args.mode == "rebuild":
+        for value, setting, why in (
+            (s.r2_bucket, "R2_BUCKET",
+             ("a bucket that is not yours lists nothing, which reads exactly like a bucket "
+              "with nothing staged in it")),
+            (s.r2_endpoint, "R2_ENDPOINT",
+             ('an empty one is not usable - botocore raises "Invalid endpoint:" as the '
+              "client is built, several frames down, naming nothing you can act on")),
+        ):
+            if not value.strip():
+                ap.error(f"{setting} is not set. `rebuild` reads cards staged on R2 and there "
+                         f"is no default: {why}. Set it in the environment or a .env file.")
+
     for name in ("customers", "state_dir"):
         if not getattr(args, name):
             ap.error(f"--{name.replace('_', '-')} is required for mode {args.mode}")

@@ -1,4 +1,3 @@
-# src/hiveprep/striptrim.py
 """Remove struck-through text from a DOCX, deterministically.
 
 Strikethrough in Word is a run property: <w:strike/> (single) or <w:dstrike/>

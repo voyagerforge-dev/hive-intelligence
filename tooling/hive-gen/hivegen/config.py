@@ -31,11 +31,17 @@ class Settings(BaseSettings):
     # corpus-profile.yaml in the working directory, then beside ATOMIC_DIR.
     corpus_profile: str = ""
 
+    # The R2 fallback source, used only when ATOMIC_DIR is empty. None of these has a
+    # default, including the prefix: it shipped as a real prefix inside a real private
+    # bucket, which disclosed that location to everyone who installed the package and let
+    # an operator who never set one read a location that was not theirs. Buckets are shared
+    # between datasets, so an empty prefix is not "everything I wanted", it is "everything
+    # anyone put there". `run.py` refuses, naming the setting, before boto3 is reached.
     r2_endpoint: str = ""
     r2_access_key_id: str = ""
     r2_secret_access_key: str = ""
     r2_bucket: str = ""
-    r2_prefix: str = "example_prefix/"
+    r2_prefix: str = ""
 
     bifrost_base: str
     bifrost_api_key: str

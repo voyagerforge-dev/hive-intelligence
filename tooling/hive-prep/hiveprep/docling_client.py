@@ -1,4 +1,4 @@
-"""Docling client, document bytes → clean markdown via the Host-A Docling gateway."""
+"""Docling client, document bytes → clean markdown via the configured Docling gateway."""
 import httpx
 
 
@@ -22,7 +22,7 @@ class DoclingClient:
         tables preserved as markdown."""
         files = {"files": (filename, content)}
         data = {"to_formats": "md", "do_ocr": "false"}
-        # Docling on Host-A is LAN-keyless; only send Authorization when a key is set
+        # A LAN Docling gateway is typically keyless; only send Authorization when a key is set
         # (an empty key would produce a malformed `Bearer ` header that httpx rejects).
         headers = {"Authorization": f"Bearer {self._key}"} if self._key else {}
         try:
