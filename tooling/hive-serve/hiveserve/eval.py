@@ -60,7 +60,7 @@ def score_memory(expected_memory, bundle_ids, expected_client, selected_clients)
     return {"memory_ok": cross == 0 and expected_memory in set(bundle_ids), "cross_client": cross}
 
 
-def judge_reference(expected_ids, bundle_ids, get_card_fn) -> str:
+def judge_reference(expected_ids, bundle_cards: dict[str, str], get_card_fn) -> str:
     """The REFERENCE the judge grades against: expected cards first, then the bundle.
 
     Since 2026-09-06 this is the union, not `expected_card_ids` alone. The answerer is
@@ -69,12 +69,13 @@ def judge_reference(expected_ids, bundle_ids, get_card_fn) -> str:
     a measured 70-question run, ten of the eleven `correct: false` verdicts were exactly
     that artefact and one was a genuine content error.
 
-    Expected first because they are the labelled answer and a truncating judge should see
-    them; ids are de-duplicated in order, since an expected card is usually in the bundle
-    too and showing it twice teaches the judge nothing.
+    Expected cards come first, with ids de-duplicated in order and no truncation in either
+    mode. Bundle members retain the exact texts delivered to the answerer; only expected
+    cards absent from that bundle are loaded separately.
     """
-    ids = list(dict.fromkeys([*expected_ids, *bundle_ids]))
-    return "\n\n".join(filter(None, (get_card_fn(cid) for cid in ids)))
+    ids = dict.fromkeys([*expected_ids, *bundle_cards])
+    return "\n\n".join(filter(None, (
+        bundle_cards[cid] if cid in bundle_cards else get_card_fn(cid) for cid in ids)))
 
 
 def judge_answer(question, answer, reference_text, llm) -> dict:
@@ -140,7 +141,7 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
                                 [b for b in res["bundle_ids"] if "/corrections/" in b])
         mem = score_memory(item.get("expects_memory"), res["bundle_ids"], item.get("client"),
                            [client_of.get(i) for i in res["bundle_ids"]])
-        ref = judge_reference(item["expected_card_ids"], res["bundle_ids"], get_card_fn)
+        ref = judge_reference(item["expected_card_ids"], res["bundle_cards"], get_card_fn)
         verdict = judge_answer(item["question"], res["answer"], ref, judge_llm)
         rows.append({"id": item["id"], "question": item["question"],
                      "selected_ids": res["selected_ids"], "bundle_ids": res["bundle_ids"],

@@ -1,3 +1,5 @@
+import pytest
+
 from hiveserve.eval import (
     judge_answer,
     load_qa,
@@ -116,36 +118,73 @@ def test_score_memory_hit_isolation_and_cross_client():
 
 def test_judge_reference_is_expected_then_bundle_deduplicated():
     from hiveserve.eval import judge_reference
-    ref = judge_reference(["a"], ["b", "a", "c"], lambda cid: f"CARD {cid}")
-    assert ref == "CARD a\n\nCARD b\n\nCARD c"
+    loaded = []
+
+    def get_expected(cid):
+        loaded.append(cid)
+        return f"CARD {cid}"
+
+    ref = judge_reference(["a", "expected", "a"],
+                          {"b": "SAVED b", "a": "SAVED a", "c": "SAVED c"}, get_expected)
+    assert ref == "SAVED a\n\nCARD expected\n\nSAVED b\n\nSAVED c"
+    assert loaded == ["expected"]
 
 
-def test_judge_reference_skips_cards_that_cannot_be_read():
+def test_judge_reference_skips_missing_expected_only_cards():
     from hiveserve.eval import judge_reference
-    ref = judge_reference(["a"], ["gone"], lambda cid: None if cid == "gone" else "CARD a")
-    assert ref == "CARD a"
+    ref = judge_reference(["gone"], {"a": "SAVED a"}, lambda cid: None)
+    assert ref == "SAVED a"
 
 
-def test_run_eval_shows_the_judge_the_whole_bundle(tmp_path):
-    """A card pulled in by a cross-link is in the bundle, so it must be in the reference."""
-    (tmp_path / "a.md").write_text(
-        "---\ntitle: A\ndescription: d\nrelated: [b]\nsources: [a.md]\n---\n\nbody about x\n")
-    (tmp_path / "b.md").write_text(
-        "---\ntitle: B\ndescription: d\nrelated: []\nsources: [b.md]\n---\n\nlinked body\n")
+@pytest.mark.parametrize("mode", ["progressive", "ceiling"])
+@pytest.mark.parametrize("mutation", ["edit", "delete"])
+def test_run_eval_judge_receives_the_actual_bundle_snapshot(tmp_path, mode, mutation):
+    cards = {
+        "a": "---\ntitle: A\ndescription: d\nrelated: [b]\nsources: [a.md]\n---\n\nbody about x\n",
+        "b": ("---\ntitle: B\ndescription: d\nrelated: []\nsources: [b.md]\n---\n\n"
+              + "linked detail\n" * 4000 + "\n---\n\nlinked tail\n"),
+        "corrections/fix": ("---\ntitle: Fix\ntype: correction\ncorrects: a\nstatus: approved\n"
+                            "---\n\ncorrected fact\n"),
+    }
+    for cid, text in cards.items():
+        path = tmp_path / f"{cid}.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+    expected = "---\ntitle: Expected\ntype: correction\nstatus: draft\n---\n\nlabelled fact\n"
+    (tmp_path / "expected.md").write_text(expected)
     seen = {}
+    loaded = []
+
+    class Answer:
+        def complete(self, system, user):
+            seen["answer"] = user
+            (tmp_path / "a.md").write_text("replacement expected card")
+            if mutation == "delete":
+                (tmp_path / "b.md").unlink()
+            else:
+                (tmp_path / "b.md").write_text("replacement linked card")
+            (tmp_path / "corrections" / "fix.md").unlink()
+            return "answer [a.md] [b.md]"
 
     class Judge:
         def complete(self, system, user):
-            seen["ref"] = user
+            seen["judge"] = user
             return '{"grounded": true, "correct": true, "note": "ok"}'
 
-    qa = [{"id": "q1", "question": "x?", "expected_card_ids": ["a"]}]
-    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=FixedAnswer(),
-                   judge_llm=Judge(),
-                   get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text(),
-                   mode="progressive")
-    assert res["rows"][0]["bundle_ids"] == ["a", "b"]
-    assert "body about x" in seen["ref"] and "linked body" in seen["ref"]
+    def get_expected(cid):
+        loaded.append(cid)
+        assert cid == "expected"
+        return (tmp_path / f"{cid}.md").read_text()
+
+    qa = [{"id": "q1", "question": "x?", "expected_card_ids": ["expected", "a", "a"]}]
+    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=Answer(),
+                   judge_llm=Judge(), get_card_fn=get_expected, mode=mode)
+    assert res["rows"][0]["bundle_ids"] == list(cards)
+    bundle = "\n\n---\n\n".join(cards.values())
+    assert seen["answer"] == f"KNOWLEDGE CARDS:\n{bundle}\n\nQUESTION: x?"
+    reference = "\n\n".join([expected, *cards.values()])
+    assert seen["judge"] == f"QUESTION: x?\n\nANSWER: answer [a.md] [b.md]\n\nREFERENCE:\n{reference}"
+    assert loaded == ["expected"]
 
 
 # --- a model that returns nothing is a broken run, not a score of zero ------------------

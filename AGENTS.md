@@ -31,11 +31,13 @@ environment, so it must be **exported** to have any effect at all. See
 The same rule covers `.env.example`: no absolute path under anyone's home directory. Those files
 are what a new operator copies, and a dead path there is invisible until it produces nothing.
 
-**Client scope is one predicate, and it is structural.** A card is scoped to a client by its
-`clients/<client>/...` path, never by what its frontmatter claims, and every door that offers a
-card to a caller asks `hiveserve.resolver.out_of_client_scope`. Do not write a second copy of that
-test: the one in the evaluation selector drifted to `memory` alone and put every client's `issue`
-cards into every selector prompt, which reached the model gateway before anyone noticed.
+**Client scope is retrieval context, not authorization.** Within one trusted organization,
+authenticated personnel may select any client; shared knowledge must not contain confidential client
+information. See [the serving trust boundary](docs/guides/serving-cards.md#identity-and-what-it-is-not).
+Scope is structural, derived from `clients/<client>/...`, not frontmatter. Index consumers use
+`hiveserve.resolver.out_of_client_scope`; bundle traversal checks ids directly, while MCP `get_card`
+loads any known id. Keep index filtering shared: the selector's separate `memory`-only filter once
+sent every client's `issue` titles and descriptions to the model gateway.
 
 ## Working on it
 

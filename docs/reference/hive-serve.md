@@ -29,10 +29,9 @@ hiveserve serve --stdio     # MCP over stdio, for Claude Desktop and Claude Code
 particular is not accepted: the REST door serves shared knowledge only, and silently ignoring the
 field would return a 200 that looks exactly like scoping working.
 
-`GET /find_concepts` takes no `client` either, and neither does `GET /concepts`. The MCP door passes
-one to both, because it resolves an owner from a trusted proxy header; this door carries no identity,
-so a client name in a query string would be an unauthenticated caller asserting who they are. The
-clients tree is not handed to the REST search at all, so no client card can be in its candidate set.
+`GET /find_concepts` takes no `client` either, and neither does `GET /concepts`; unknown query
+parameters are ignored. REST's existing surface is shared-only and does not load the clients tree.
+MCP accepts a caller-selected client as retrieval context, independently of ledger identity.
 
 ## MCP tools
 
@@ -65,8 +64,8 @@ Fifteen, in three groups.
 | `index.py` | emit `index.md` and render `related` into inline links. Not on the serving path |
 | `agent.py`, `eval.py`, `run_eval.py` | offline evaluation. **Not on the serving path** |
 
-`tools.py` existing is the reason the two doors cannot drift: both call the same wrappers, and
-isolation is enforced once.
+Both doors call the transport-agnostic wrappers in `tools.py`. REST supplies only the concepts tree;
+MCP also supplies the clients tree and, for scoped operations, the caller-selected client.
 
 ## The resolver
 
@@ -74,9 +73,9 @@ isolation is enforced once.
 ids beginning `clients/` map under `<clients>`. A path that escapes its base resolves to `None`, so
 a traversal attempt returns a missing card rather than a file.
 
-**Client scope is structural**, derived from the id path rather than a frontmatter field. A card is
-in scope when its client matches the caller's, or when it has no client. A frontmatter field can be
-absent or wrong; a path cannot.
+**Client scope is structural**, derived from the id path rather than a frontmatter field. In scoped
+retrieval, a card is in scope when its client matches the selected context, or when it has no client.
+This is not per-client authorization; MCP `get_card` can load any known card id.
 
 **The index excludes the database-object tier.** `concepts/<product>/db/**` is skipped, because a
 real schema would swamp it. Those cards are reached through `find_db_objects` and by id.
@@ -89,11 +88,10 @@ real schema would swamp it. Those cards are reached through `find_db_objects` an
 no network, no runtime dependency past the standard library, and no state that outlives the call.
 
 **`find_concepts` takes an optional `client`** (MCP door only, see above). Named, it adds that
-client's own `memory` and `issue` cards to the candidate set and nothing else; unnamed, the
-candidates are the concept tier alone, exactly as before. Scope is the structural, path-derived rule
-`list_concepts` and `resolve` already apply - `resolver.out_of_client_scope`, one predicate now used
-by all three, reading a card's `clients/<client>/...` path rather than anything the card says about
-itself. Before 2026-09-06 search filtered to `type == "concept"` and took no client at any door, so a
+client's own `memory` cards to the candidate set, never issue cards; unnamed, the candidates are the
+concept tier alone, exactly as before. Search, listing and the evaluation selector share
+`resolver.out_of_client_scope` over the path-derived index. Bundle traversal checks the same client
+context directly from ids, rather than anything the card says about itself. Before 2026-09-06 search filtered to `type == "concept"` and took no client at any door, so a
 client's memory was reachable only by an agent that already knew the card's id. Note that widening
 the candidates also widens the collection idf is computed over, so a client-scoped search can order
 the same concept cards slightly differently from an unscoped one; that is what idf means, and an
@@ -144,7 +142,11 @@ owner and validated against enums.
 ## Identity
 
 `IDENTITY_HEADER` names a header that is **trusted on arrival and never verified**. Whatever it
-contains becomes the owner and the client scope.
+contains becomes the ledger owner, not the retrieval client. Authenticated personnel within one
+trusted organization may select any client. Client context is not per-client authorization, and
+Hive does not provide cross-organization tenancy. Operators must not put confidential client
+information into shared knowledge; this expectation does not establish that an existing corpus is
+free of confidential material. Keep private corpora and raw evaluation reports private.
 
 Anything that can reach the port can claim any identity. The default binding is loopback for that
 reason, and an authenticating proxy that strips the header from inbound requests is required, not
@@ -192,8 +194,10 @@ retrieved. Reports are written under `OKF_DATA_DIR`.
 after, and the two must not be put in the same table.**
 
 The judge's REFERENCE is now the **union of the row's `expected_card_ids` and the bundle the
-answerer actually saw**, expected cards first, de-duplicated. It used to be `expected_card_ids`
-alone. The answerer is instructed to use the whole bundle and does, so an answer that cited a real,
+answerer actually saw**, expected cards first, de-duplicated, with no truncation in either progressive
+or ceiling mode. Bundle members use the exact card texts delivered to the answerer, even if those
+files change or disappear during the model call; only expected-only cards are loaded separately.
+It used to be `expected_card_ids` alone. The answerer is instructed to use the whole bundle and does, so an answer that cited a real,
 correctly retrieved card outside the expected set was marked ungrounded for citing it - the judge
 had never been given that card. On a measured 70-question run, ten of the eleven `correct: false`
 verdicts were exactly this artefact and one was a genuine content error.
@@ -226,7 +230,8 @@ Module-level detail, verified against the code on 2026-07-30.
 
 ### `resolver.py`, the whole retrieval algorithm
 
-Everything selection-related lives here, which is why both doors cannot drift apart on isolation.
+Index construction and bundle traversal live here. Their client scope is retrieval context, not
+an identity-bound access control.
 
 **`card_path`** maps a card id to a file. Ids starting `clients/` resolve under `CLIENTS_DIR`,
 everything else under `CONCEPTS_DIR`. Both are resolved and bounds-checked, so a crafted id cannot

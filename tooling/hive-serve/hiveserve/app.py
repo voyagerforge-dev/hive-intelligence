@@ -11,11 +11,6 @@ from hiveserve.resolver import get_card
 
 
 class ResolveRequest(BaseModel):
-    # Reject unknown fields rather than ignoring them. The REST door serves shared
-    # knowledge only: client-scoped memory and issue cards are reachable through MCP,
-    # which carries an identity, and not here. Without this, a caller passing
-    # `client` gets a 200 and a shared-only answer, and has no way to tell that the
-    # scoping they asked for was never applied.
     model_config = ConfigDict(extra="forbid")
 
     ids: list[str]
@@ -42,12 +37,6 @@ def build_rest_router(settings) -> APIRouter:
 
     @router.get("/find_concepts")
     def find_concepts(q: str, product: str | None = None, limit: int = 20) -> list[dict]:
-        # No `client` here, for the same reason `/concepts` above has none and `/resolve`
-        # below rejects the field: this door carries no identity, so a client name in a
-        # query string is an assertion by an anonymous caller. `tools.find_concepts` takes
-        # a client and MCP passes one, because that door resolves an owner from a trusted
-        # proxy header. Here the clients tree is not even handed to the search, so the
-        # candidate set cannot contain a client card whatever the caller sends.
         return tools.find_concepts(cdir, q, product=product, limit=limit)
 
     @router.get("/card/{card_id:path}")

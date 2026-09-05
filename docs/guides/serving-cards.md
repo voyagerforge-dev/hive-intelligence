@@ -22,13 +22,19 @@ speak directly. Full settings in [configuration](../reference/configuration.md).
 `hive-serve` trusts a header. It does not verify one.
 
 `IDENTITY_HEADER` names the header carrying the caller's identity, and whatever arrives in it
-becomes the owner for ledger operations and the client scope for isolation. There is no signature
-check, no token validation, and no session.
+becomes the owner for ledger operations. It does not select or authorize a retrieval client. There
+is no signature check, no token validation, and no session.
+
+Hive serves **one trusted organization**. Authenticated personnel may select any client as retrieval
+context; there is no per-client authorization or cross-organization tenancy. Operators must keep
+confidential client information out of shared knowledge. That operating expectation is not evidence
+that an existing corpus contains no confidential material; private corpora and raw evaluation
+reports must still be handled privately.
 
 **This means anything that can reach the port can claim to be anyone.** The binding in the example
 compose file defaults to loopback for exactly this reason. In any deployment reachable beyond the
-host, an authenticating proxy in front is not a hardening step, it is the only thing standing
-between a caller and another client's memory cards.
+host, an authenticating proxy is required to restrict access to organization personnel and establish
+ledger ownership. It does not restrict which client's knowledge an authenticated operator can read.
 
 The design is deliberate: authentication belongs to whatever your organisation already uses, and a
 service that implements its own is a service with its own auth bugs. But it is only safe if the
@@ -56,10 +62,10 @@ were green throughout. Alert on the card-count gauge, never on health. See
 
 ### REST serves shared knowledge only
 
-Client-scoped memory and issue cards are **not reachable over REST**. That door has no identity
-plumbing, so it serves only what is shared.
+Client-scoped memory and issue cards are **not reachable over REST**. That door's existing contract
+serves only the concepts tree and accepts no client context; this is not an identity-based policy.
 
-Asking for client scoping is rejected rather than ignored:
+`POST /resolve` rejects a client field rather than ignoring it:
 
 ```bash
 curl -X POST localhost:8015/resolve -d '{"ids":["x"],"client":"alpha"}'
@@ -67,7 +73,8 @@ curl -X POST localhost:8015/resolve -d '{"ids":["x"],"client":"alpha"}'
 ```
 
 A silent ignore would return 200 with a shared-only answer, and the caller would have no way to
-know the scoping was never applied. That failure mode looks exactly like isolation working.
+know the scoping was never applied. `GET /concepts` and `GET /find_concepts` also take no client;
+FastAPI ignores unknown query parameters on those routes.
 
 ### `/resolve` is the interesting one
 
@@ -115,17 +122,18 @@ Fifteen tools in three groups.
 `promote` does not write to the corpus. It files a submission for review; see
 [corrections and memory](corrections-and-memory.md).
 
-## Client isolation
+## Client context
 
-Cards under `clients/<client>/` are scoped to that client, derived structurally from the id path
-rather than from a frontmatter field. A card is in scope only when its client matches the caller's,
-and cards with no client are shared.
+Cards under `clients/<client>/` are scoped structurally by path, not by frontmatter. Listings,
+search and bundle traversal filter against the caller-selected `client`, keeping one site's
+modifications and incidents out of another site's answers. With no client selected they offer
+shared knowledge only. Search adds only the named client's memory, not issue-card history.
 
-Enforcement lives in the resolver, so both doors get it from the same place and neither can drift.
-
-**What this does and does not give you.** It is a serving-time control. Every client's cards sit in
-one repository, separated by directory. Anyone who can read the repository can read all of them.
-If clients need separation stronger than that, they need separate corpora.
+The index filters share `resolver.out_of_client_scope`; bundle traversal checks client ids directly.
+MCP `get_card` loads any known card id without a client argument. These are retrieval controls, not
+access controls: authenticated personnel within the organization may read any client's cards.
+Anyone who can read the corpus repository can also read all of them. Deployments requiring an
+independent trust boundary need separate corpora and separately controlled access.
 
 ## The ledger
 

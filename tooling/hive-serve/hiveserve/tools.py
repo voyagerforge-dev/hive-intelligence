@@ -2,13 +2,7 @@
 from __future__ import annotations
 
 from hiveserve.ranking import rank
-from hiveserve.resolver import (
-    CLIENT_SCOPED_TYPES,
-    get_card,
-    load_index,
-    out_of_client_scope,
-    resolve,
-)
+from hiveserve.resolver import get_card, load_index, out_of_client_scope, resolve
 
 _LEAN_FIELDS = ("id", "title", "product", "type", "regime", "version",
                 "client", "corrects", "status")
@@ -33,20 +27,6 @@ def list_concepts(concepts_dir, clients_dir=None, client=None, product=None) -> 
     return out
 
 
-def _searchable(card: dict, client) -> bool:
-    """Whether `find_concepts` may rank this card for a caller asking as `client`.
-
-    Concept cards, always - the search door has never offered corrections, and it stays
-    that way. Client-scoped cards only for the client that owns them, decided by
-    `out_of_client_scope`, which is the rule the catalogue listing and `resolve` already
-    use. With no client named this reduces to `type == "concept"`, the filter that was
-    here before, so an unscoped search sees exactly the candidate set it always saw.
-    """
-    if card.get("type") == "concept":
-        return True
-    return card.get("type") in CLIENT_SCOPED_TYPES and not out_of_client_scope(card, client)
-
-
 def find_concepts(concepts_dir, query, clients_dir=None, product=None, limit=20,
                   client=None) -> list[dict]:
     """Keyword search over concept cards by title / description / id.
@@ -63,10 +43,10 @@ def find_concepts(concepts_dir, query, clients_dir=None, product=None, limit=20,
     changes which cards score above zero, so a query of only stopwords now returns nothing
     and a query fragment no longer matches inside a longer word.
 
-    `client` widens the candidate set to that client's own cards, and to nothing else. It
-    is the same scope rule the catalogue listing above and `resolve` already apply, asked
-    through the same `out_of_client_scope`, and scope is derived from a card's path rather
-    than from anything it says about itself. Without it the candidate set is the concept
+    `client` adds only that client's memory cards, not issue cards. The index filter uses
+    `out_of_client_scope`, as does the catalogue listing; the resolver checks the same
+    structural scope directly from ids. Client context is chosen by the caller, not derived
+    from identity. Without it the candidate set is the concept
     tier alone, exactly as before: a client's memory used to be reachable only by an agent
     that already knew the card's id, because search filtered to `type == "concept"` and
     took no client at any door.
@@ -77,7 +57,8 @@ def find_concepts(concepts_dir, query, clients_dir=None, product=None, limit=20,
     searched - and an unscoped search is unaffected.
     """
     candidates = [c for c in load_index(concepts_dir, clients_dir)
-                  if _searchable(c, client)
+                  if (c.get("type") == "concept"
+                      or (c.get("type") == "memory" and not out_of_client_scope(c, client)))
                   and (product is None or c.get("product") == product)]
     # Document frequencies come from `candidates`, so idf describes the collection actually
     # being searched. That is also the whole index this call already loaded: there is no
@@ -97,5 +78,6 @@ def get_card_text(concepts_dir, card_id: str, clients_dir=None) -> str:
 
 def resolve_cards(concepts_dir, ids, depth: int = 1, max_cards: int = 8, max_chars: int | None = None,
                   clients_dir=None, client=None) -> dict:
-    return resolve(concepts_dir, list(ids), depth=depth, max_cards=max_cards, max_chars=max_chars,
-                   clients_dir=clients_dir, client=client)
+    resolved = resolve(concepts_dir, list(ids), depth=depth, max_cards=max_cards, max_chars=max_chars,
+                       clients_dir=clients_dir, client=client)
+    return {key: resolved[key] for key in ("card_ids", "bundle", "dropped", "corrections")}

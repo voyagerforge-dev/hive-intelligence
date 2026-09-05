@@ -40,7 +40,7 @@ def build_mcp(settings, conn_factory) -> FastMCP:
         set with descriptions. Use this for any topic or subject question ("explain X",
         "how does Y work") instead of listing the whole catalogue; then load the ids you
         want with `resolve` / `get_card`. Optionally scope by `product`, or by `client` to
-        search that client's own memory and issue cards alongside the shared ones."""
+        search that client's own memory cards alongside the shared ones."""
         return tools.find_concepts(cdir, query, clients_dir=cldir, product=product,
                                    limit=limit, client=client)
 
@@ -53,8 +53,7 @@ def build_mcp(settings, conn_factory) -> FastMCP:
     @mcp.tool()
     @track_tool("resolve")
     def resolve(ids: list[str], depth: int = 1, client: str | None = None) -> dict:
-        """Load cards by id plus cross-linked neighbours; `client` scopes client memory
-        (hard-isolated)."""
+        """Load cards by id plus cross-linked neighbours in the selected client context."""
         return tools.resolve_cards(cdir, ids, depth=depth, max_cards=settings.max_cards,
                                    max_chars=settings.max_chars, clients_dir=cldir,
                                    client=client)

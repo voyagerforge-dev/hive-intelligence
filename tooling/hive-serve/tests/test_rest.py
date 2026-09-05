@@ -33,7 +33,7 @@ def test_concepts_and_card(tmp_path):
 def test_resolve(tmp_path):
     c = _client(tmp_path)
     r = c.post("/resolve", json={"ids": ["wave-replen"], "depth": 1}).json()
-    assert r["card_ids"] == ["wave-replen"]
+    assert r == {"card_ids": ["wave-replen"], "bundle": CARD, "dropped": [], "corrections": []}
 
 
 def test_card_route_accepts_path_id_with_slash(tmp_path):
@@ -54,11 +54,8 @@ def test_card_route_accepts_path_id_with_slash(tmp_path):
 def test_find_concepts_route_serves_no_client_card_and_takes_no_client(tmp_path):
     """The REST door searches shared knowledge only, like `/concepts` and `/resolve`.
 
-    `find_concepts` gained a `client` argument so the MCP door - which resolves an owner
-    from a trusted proxy header - can search a client's own memory. This door carries no
-    identity, so a client name here would be an assertion by an anonymous caller. The
-    clients tree is not handed to the search at all, so a client card cannot be in the
-    candidate set whatever the query string says.
+    MCP accepts caller-selected client context independently of ledger identity. REST's
+    existing contract does not load the clients tree or accept client context.
     """
     concepts = tmp_path / "concepts"
     clients = tmp_path / "clients"

@@ -108,7 +108,7 @@ def test_rest_door_refuses_an_unset_concepts_dir(tmp_path, monkeypatch):
 
 
 def _two_client_world(tmp_path):
-    """Concepts plus two isolated clients, each with one memory card."""
+    """Concepts plus two clients, each with memory and issue history."""
     concepts = tmp_path / "concepts"
     clients = tmp_path / "clients"
     (concepts / "widgets").mkdir(parents=True)
@@ -119,10 +119,14 @@ def _two_client_world(tmp_path):
         (clients / name / "memory" / "second-scan.md").write_text(
             f"---\ntitle: {name} second scan\ndescription: an extra allocation scan step\n"
             f"type: memory\n---\n\nmem\n")
+        (clients / name / "issues").mkdir()
+        (clients / name / "issues" / "allocation.md").write_text(
+            "---\ntitle: Allocation incident\ndescription: allocation scan failed\n"
+            "type: issue\n---\n\nincident\n")
     return concepts, clients
 
 
-def test_find_concepts_tool_takes_a_client_and_isolates_it(tmp_path, ledger_dsn):
+def test_find_concepts_tool_searches_only_selected_client_memory(tmp_path):
     """Dispatched through FastMCP's real call_tool path, not the underlying function.
 
     Client memory used to be unreachable through search at every door: `find_concepts`
@@ -131,7 +135,11 @@ def test_find_concepts_tool_takes_a_client_and_isolates_it(tmp_path, ledger_dsn)
     """
     concepts, clients = _two_client_world(tmp_path)
     s = Settings(concepts_dir=str(concepts), clients_dir=str(clients))
-    mcp = build_mcp(s, _factory(ledger_dsn))
+
+    def no_ledger():
+        raise AssertionError("Retrieval must not access the ledger")
+
+    mcp = build_mcp(s, no_ledger)
 
     def search(**kwargs):
         _, structured = anyio.run(

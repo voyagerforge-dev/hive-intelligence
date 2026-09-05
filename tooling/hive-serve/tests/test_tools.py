@@ -305,13 +305,6 @@ def test_find_concepts_finds_a_card_written_in_a_non_latin_script(tmp_path):
     assert [h["id"] for h in tools.find_concepts(tmp_path, "出荷ウェーブ")] == ["widgets/shukka-wave"]
 
 
-# --- find_concepts: client memory becomes searchable, and only for its own client -------
-#
-# Before this, search filtered to `type == "concept"` and took no client at any door, so a
-# client's memory and issue cards were reachable only by an agent that already knew their
-# ids. Scope is the structural, path-derived rule `list_concepts` and `resolve` already
-# apply, asked through the same `out_of_client_scope`, so the three cannot drift.
-
 def _two_client_world(tmp_path):
     """Concepts plus two isolated clients, each holding one memory and one issue card."""
     concepts = tmp_path / "concepts"
@@ -339,15 +332,10 @@ def test_find_concepts_finds_client_memory_only_under_its_own_client(tmp_path):
         return {h["id"] for h in tools.find_concepts(concepts, "allocation scan",
                                                      clients_dir=clients, client=client)}
 
-    # named: that client's own memory and issue cards join the shared concept tier
-    assert search("alpha") == {"widgets/allocation-process",
-                               "clients/alpha/memory/second-scan",
-                               "clients/alpha/issues/slow-pick"}
-    # unnamed: the concept tier alone, exactly as before
+    assert search("alpha") == {"widgets/allocation-process", "clients/alpha/memory/second-scan"}
     assert search(None) == {"widgets/allocation-process"}
-    # never another client's, whichever client is asking
-    assert not any(h.startswith("clients/acme/") for h in search("alpha"))
-    assert not any(h.startswith("clients/alpha/") for h in search("acme"))
+    assert search("acme") == {"widgets/allocation-process", "clients/acme/memory/second-scan"}
+    assert search("unknown") == {"widgets/allocation-process"}
 
 
 def test_find_concepts_without_a_client_is_unchanged_by_a_clients_tree(tmp_path):
@@ -369,8 +357,14 @@ def test_find_concepts_client_scope_is_structural_not_frontmatter(tmp_path):
     """
     concepts, clients = _two_client_world(tmp_path)
     (clients / "alpha" / "memory" / "mislabelled.md").write_text(
-        "---\ntitle: Mislabelled\ndescription: allocation scan notes\ntype: memory\n"
+        "---\ntitle: Mislabelled\ndescription: allocation scan notes\ntype: issue\n"
         "client: acme\n---\n\nmem\n")
+    (clients / "alpha" / "issues" / "mislabelled.md").write_text(
+        "---\ntitle: Mislabelled\ndescription: allocation scan notes\ntype: memory\n"
+        "client: alpha\n---\n\nissue\n")
+    assert "clients/alpha/issues/mislabelled" not in {
+        h["id"] for h in tools.find_concepts(concepts, "allocation scan",
+                                           clients_dir=clients, client="alpha")}
     assert "clients/alpha/memory/mislabelled" in {
         h["id"] for h in tools.find_concepts(concepts, "allocation scan",
                                              clients_dir=clients, client="alpha")}
@@ -388,3 +382,16 @@ def test_find_concepts_still_excludes_corrections_when_a_client_is_named(tmp_pat
     ids = {h["id"] for h in tools.find_concepts(concepts, "allocation scan",
                                                 clients_dir=clients, client="alpha")}
     assert "widgets/corrections/fix" not in ids
+
+
+def test_find_concepts_memory_respects_product_limit_and_response_contract(tmp_path):
+    concepts, clients = _two_client_world(tmp_path)
+    hits = tools.find_concepts(concepts, "allocation scan", clients_dir=clients,
+                               client="alpha", product="widgets")
+    memory = next(hit for hit in hits if hit["id"] == "clients/alpha/memory/second-scan")
+    assert memory == {"id": "clients/alpha/memory/second-scan", "title": "alpha second scan",
+                      "product": "widgets", "description": "an extra allocation scan step"}
+    assert tools.find_concepts(concepts, "allocation scan", clients_dir=clients,
+                               client="alpha", product="gadgets") == []
+    assert tools.find_concepts(concepts, "allocation scan", clients_dir=clients,
+                               client="alpha", product="widgets", limit=1) == hits[:1]

@@ -87,4 +87,4 @@ def answer_question(concepts_dir, question, *, select_llm, answer_llm,
     user = f"KNOWLEDGE CARDS:\n{resolved['bundle']}\n\nQUESTION: {question}"
     answer = answer_llm.complete(_ANSWER_SYS, user) or ""
     return {"answer": answer, "selected_ids": selected,
-            "bundle_ids": resolved["card_ids"], "mode": mode}
+            "bundle_ids": resolved["card_ids"], "bundle_cards": resolved["card_texts"], "mode": mode}

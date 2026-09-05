@@ -24,22 +24,11 @@ def client_of_id(card_id: str):
     return None
 
 
-# Memory and issue cards are the two client-scoped kinds. They live under
-# `clients/<client>/memory/` and `clients/<client>/issues/`, `load_index` derives their
-# `client` from that path rather than from frontmatter, and nothing distinguishes them
-# where scope is concerned - so every door that offers a card to a caller asks the one
-# question below. It used to be asked three times in three files; the selector's copy
-# had drifted to `memory` alone, which put every client's issue cards into every
-# evaluation prompt.
 CLIENT_SCOPED_TYPES = ("memory", "issue")
 
 
 def out_of_client_scope(card: dict, client) -> bool:
-    """True when `card` is client-scoped and this caller is not that client.
-
-    A caller naming no client is not that client either, so client-scoped cards stay out
-    of an unscoped listing or search entirely.
-    """
+    """True when an indexed card falls outside the selected client retrieval context."""
     return (card.get("type") in CLIENT_SCOPED_TYPES
             and (client is None or card.get("client") != client))
 
@@ -192,5 +181,7 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
             if cpath(corr) is not None:
                 correction_ids.append(corr)
     all_ids = selected + correction_ids
-    bundle = "\n\n---\n\n".join(cpath(c).read_text() for c in all_ids)
-    return {"card_ids": all_ids, "bundle": bundle, "dropped": dropped, "corrections": correction_ids}
+    card_texts = {cid: cpath(cid).read_text() for cid in all_ids}
+    bundle = "\n\n---\n\n".join(card_texts[cid] for cid in all_ids)
+    return {"card_ids": all_ids, "bundle": bundle, "card_texts": card_texts,
+            "dropped": dropped, "corrections": correction_ids}
