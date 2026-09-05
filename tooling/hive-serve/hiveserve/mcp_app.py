@@ -34,12 +34,15 @@ def build_mcp(settings, conn_factory) -> FastMCP:
 
     @mcp.tool()
     @track_tool("find_concepts")
-    def find_concepts(query: str, product: str | None = None, limit: int = 20) -> list[dict]:
+    def find_concepts(query: str, product: str | None = None, limit: int = 20,
+                      client: str | None = None) -> list[dict]:
         """Search concept cards by name or by what they mean, and get back a small ranked
         set with descriptions. Use this for any topic or subject question ("explain X",
         "how does Y work") instead of listing the whole catalogue; then load the ids you
-        want with `resolve` / `get_card`."""
-        return tools.find_concepts(cdir, query, clients_dir=cldir, product=product, limit=limit)
+        want with `resolve` / `get_card`. Optionally scope by `product`, or by `client` to
+        search that client's own memory and issue cards alongside the shared ones."""
+        return tools.find_concepts(cdir, query, clients_dir=cldir, product=product,
+                                   limit=limit, client=client)
 
     @mcp.tool()
     @track_tool("get_card")

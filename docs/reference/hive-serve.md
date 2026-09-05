@@ -21,13 +21,18 @@ hiveserve serve --stdio     # MCP over stdio, for Claude Desktop and Claude Code
 | `GET /healthz` | `{"ok":true}` if the process is alive. **Not a corpus check** |
 | `GET /metrics` | Prometheus exposition |
 | `GET /concepts` | lean index: id, title, product, type |
-| `GET /find_concepts?q=` | ranked keyword search over card ids, titles and descriptions |
+| `GET /find_concepts?q=` | ranked keyword search over card ids, titles and descriptions. Shared cards only |
 | `GET /card/{card_id}` | one card as raw markdown |
 | `POST /resolve` | a bundle: cards, their links, their corrections |
 
 `POST /resolve` takes `{"ids": [...], "depth": 1}` and **rejects unknown fields**. `client` in
 particular is not accepted: the REST door serves shared knowledge only, and silently ignoring the
 field would return a 200 that looks exactly like scoping working.
+
+`GET /find_concepts` takes no `client` either, and neither does `GET /concepts`. The MCP door passes
+one to both, because it resolves an owner from a trusted proxy header; this door carries no identity,
+so a client name in a query string would be an unauthenticated caller asserting who they are. The
+clients tree is not handed to the REST search at all, so no client card can be in its candidate set.
 
 ## MCP tools
 
@@ -82,6 +87,17 @@ real schema would swamp it. Those cards are reached through `find_db_objects` an
 
 `find_concepts` ranks concept cards with `ranking.py`. It is deliberately small - no embeddings,
 no network, no runtime dependency past the standard library, and no state that outlives the call.
+
+**`find_concepts` takes an optional `client`** (MCP door only, see above). Named, it adds that
+client's own `memory` and `issue` cards to the candidate set and nothing else; unnamed, the
+candidates are the concept tier alone, exactly as before. Scope is the structural, path-derived rule
+`list_concepts` and `resolve` already apply - `resolver.out_of_client_scope`, one predicate now used
+by all three, reading a card's `clients/<client>/...` path rather than anything the card says about
+itself. Before 2026-09-06 search filtered to `type == "concept"` and took no client at any door, so a
+client's memory was reachable only by an agent that already knew the card's id. Note that widening
+the candidates also widens the collection idf is computed over, so a client-scoped search can order
+the same concept cards slightly differently from an unscoped one; that is what idf means, and an
+unscoped search is byte-identical to before.
 
 **`find_db_objects` is not on this scorer and its ranking is unchanged:** it still counts
 case-insensitive substring hits, because matching a fragment of a half-remembered schema object name

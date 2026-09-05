@@ -24,6 +24,26 @@ def client_of_id(card_id: str):
     return None
 
 
+# Memory and issue cards are the two client-scoped kinds. They live under
+# `clients/<client>/memory/` and `clients/<client>/issues/`, `load_index` derives their
+# `client` from that path rather than from frontmatter, and nothing distinguishes them
+# where scope is concerned - so every door that offers a card to a caller asks the one
+# question below. It used to be asked three times in three files; the selector's copy
+# had drifted to `memory` alone, which put every client's issue cards into every
+# evaluation prompt.
+CLIENT_SCOPED_TYPES = ("memory", "issue")
+
+
+def out_of_client_scope(card: dict, client) -> bool:
+    """True when `card` is client-scoped and this caller is not that client.
+
+    A caller naming no client is not that client either, so client-scoped cards stay out
+    of an unscoped listing or search entirely.
+    """
+    return (card.get("type") in CLIENT_SCOPED_TYPES
+            and (client is None or card.get("client") != client))
+
+
 def clients_base(clients_dir):
     """The client-memory tree, or None when client memory is off.
 

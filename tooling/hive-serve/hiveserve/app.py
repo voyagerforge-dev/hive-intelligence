@@ -42,6 +42,12 @@ def build_rest_router(settings) -> APIRouter:
 
     @router.get("/find_concepts")
     def find_concepts(q: str, product: str | None = None, limit: int = 20) -> list[dict]:
+        # No `client` here, for the same reason `/concepts` above has none and `/resolve`
+        # below rejects the field: this door carries no identity, so a client name in a
+        # query string is an assertion by an anonymous caller. `tools.find_concepts` takes
+        # a client and MCP passes one, because that door resolves an owner from a trusted
+        # proxy header. Here the clients tree is not even handed to the search, so the
+        # candidate set cannot contain a client card whatever the caller sends.
         return tools.find_concepts(cdir, q, product=product, limit=limit)
 
     @router.get("/card/{card_id:path}")

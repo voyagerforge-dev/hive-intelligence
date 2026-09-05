@@ -105,3 +105,41 @@ def test_rest_door_refuses_an_unset_concepts_dir(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as exc:
         build_rest_router(Settings(concepts_dir=""))
     assert "CONCEPTS_DIR" in str(exc.value)
+
+
+def _two_client_world(tmp_path):
+    """Concepts plus two isolated clients, each with one memory card."""
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "widgets").mkdir(parents=True)
+    (concepts / "widgets" / "allocation-process.md").write_text(
+        "---\ntitle: Allocation Process\ndescription: how allocation assigns inventory\n---\n\nbody\n")
+    for name in ("alpha", "acme"):
+        (clients / name / "memory").mkdir(parents=True)
+        (clients / name / "memory" / "second-scan.md").write_text(
+            f"---\ntitle: {name} second scan\ndescription: an extra allocation scan step\n"
+            f"type: memory\n---\n\nmem\n")
+    return concepts, clients
+
+
+def test_find_concepts_tool_takes_a_client_and_isolates_it(tmp_path, ledger_dsn):
+    """Dispatched through FastMCP's real call_tool path, not the underlying function.
+
+    Client memory used to be unreachable through search at every door: `find_concepts`
+    filtered to `type == "concept"` and accepted no client, so an agent that did not
+    already know a memory card's id could not find it.
+    """
+    concepts, clients = _two_client_world(tmp_path)
+    s = Settings(concepts_dir=str(concepts), clients_dir=str(clients))
+    mcp = build_mcp(s, _factory(ledger_dsn))
+
+    def search(**kwargs):
+        _, structured = anyio.run(
+            lambda: mcp.call_tool("find_concepts", {"query": "allocation scan", **kwargs}))
+        return {h["id"] for h in structured["result"]}
+
+    assert search(client="alpha") == {"widgets/allocation-process",
+                                      "clients/alpha/memory/second-scan"}
+    assert search() == {"widgets/allocation-process"}        # unnamed: unchanged
+    assert search(client="acme") == {"widgets/allocation-process",
+                                     "clients/acme/memory/second-scan"}  # never alpha's
