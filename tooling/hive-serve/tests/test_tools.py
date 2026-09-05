@@ -198,7 +198,7 @@ def test_find_concepts_trailing_question_mark_keeps_the_final_word(tmp_path):
     The two cards below differ only in which release they describe, so the release number
     is the whole answer. Splitting on whitespace made that final token `12?`, which matched
     nothing, leaving the two cards tied and the alphabet to pick the wrong one. Tokenising
-    on [a-z0-9]+ recovers it. On a measured question set this single defect was enough to
+    on runs of letters and digits recovers it. On a measured question set this single defect was enough to
     score a whole release-versioned set zero.
     """
     _write(tmp_path, "widgets/calibration-r11", "Calibration Routine",
@@ -290,3 +290,16 @@ def test_find_concepts_ties_still_break_by_id(tmp_path):
     _write(tmp_path, "widgets/a-twin", "Twin", "identical wording for the tie test")
     assert [h["id"] for h in tools.find_concepts(tmp_path, "twin wording")] == [
         "widgets/a-twin", "widgets/b-twin"]
+
+
+def test_find_concepts_finds_a_card_written_in_a_non_latin_script(tmp_path):
+    """A Japanese query must still reach its card; an ASCII-only tokeniser returned nothing.
+
+    Japanese is written without spaces and nothing here segments words, so a term is a run
+    of characters between separators - which is what the query below is. Given that, the
+    scorer behaves exactly as it does in English: the card whose title and description carry
+    the run is selected and the card that shares none of it is not.
+    """
+    _write(tmp_path, "widgets/shukka-wave", "出荷ウェーブ", "出荷ウェーブ の 割当 ルール")
+    _write(tmp_path, "widgets/label-printing", "ラベル印刷", "パレット の ラベル 形式")
+    assert [h["id"] for h in tools.find_concepts(tmp_path, "出荷ウェーブ")] == ["widgets/shukka-wave"]

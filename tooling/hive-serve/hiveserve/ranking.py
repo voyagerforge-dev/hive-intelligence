@@ -8,7 +8,7 @@ at 100 cards). Four things caused that, and this module fixes all four:
 
 * **Punctuation stuck to query tokens.** `"...in release 12?"` split on whitespace yields
   `12?`, which matches nothing - and the discarded token is usually the most specific word
-  in the question. Tokenising on `[a-z0-9]+` after lowercasing keeps it.
+  in the question. Tokenising on runs of letters and digits after lowercasing keeps it.
 * **No stopword removal.** `in`, `and`, `a` scored exactly as much as the topic word, so
   the median question "matched" 98% of the corpus.
 * **Substring containment.** `t in hay` let `at` match inside `catalogue` and `it` match
@@ -35,7 +35,11 @@ import math
 import re
 from collections import Counter
 
-_WORD = re.compile(r"[a-z0-9]+")
+# Any letter or digit, in any script: `[^\W_]` is `\w` without the underscore, so an
+# underscore keeps separating words (`DOM_ALLOC` is two terms) while CJK, Cyrillic, Greek
+# and accented Latin stop being discarded. An ASCII-only class silently made concept search
+# return nothing at all for a corpus not written in the Latin alphabet.
+_WORD = re.compile(r"[^\W_]+")
 
 # A small fixed English function-word list. Deliberately not a linguistic stopword corpus:
 # these are the words that carried most of the old scorer's mass across the 70 measured
@@ -53,9 +57,13 @@ STOPWORDS = frozenset([
 def tokenize(text: str | None) -> list[str]:
     """Lowercase, split on runs of letters/digits, drop stopwords.
 
-    Splitting on `[a-z0-9]+` is what strips punctuation, and it is also what gives a card
-    id its words: `widget/calibration-priority-rules` becomes the same four tokens a title
-    would, which is why an id that restates the query ranks the card first.
+    Splitting on runs of letters and digits is what strips punctuation, and it is also what
+    gives a card id its words: `widget/calibration-priority-rules` becomes the same four
+    tokens a title would, which is why an id that restates the query ranks the card first.
+
+    A term is that run and nothing smaller: no word segmentation happens here, so a
+    space-free script such as Japanese is tokenised at run level rather than at word level.
+    Query and card text go through this same function, so such a run still matches itself.
     """
     return [t for t in _WORD.findall((text or "").lower()) if t not in STOPWORDS]
 

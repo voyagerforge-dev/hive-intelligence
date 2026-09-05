@@ -89,9 +89,12 @@ case-insensitive substring hits, because matching a fragment of a half-remembere
 Bringing it onto `ranking.py` needs prefix or stem matching first, and is tracked as follow-up.
 
 **Query and card text are tokenised the same way:** lowercased, then split on runs of letters and
-digits. Punctuation therefore never sticks to a token, so the `12` in "…in release 12?" is a term
-rather than the unmatchable `12?`. A card id contributes its slug words on exactly these terms, so
-`widget/calibration-priority-rules` is searchable as four words, weighed like title words.
+digits *in any script*, with the underscore separating words. Punctuation therefore never sticks to
+a token, so the `12` in "…in release 12?" is a term rather than the unmatchable `12?`. A card id
+contributes its slug words on exactly these terms, so `widget/calibration-priority-rules` is
+searchable as four words, weighed like title words. No word segmentation is performed, so text in a
+space-free script such as Japanese or Chinese is tokenised at run level: a run between separators is
+one term, matched whole against the same runs in the cards.
 
 **A small fixed list of English function words is dropped** from both sides. A query made only of
 them matches nothing, which is the honest answer; previously it returned the whole corpus in
@@ -263,7 +266,7 @@ deploy gate.
 
 ## Tests
 
-193 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
+194 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
 datasets, or the GitHub
 submission surface skip with a stated reason when their subject is absent, so the suite is green in
 this repository and meaningful in a deployment that has a corpus.
