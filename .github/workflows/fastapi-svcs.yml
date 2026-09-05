@@ -13,6 +13,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege, stated explicitly rather than inherited from the repository default, which
+# differs between repositories and changes when one is made public. Nothing here writes: the
+# jobs check out, install, lint, type-check, test and build a container. `release.yml` states
+# the same floor for the same reason.
+permissions:
+  contents: read
+
 jobs:
   detect-services:
     runs-on: ubuntu-latest
