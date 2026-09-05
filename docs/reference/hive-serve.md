@@ -186,6 +186,24 @@ That flag is scoped to `cross_client` alone: `memory_ok` for a row carrying `exp
 real and failable measurement, since it also requires that client's own memory card to have been
 retrieved. Reports are written under `OKF_DATA_DIR`.
 
+### What the judge is shown, and what `correct` and `grounded` mean
+
+**Changed on 2026-09-06. Reports written before that date are not comparable with ones written
+after, and the two must not be put in the same table.**
+
+The judge's REFERENCE is now the **union of the row's `expected_card_ids` and the bundle the
+answerer actually saw**, expected cards first, de-duplicated. It used to be `expected_card_ids`
+alone. The answerer is instructed to use the whole bundle and does, so an answer that cited a real,
+correctly retrieved card outside the expected set was marked ungrounded for citing it - the judge
+had never been given that card. On a measured 70-question run, ten of the eleven `correct: false`
+verdicts were exactly this artefact and one was a genuine content error.
+
+So both columns got **stricter about content and looser about provenance**: `grounded` now asks
+whether the answer is supported by what the answerer was given, rather than by a subset of it, and
+`correct` no longer penalises a bundle for being larger than the label. Every other column -
+`select_hit`, `bundle_hit`, `regime_ok`, `version_ok`, `product_ok`, `correction_ok`, `memory_ok` -
+is untouched and stays comparable across the change.
+
 ### A model that returns nothing fails the run
 
 `unscored` counts rows the judge did not score. It cannot, on its own, tell a judge that replied
@@ -306,7 +324,7 @@ model gateway on every eval question.
 
 ## Tests
 
-194 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
+212 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
 datasets, or the GitHub
 submission surface skip with a stated reason when their subject is absent, so the suite is green in
 this repository and meaningful in a deployment that has a corpus.

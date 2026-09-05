@@ -106,6 +106,48 @@ def test_score_memory_hit_isolation_and_cross_client():
     assert score_memory("clients/alpha/memory/m", ["widgets/a"], "alpha", [None])["memory_ok"] is False
 
 
+
+# --- the judge reference: expected cards UNION the bundle, since 2026-09-06 -------------
+#
+# The judge used to be shown only `expected_card_ids`. The answerer is told to use the
+# whole bundle and does, so an answer citing a real, correctly retrieved card the judge
+# was never given came back "ungrounded". On a measured 70-question run that artefact
+# produced ten of the eleven `correct: false` verdicts.
+
+def test_judge_reference_is_expected_then_bundle_deduplicated():
+    from hiveserve.eval import judge_reference
+    ref = judge_reference(["a"], ["b", "a", "c"], lambda cid: f"CARD {cid}")
+    assert ref == "CARD a\n\nCARD b\n\nCARD c"
+
+
+def test_judge_reference_skips_cards_that_cannot_be_read():
+    from hiveserve.eval import judge_reference
+    ref = judge_reference(["a"], ["gone"], lambda cid: None if cid == "gone" else "CARD a")
+    assert ref == "CARD a"
+
+
+def test_run_eval_shows_the_judge_the_whole_bundle(tmp_path):
+    """A card pulled in by a cross-link is in the bundle, so it must be in the reference."""
+    (tmp_path / "a.md").write_text(
+        "---\ntitle: A\ndescription: d\nrelated: [b]\nsources: [a.md]\n---\n\nbody about x\n")
+    (tmp_path / "b.md").write_text(
+        "---\ntitle: B\ndescription: d\nrelated: []\nsources: [b.md]\n---\n\nlinked body\n")
+    seen = {}
+
+    class Judge:
+        def complete(self, system, user):
+            seen["ref"] = user
+            return '{"grounded": true, "correct": true, "note": "ok"}'
+
+    qa = [{"id": "q1", "question": "x?", "expected_card_ids": ["a"]}]
+    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=FixedAnswer(),
+                   judge_llm=Judge(),
+                   get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text(),
+                   mode="progressive")
+    assert res["rows"][0]["bundle_ids"] == ["a", "b"]
+    assert "body about x" in seen["ref"] and "linked body" in seen["ref"]
+
+
 # --- a model that returns nothing is a broken run, not a score of zero ------------------
 
 class SilentLLM:
