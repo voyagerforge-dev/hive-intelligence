@@ -161,3 +161,51 @@ def test_answer_question_client_scoped_selection(tmp_path):
     seen.clear()
     agent.answer_question(concepts, "q?", select_llm=Sel(), answer_llm=Ans(), clients_dir=clients)
     assert "clients/alpha/memory/m" not in seen["idx"]
+
+
+def test_selector_prompt_carries_no_out_of_scope_issue_card(tmp_path):
+    """Issue cards are client-scoped, and the selector's filter had drifted from the tool's.
+
+    `tools.list_concepts` excludes `("memory", "issue")` together; this filter named
+    `memory` alone, so every client's issue-card titles and descriptions went into every
+    selector prompt whichever client was asking, and even when none was. On a measured
+    corpus that was 2,295 rows and two thirds of a 215,000-token prompt of
+    client-confidential text, sent to the model gateway on every question.
+
+    Aligned, the prompt holds no issue row at all when no client is named, and only the
+    asking client's own when one is - exactly what the catalogue tool offers.
+    """
+    from hiveserve import agent
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "widgets").mkdir(parents=True)
+    (concepts / "widgets" / "a.md").write_text("---\ntitle: A\ndescription: d\nrelated: []\n---\n\nbody\n")
+    for name in ("alpha", "acme"):
+        (clients / name / "issues").mkdir(parents=True)
+        (clients / name / "issues" / "slow-pick.md").write_text(
+            f"---\ntitle: {name} slow pick\ndescription: picking is slow\ntype: issue\n"
+            "related: []\n---\n\nissue\n")
+    seen = {}
+
+    class Sel:
+        def complete(self, system, user):
+            seen["idx"] = user
+            return '{"card_ids": ["widgets/a"]}'
+
+    class Ans:
+        def complete(self, system, user): return "ok"
+
+    def prompt_for(client):
+        seen.clear()
+        agent.answer_question(concepts, "q?", select_llm=Sel(), answer_llm=Ans(),
+                              clients_dir=clients, client=client)
+        return seen["idx"]
+
+    unscoped = prompt_for(None)
+    assert "widgets/a" in unscoped
+    assert "clients/alpha/issues/slow-pick" not in unscoped
+    assert "clients/acme/issues/slow-pick" not in unscoped
+
+    scoped = prompt_for("alpha")
+    assert "clients/alpha/issues/slow-pick" in scoped      # its own, as list_concepts offers
+    assert "clients/acme/issues/slow-pick" not in scoped   # never another client's

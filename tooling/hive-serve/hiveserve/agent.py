@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from hivegen.llm import extract_json
 
-from hiveserve.resolver import load_index, resolve
+from hiveserve.resolver import load_index, out_of_client_scope, resolve
 
 _SELECT_SYS = (
     "You are given an INDEX of knowledge-card ids with titles and descriptions, and a QUESTION. "
@@ -67,9 +67,14 @@ def answer_question(concepts_dir, question, *, select_llm, answer_llm,
     from hiveserve.resolver import corrections_by_target
     index = load_index(concepts_dir, clients_dir)
     corr_map = corrections_by_target(index)
+    # Exactly `tools.list_concepts`'s filter, through the same predicate. This used to
+    # name `memory` alone, so every client's issue cards - 2,295 of them on a measured
+    # corpus, two thirds of a 215,000-token prompt - were listed to the selector on every
+    # question, whichever client was asking and even when none was. Selection integrity
+    # survived it, because `resolve` refuses an out-of-scope id, but client-confidential
+    # titles and descriptions were sent to the model gateway each time.
     concepts = [c for c in index
-                if c.get("type") != "correction"
-                and not (c.get("type") == "memory" and (client is None or c.get("client") != client))]
+                if c.get("type") != "correction" and not out_of_client_scope(c, client)]
     if mode == "ceiling":
         selected = [c["id"] for c in concepts]
         resolved = resolve(concepts_dir, selected, depth=0, max_cards=len(selected) or 1,

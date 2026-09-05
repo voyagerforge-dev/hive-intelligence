@@ -280,6 +280,14 @@ The offline evaluation harness. **Not on the serving path** and the only part of
 calls a model. It exists to measure the corpus, and the product-isolation eval over it is the
 deploy gate.
 
+`agent.py`'s selector index is filtered by the same `resolver.out_of_client_scope` that
+`tools.list_concepts` uses. It named `memory` alone until 2026-09-06, so every client's `issue`-card
+titles and descriptions were listed to the selector on every question regardless of the asking
+client, and even when none was asked as. On the measured corpus that was 2,295 rows and two thirds
+of a 215,000-token prompt. Selection integrity was never affected - `resolve` refuses an
+out-of-scope id, and `memory_ok` scored 70/70 - but client-confidential text was being sent to the
+model gateway on every eval question.
+
 ## Tests
 
 194 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
