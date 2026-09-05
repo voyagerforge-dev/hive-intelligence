@@ -60,11 +60,8 @@ flagged where they appear.
 | `JUDGE_MODEL` | `deepseek-v4` | evaluation harness only |
 | `BIFROST_TIMEOUT_S` | `300` | |
 
-`IDENTITY_HEADER` names a ledger-owner header that is trusted on arrival. It does not authorize or
-select a retrieval client: authenticated personnel within one trusted organization may select any
-client. There is no signature check. Anything that can reach the port can claim any identity, which
-is why the default binding is loopback and an authenticating proxy is mandatory for wider exposure. See
-[serving cards](../guides/serving-cards.md#identity-and-what-it-is-not).
+For `IDENTITY_HEADER`'s ledger-owner role and the mandatory proxy for wider exposure, see
+[the serving trust boundary](../guides/serving-cards.md#identity-and-what-it-is-not).
 
 ## hive-gen
 

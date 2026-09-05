@@ -312,19 +312,14 @@ learned**, especially client-specific operational knowledge. It lives in two tie
   (deterministic filtering, no model at serve time), removed with `forget`. Never enters git, never
   visible to another owner.
 - **Global, shared, client-scoped, in git.** A promoted memory is a `type: memory` card at
-  `clients/<client>/memory/<slug>.md`. **Selectable**, unlike a correction, but **hard-isolated**.
+  `clients/<client>/memory/<slug>.md`. **Selectable**, unlike a correction, within client context.
 
 **The invariant:** memory is client-specific and lives in a `clients/<client>/` namespace, so it
 **structurally cannot touch `concepts/`**. A lesson belonging in core knowledge is a correction or
 a new concept, never a memory. Core documentation cannot be polluted by client specifics.
 
-**Hard isolation, two guards.** The client scope is derived structurally from the card's id path,
-never from author-supplied frontmatter:
-
-- **Selection filter.** With no client set, memory is excluded entirely: core stays pristine. With
-  a client set, only that client's memory joins the candidate set.
-- **Traversal guard.** During graph expansion a neighbour is admitted only if its client is unset
-  or matches the active client, so no client memory leaks transitively.
+For selection and traversal, see [the resolver's client-scope rules](../reference/hive-serve.md#the-resolver).
+These are retrieval controls, not authorization; see [the serving trust boundary](../guides/serving-cards.md#identity-and-what-it-is-not).
 
 ### The write path, and why the read door holds no credential
 

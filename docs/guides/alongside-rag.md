@@ -106,10 +106,11 @@ can consume them. One file, one chunk, no splitting.
 
 Two things you get for free by doing it this way.
 
-**Facets become hard filters.** Frontmatter carries `product`, `platform`, `version` and `client`.
+**Facets become hard filters.** Frontmatter carries `product`, `platform` and `version`.
 Similarity search cannot guarantee a boundary, because a vector index has no notion of "must not".
-A metadata filter over card frontmatter can. This matters most for client isolation, where the
-guarantee has to be structural rather than probabilistic.
+A metadata filter can constrain retrieval. For client metadata, follow [the path-derived scope
+contract](../reference/hive-serve.md#the-resolver) rather than trusting a frontmatter claim, and keep
+[retrieval context distinct from authorization](serving-cards.md#identity-and-what-it-is-not).
 
 **Corrections work without re-ingesting.** When a card goes stale, a correction card overlays it
 rather than editing it. Re-embed one card, not the corpus, and keep the audit trail of what changed

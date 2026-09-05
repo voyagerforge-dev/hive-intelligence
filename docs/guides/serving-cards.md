@@ -62,19 +62,8 @@ were green throughout. Alert on the card-count gauge, never on health. See
 
 ### REST serves shared knowledge only
 
-Client-scoped memory and issue cards are **not reachable over REST**. That door's existing contract
-serves only the concepts tree and accepts no client context; this is not an identity-based policy.
-
-`POST /resolve` rejects a client field rather than ignoring it:
-
-```bash
-curl -X POST localhost:8015/resolve -d '{"ids":["x"],"client":"alpha"}'
-# 422
-```
-
-A silent ignore would return 200 with a shared-only answer, and the caller would have no way to
-know the scoping was never applied. `GET /concepts` and `GET /find_concepts` also take no client;
-FastAPI ignores unknown query parameters on those routes.
+Use MCP for client context. See [the REST contract](../reference/hive-serve.md#rest) for its
+shared-only surface and how unsupported client parameters are handled.
 
 ### `/resolve` is the interesting one
 
@@ -124,16 +113,13 @@ Fifteen tools in three groups.
 
 ## Client context
 
-Cards under `clients/<client>/` are scoped structurally by path, not by frontmatter. Listings,
-search and bundle traversal filter against the caller-selected `client`, keeping one site's
-modifications and incidents out of another site's answers. With no client selected they offer
-shared knowledge only. Search adds only the named client's memory, not issue-card history.
+Select the client whose system the question concerns, so its modifications and incidents do not
+become another site's guidance. See [the resolver's scope rules](../reference/hive-serve.md#the-resolver)
+and [search candidates](../reference/hive-serve.md#search) for the per-tool contract.
 
-The index filters share `resolver.out_of_client_scope`; bundle traversal checks client ids directly.
-MCP `get_card` loads any known card id without a client argument. These are retrieval controls, not
-access controls: authenticated personnel within the organization may read any client's cards.
-Anyone who can read the corpus repository can also read all of them. Deployments requiring an
-independent trust boundary need separate corpora and separately controlled access.
+As explained in [the trust boundary](#identity-and-what-it-is-not), this is retrieval context, not
+access control. Anyone who can read the corpus repository can also read all of it. Deployments
+requiring an independent trust boundary need separate corpora and separately controlled access.
 
 ## The ledger
 

@@ -29,32 +29,10 @@ def list_concepts(concepts_dir, clients_dir=None, client=None, product=None) -> 
 
 def find_concepts(concepts_dir, query, clients_dir=None, product=None, limit=20,
                   client=None) -> list[dict]:
-    """Keyword search over concept cards by title / description / id.
+    """Rank topic matches without sending the whole catalogue to the agent.
 
-    Mirrors find_db_objects: a broad or topic question ("explain the architecture") should
-    never dump the whole 990-card index. This returns a small, ranked set, with the
-    description kept for the matches so the model can choose which ids to resolve.
-
-    Ranking is `ranking.rank` - whole-token matching over stopword-stripped, punctuation-free
-    tokens, weighted by inverse document frequency. See that module for why counting raw
-    substring hits ranked the right card outside the top 20 on nearly a quarter of a measured
-    question set. The fields searched, the filters, the cap and the returned shape are all
-    unchanged, but the matched set is not: dropping stopwords and matching whole tokens
-    changes which cards score above zero, so a query of only stopwords now returns nothing
-    and a query fragment no longer matches inside a longer word.
-
-    `client` adds only that client's memory cards, not issue cards. The index filter uses
-    `out_of_client_scope`, as does the catalogue listing; the resolver checks the same
-    structural scope directly from ids. Client context is chosen by the caller, not derived
-    from identity. Without it the candidate set is the concept
-    tier alone, exactly as before: a client's memory used to be reachable only by an agent
-    that already knew the card's id, because search filtered to `type == "concept"` and
-    took no client at any door.
-
-    Widening the candidates also widens the collection idf is computed over, so a scoped
-    search can order the same concept cards slightly differently from an unscoped one.
-    That is the intended reading of idf - it describes the collection actually being
-    searched - and an unscoped search is unaffected.
+    Descriptions let the caller choose which ids to resolve. The public search contract
+    is in docs/reference/hive-serve.md#search; scoring details live in ranking.py.
     """
     candidates = [c for c in load_index(concepts_dir, clients_dir)
                   if (c.get("type") == "concept"
@@ -64,9 +42,7 @@ def find_concepts(concepts_dir, query, clients_dir=None, product=None, limit=20,
     # being searched. That is also the whole index this call already loaded: there is no
     # cached or precomputed state anywhere behind this function.
     hits = rank(query, candidates, limit)
-    # The shape is deliberately unchanged, client cards included. A client card's id is
-    # `clients/<client>/memory/<slug>`, so it already says whose it is and what kind it is,
-    # and both doors and the skills read exactly these four keys.
+    # Keep the transport shape stable; a memory id already identifies its client.
     return [{"id": c.get("id"), "title": c.get("title"), "product": c.get("product"),
              "description": c.get("description")} for c in hits]
 

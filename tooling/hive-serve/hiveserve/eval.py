@@ -61,17 +61,10 @@ def score_memory(expected_memory, bundle_ids, expected_client, selected_clients)
 
 
 def judge_reference(expected_ids, bundle_cards: dict[str, str], get_card_fn) -> str:
-    """The REFERENCE the judge grades against: expected cards first, then the bundle.
+    """Build the reference under docs/reference/hive-serve.md's dated scoring contract.
 
-    Since 2026-09-06 this is the union, not `expected_card_ids` alone. The answerer is
-    told to use the whole bundle and does; a judge shown only the expected subset then
-    marks it ungrounded for citing real, correctly retrieved cards it was never given. On
-    a measured 70-question run, ten of the eleven `correct: false` verdicts were exactly
-    that artefact and one was a genuine content error.
-
-    Expected cards come first, with ids de-duplicated in order and no truncation in either
-    mode. Bundle members retain the exact texts delivered to the answerer; only expected
-    cards absent from that bundle are loaded separately.
+    Reuse saved bundle texts: reloading after a model call could grade evidence different
+    from what the answerer saw if a corpus file changed or disappeared during the call.
     """
     ids = dict.fromkeys([*expected_ids, *bundle_cards])
     return "\n\n".join(filter(None, (
@@ -106,10 +99,9 @@ _EMPTY_MODEL_ROLES = ("answer", "judge")
 def empty_model_roles(aggregate: dict) -> list[tuple[str, int]]:
     """(role, row count) for every model role that returned nothing on at least one row.
 
-    A non-empty list means the run measured nothing and must not be read as a result. The
-    two ways to get here - a key the gateway rejects, and a model whose provider token
-    plan is used up - are indistinguishable in the aggregate, and both used to end in a
-    clean exit reporting correct 0 and grounded 0.
+    Even one affected row makes the report incomplete. The counts do not diagnose the
+    cause: rejected credentials, unavailable models and exhausted quota can all yield
+    empty responses.
     """
     return [(role, aggregate[f"{role}_empty"])
             for role in _EMPTY_MODEL_ROLES if aggregate.get(f"{role}_empty")]

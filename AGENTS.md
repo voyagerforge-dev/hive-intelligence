@@ -31,13 +31,9 @@ environment, so it must be **exported** to have any effect at all. See
 The same rule covers `.env.example`: no absolute path under anyone's home directory. Those files
 are what a new operator copies, and a dead path there is invisible until it produces nothing.
 
-**Client scope is retrieval context, not authorization.** Within one trusted organization,
-authenticated personnel may select any client; shared knowledge must not contain confidential client
-information. See [the serving trust boundary](docs/guides/serving-cards.md#identity-and-what-it-is-not).
-Scope is structural, derived from `clients/<client>/...`, not frontmatter. Index consumers use
-`hiveserve.resolver.out_of_client_scope`; bundle traversal checks ids directly, while MCP `get_card`
-loads any known id. Keep index filtering shared: the selector's separate `memory`-only filter once
-sent every client's `issue` titles and descriptions to the model gateway.
+Before changing client handling, read [the serving trust boundary](docs/guides/serving-cards.md#identity-and-what-it-is-not)
+and [the retrieval scope contract](docs/reference/hive-serve.md#the-resolver). Do not turn
+caller-selected context into identity-bound authorization.
 
 ## Working on it
 

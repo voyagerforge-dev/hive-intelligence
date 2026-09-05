@@ -73,9 +73,12 @@ MCP also supplies the clients tree and, for scoped operations, the caller-select
 ids beginning `clients/` map under `<clients>`. A path that escapes its base resolves to `None`, so
 a traversal attempt returns a missing card rather than a file.
 
-**Client scope is structural**, derived from the id path rather than a frontmatter field. In scoped
-retrieval, a card is in scope when its client matches the selected context, or when it has no client.
-This is not per-client authorization; MCP `get_card` can load any known card id.
+**Client scope is structural**, derived from the id path rather than a frontmatter field. Listings
+and the evaluation selector exclude corrections and use `resolver.out_of_client_scope` to exclude
+memory and issue cards unless their client matches the selected `client`. Bundle traversal checks
+client context directly from ids, admitting shared cards and the selected client's cards. Search's
+narrower candidate set is described [below](#search). MCP `get_card` loads any known card id without
+a client argument. For the trust boundary, see [Identity](#identity).
 
 **The index excludes the database-object tier.** `concepts/<product>/db/**` is skipped, because a
 real schema would swamp it. Those cards are reached through `find_db_objects` and by id.
@@ -89,13 +92,10 @@ no network, no runtime dependency past the standard library, and no state that o
 
 **`find_concepts` takes an optional `client`** (MCP door only, see above). Named, it adds that
 client's own `memory` cards to the candidate set, never issue cards; unnamed, the candidates are the
-concept tier alone, exactly as before. Search, listing and the evaluation selector share
-`resolver.out_of_client_scope` over the path-derived index. Bundle traversal checks the same client
-context directly from ids, rather than anything the card says about itself. Before 2026-09-06 search filtered to `type == "concept"` and took no client at any door, so a
-client's memory was reachable only by an agent that already knew the card's id. Note that widening
-the candidates also widens the collection idf is computed over, so a client-scoped search can order
-the same concept cards slightly differently from an unscoped one; that is what idf means, and an
-unscoped search is byte-identical to before.
+concept tier alone, exactly as before. `product` and `limit` still apply, and each hit retains the
+same fields: `id`, `title`, `product`, `description`. Adding memory widens the collection used for
+idf, so a client-scoped search can order shared concepts differently from an unscoped search.
+Previously, memory could be discovered through a client-scoped listing but not through search.
 
 **`find_db_objects` is not on this scorer and its ranking is unchanged:** it still counts
 case-insensitive substring hits, because matching a fragment of a half-remembered schema object name
@@ -119,9 +119,9 @@ alphabetical order.
 **Ranking is inverse document frequency with sublinear term frequency.** A term that occurs in few
 cards is worth more than one that occurs in most, and a card that uses the term repeatedly outranks
 one that mentions it once without repetition dominating. Document frequencies are computed on each
-call from the candidate cards that call is ranking - the ones left after the `type` and `product`
-filters - so a scoped search weights terms against its own subset. Ties break by id, so the order is
-deterministic.
+call from the candidate cards that call is ranking - the ones left after the type, product and
+client-scope filters - so a scoped search weights terms against its own subset. Ties break by id,
+so the order is deterministic.
 
 **What it still does not read:** card bodies, and the `regime` / `version` frontmatter facets. A
 question that names a regime or a release is naming something the corpus knows and this search
@@ -141,16 +141,8 @@ owner and validated against enums.
 
 ## Identity
 
-`IDENTITY_HEADER` names a header that is **trusted on arrival and never verified**. Whatever it
-contains becomes the ledger owner, not the retrieval client. Authenticated personnel within one
-trusted organization may select any client. Client context is not per-client authorization, and
-Hive does not provide cross-organization tenancy. Operators must not put confidential client
-information into shared knowledge; this expectation does not establish that an existing corpus is
-free of confidential material. Keep private corpora and raw evaluation reports private.
-
-Anything that can reach the port can claim any identity. The default binding is loopback for that
-reason, and an authenticating proxy that strips the header from inbound requests is required, not
-advisable, for any exposure beyond the host.
+See [the serving trust boundary](../guides/serving-cards.md#identity-and-what-it-is-not) for ledger
+identity, caller-selected retrieval context, and the required authenticating proxy.
 
 ## Metrics
 
@@ -190,39 +182,39 @@ retrieved. Reports are written under `OKF_DATA_DIR`.
 
 ### What the judge is shown, and what `correct` and `grounded` mean
 
-**Changed on 2026-09-06. Reports written before that date are not comparable with ones written
-after, and the two must not be put in the same table.**
+**Scoring contract changed on 2026-09-06. `correct` and `grounded` scores from the old,
+expected-only reference are not comparable with scores under this contract; do not combine them
+in one comparison table.** Identify the contract by the evaluated engine revision, not merely the
+report's creation date.
 
 The judge's REFERENCE is now the **union of the row's `expected_card_ids` and the bundle the
 answerer actually saw**, expected cards first, de-duplicated, with no truncation in either progressive
 or ceiling mode. Bundle members use the exact card texts delivered to the answerer, even if those
 files change or disappear during the model call; only expected-only cards are loaded separately.
-It used to be `expected_card_ids` alone. The answerer is instructed to use the whole bundle and does, so an answer that cited a real,
-correctly retrieved card outside the expected set was marked ungrounded for citing it - the judge
-had never been given that card. On a measured 70-question run, ten of the eleven `correct: false`
-verdicts were exactly this artefact and one was a genuine content error.
+Missing expected-only cards are omitted. The union prevents correctly retrieved evidence outside
+the labelled expected set from being invisible to the judge.
 
-So both columns got **stricter about content and looser about provenance**: `grounded` now asks
-whether the answer is supported by what the answerer was given, rather than by a subset of it, and
-`correct` no longer penalises a bundle for being larger than the label. Every other column -
-`select_hit`, `bundle_hit`, `regime_ok`, `version_ok`, `product_ok`, `correction_ok`, `memory_ok` -
-is untouched and stays comparable across the change.
+The grading prompt is unchanged: `correct` and `grounded` are model verdicts against that
+REFERENCE. It can include expected-only cards the answerer did not see, so `grounded` is not a
+separate proof of support from the delivered bundle alone. The deterministic metric definitions
+(`select_hit`, `bundle_hit`, `regime_ok`, `version_ok`, `product_ok`, `correction_ok`, `memory_ok`)
+are unchanged; their values can still change when the selector's candidate set changes.
 
 ### A model that returns nothing fails the run
 
-`unscored` counts rows the judge did not score. It cannot, on its own, tell a judge that replied
-with something unparseable from a judge that never replied - and only the second means the run
-measured nothing. `hivegen.llm` retries four times and then returns `None`; the answer becomes `""`,
-the judge returns `unscored`, and the aggregate reads `correct: 0, grounded: 0` on a **clean exit**.
-That is what a blank `BIFROST_API_KEY` produces, and also what a model whose provider token plan is
-used up produces (HTTP 429, which no key can fix). The shipped `ANSWER_MODEL` / `JUDGE_MODEL` default
-was in that state, which is why it changed to `deepseek-v4` on 2026-09-06.
+`unscored` alone does not distinguish an unparseable judge reply from no reply. Rows therefore
+carry `answer_empty` and `judge_empty`, treating `None`, empty strings and whitespace-only replies
+as empty. The aggregate carries their counts plus `failed`, which is true if either role returned
+nothing on **any** row. Such a report is incomplete, not a valid low-scoring baseline.
 
-`run_eval` now separates the two. Rows carry `answer_empty` and `judge_empty`; the aggregate carries
-their counts plus `failed`, and the CLI prints one line naming the role, the setting, the configured
-model and the count, then **exits nonzero**. The report is written first, so the marker survives in
-`OKF_DATA_DIR` rather than only in a terminal. An unparseable-but-present verdict still scores
-`unscored` and does **not** fail the run.
+After writing the report, the CLI prints one diagnostic per failing role naming its setting,
+configured model and affected row count, then **exits with status 1**. Check `BIFROST_API_KEY`,
+gateway model availability and provider quota; an exhausted token plan can fail calls even with a
+valid key. Model defaults and overrides are in [configuration](configuration.md#hive-serve).
+
+An unparseable-but-present judge reply still scores `unscored` and does **not** by itself fail the
+run. Empty selector output remains a retrieval miss, measured by `select_hit` and `bundle_hit`,
+rather than an empty-model failure.
 
 ## Internals
 
@@ -278,8 +270,11 @@ already kept, so a single card larger than `max_chars` is returned rather than a
 correction of every selected concept is appended. They are not subject to `max_cards` or
 `max_chars`, because a dropped correction means the wrong fact stands.
 
-The return is `{card_ids, bundle, dropped, corrections}`. `dropped` is what the budget removed, and
-it is worth surfacing: a silently truncated bundle looks like a complete answer.
+The internal return also includes `card_texts`, an id-to-text mapping captured when `bundle` is
+assembled. `agent.answer_question` passes it to the evaluator as `bundle_cards` for the judge's
+reference. The transport wrapper strips it: REST and MCP still return only
+`{card_ids, bundle, dropped, corrections}`. `dropped` is what the budget removed, and it is worth
+surfacing: a silently truncated bundle looks like a complete answer.
 
 ### `dbobjects.py`
 
@@ -319,20 +314,16 @@ The offline evaluation harness. **Not on the serving path** and the only part of
 calls a model. It exists to measure the corpus, and the product-isolation eval over it is the
 deploy gate.
 
-`agent.py`'s selector index is filtered by the same `resolver.out_of_client_scope` that
-`tools.list_concepts` uses. It named `memory` alone until 2026-09-06, so every client's `issue`-card
-titles and descriptions were listed to the selector on every question regardless of the asking
-client, and even when none was asked as. On the measured corpus that was 2,295 rows and two thirds
-of a 215,000-token prompt. Selection integrity was never affected - `resolve` refuses an
-out-of-scope id, and `memory_ok` scored 70/70 - but client-confidential text was being sent to the
-model gateway on every eval question.
+The selector uses the [index scope filter](#the-resolver) before constructing its model prompt,
+not merely when resolving the selected ids. This keeps out-of-context issue titles and descriptions
+off the gateway as well as out of the answer bundle. See [the harness contract](#the-evaluation-harness)
+for reference construction and failure reporting.
 
 ## Tests
 
-212 tests, 3 of which skip without a live corpus. Fakes only, no network. Assertions that need a live corpus, its evaluation
-datasets, or the GitHub
-submission surface skip with a stated reason when their subject is absent, so the suite is green in
-this repository and meaningful in a deployment that has a corpus.
+See [contribution testing guidance](../../CONTRIBUTING.md#getting-set-up) for setup and the
+live-corpus and Postgres requirements. Tests live in `tooling/hive-serve/tests/`; use pytest's
+`--collect-only -q` there for the current inventory rather than a hand-maintained count.
 
 ## Configuration
 
