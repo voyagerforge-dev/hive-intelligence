@@ -48,11 +48,7 @@ def find_concepts(concepts_dir, query, clients_dir=None, product=None, limit=20)
     # Document frequencies come from `candidates`, so idf describes the collection actually
     # being searched. That is also the whole index this call already loaded: there is no
     # cached or precomputed state anywhere behind this function.
-    hits = rank(query,
-                ((c, " ".join([c.get("title") or "", c.get("description") or "",
-                               c.get("id") or ""])) for c in candidates),
-                limit,
-                lambda c: c.get("id") or "")
+    hits = rank(query, candidates, limit)
     return [{"id": c.get("id"), "title": c.get("title"), "product": c.get("product"),
              "description": c.get("description")} for c in hits]
 

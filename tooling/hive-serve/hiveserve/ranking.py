@@ -20,7 +20,7 @@ at 100 cards). Four things caused that, and this module fixes all four:
 
 Still deliberately absent: embeddings, a network call, any runtime dependency beyond the
 standard library, and any persistent state. Document frequencies are computed per call
-from the candidate rows the caller passes in, which is the collection actually being
+from the candidate cards the caller passes in, which is the collection actually being
 ranked - so a product-filtered search weights terms against that subset.
 
 `find_db_objects` is deliberately not on this scorer and keeps its own substring matching.
@@ -34,8 +34,6 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
-from collections.abc import Callable, Iterable
-from typing import Any
 
 _WORD = re.compile(r"[a-z0-9]+")
 
@@ -62,15 +60,17 @@ def tokenize(text: str | None) -> list[str]:
     return [t for t in _WORD.findall((text or "").lower()) if t not in STOPWORDS]
 
 
-def rank(query: str,
-         documents: Iterable[tuple[Any, str]],
-         limit: int,
-         tiebreak: Callable[[Any], str]) -> list[Any]:
-    """Rank `documents` against `query`, best first, and return at most `limit` payloads.
+def _card_tokens(card: dict) -> list[str]:
+    return tokenize(" ".join([card.get("title") or "", card.get("description") or "",
+                              card.get("id") or ""]))
 
-    `documents` yields `(payload, text)`; `text` is the row's searchable fields already
-    joined by the caller. `tiebreak` is the last sort key, so equal scores stay in a
-    stable, caller-defined order rather than an arbitrary one.
+
+def rank(query: str, cards: list[dict], limit: int) -> list[dict]:
+    """Rank concept `cards` against `query`, best first, and return at most `limit` of them.
+
+    A card is read as its title, description and id - the three fields `find_concepts`
+    searches - and ties break on id, so equal scores come back in a deterministic order
+    rather than an arbitrary one.
 
     A query of only stopwords (or only punctuation) has no terms and matches nothing, so
     the result is empty rather than the whole collection.
@@ -79,7 +79,7 @@ def rank(query: str,
     if not terms:
         return []
 
-    counted = [(payload, Counter(tokenize(text))) for payload, text in documents]
+    counted = [(c, Counter(_card_tokens(c))) for c in cards]
     total = len(counted)
     if not total:
         return []
@@ -88,16 +88,16 @@ def rank(query: str,
     for _, tf in counted:
         doc_freq.update(t for t in terms if t in tf)
 
-    # Smoothed idf, always positive: a term in every row still counts for something, a term
-    # in one row counts for much more. Sublinear tf keeps a row that repeats a word ahead of
+    # Smoothed idf, always positive: a term in every card still counts for something, a term
+    # in one card counts for much more. Sublinear tf keeps a card that repeats a word ahead of
     # one that mentions it once without letting a long description win on repetition alone.
     idf = {t: math.log((1 + total) / (1 + doc_freq[t])) + 1.0 for t in terms}
 
     hits = []
-    for payload, tf in counted:
+    for card, tf in counted:
         score = sum(idf[t] * (1.0 + math.log(tf[t])) for t in terms if t in tf)
         if score > 0:
-            hits.append((score, payload))
+            hits.append((score, card))
 
-    hits.sort(key=lambda sp: (-sp[0], tiebreak(sp[1])))
-    return [payload for _, payload in hits[:limit]]
+    hits.sort(key=lambda sc: (-sc[0], sc[1].get("id") or ""))
+    return [card for _, card in hits[:limit]]
