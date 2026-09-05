@@ -6,13 +6,16 @@ The parser (hive-dbparse) emits one manifest per product at
 rows from the concept index (they're schema-level, not narrative cards), so
 this module + the `find_db_objects` MCP tool is the only path back to them.
 
-Matching mirrors `ledger.recall`: case-insensitive substring/token matching,
-no embeddings, no network.
+Ranking is `ranking.rank`, shared with `find_concepts`: whole-token matching over
+stopword-stripped, punctuation-free tokens, weighted by inverse document frequency. Still
+no embeddings and no network.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
+
+from hiveserve.ranking import rank
 
 
 def _load_rows(concepts_dir) -> list[dict]:
@@ -25,33 +28,24 @@ def _load_rows(concepts_dir) -> list[dict]:
     return rows
 
 
-def _score(row: dict, tokens: list[str]) -> int:
-    hay = " ".join([
+def _text(row: dict) -> str:
+    return " ".join([
         row.get("title", ""),
         row.get("description", ""),
         row.get("id", ""),
         " ".join(row.get("tags", []) or []),
-    ]).lower()
-    return sum(1 for t in tokens if t in hay)
+    ])
 
 
 def search(concepts_dir, query: str, kind: str | None = None, module: str | None = None,
            limit: int = 20) -> list[dict]:
-    tokens = [t for t in query.lower().split() if t]
-    if not tokens:
-        return []
-
-    hits = []
-    for row in _load_rows(concepts_dir):
-        if kind is not None and row.get("kind") != kind:
-            continue
-        if module is not None and row.get("module") != module:
-            continue
-        score = _score(row, tokens)
-        if score > 0:
-            hits.append((score, row))
-
-    hits.sort(key=lambda sr: (-sr[0], sr[1].get("id", "")))
+    candidates = [
+        row for row in _load_rows(concepts_dir)
+        if (kind is None or row.get("kind") == kind)
+        and (module is None or row.get("module") == module)
+    ]
+    hits = rank(query, ((row, _text(row)) for row in candidates), limit,
+                lambda row: row.get("id", ""))
     return [
         {
             "id": row.get("id"),
@@ -61,5 +55,5 @@ def search(concepts_dir, query: str, kind: str | None = None, module: str | None
             "title": row.get("title"),
             "description": row.get("description"),
         }
-        for _, row in hits[:limit]
+        for row in hits
     ]

@@ -86,7 +86,7 @@ one place where isolation is enforced.
 | `GET /healthz` | liveness. See the warning below |
 | `GET /metrics` | Prometheus exposition |
 | `GET /concepts` | the lean index: ids, titles, descriptions |
-| `GET /find_concepts` | keyword search over that index |
+| `GET /find_concepts` | ranked keyword search over that index |
 | `GET /card/{card_id}` | one card, raw |
 | `POST /resolve` | several cards plus their corrections, as one bundle |
 

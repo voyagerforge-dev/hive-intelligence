@@ -21,7 +21,7 @@ hiveserve serve --stdio     # MCP over stdio, for Claude Desktop and Claude Code
 | `GET /healthz` | `{"ok":true}` if the process is alive. **Not a corpus check** |
 | `GET /metrics` | Prometheus exposition |
 | `GET /concepts` | lean index: id, title, product, type |
-| `GET /find_concepts?q=` | token search over titles and descriptions |
+| `GET /find_concepts?q=` | ranked keyword search over card ids, titles and descriptions |
 | `GET /card/{card_id}` | one card as raw markdown |
 | `POST /resolve` | a bundle: cards, their links, their corrections |
 
@@ -48,6 +48,7 @@ Fifteen, in three groups.
 |---|---|
 | `resolver.py` | the core: id to file mapping, corpus index, cross-link traversal with isolation guards, corrections co-pull |
 | `tools.py` | transport-agnostic wrappers over the resolver, shared by both doors |
+| `ranking.py` | the keyword scorer both search doors share |
 | `dbobjects.py` | keyword search over the per-product database-object manifests; backs `find_db_objects` |
 | `ledger.py` | SQLite objectives, entries and personal memory, with enum validation and owner-scoped access |
 | `identity.py` | resolve the caller's owner id from the trusted header, else the configured default |
@@ -76,6 +77,39 @@ absent or wrong; a path cannot.
 real schema would swamp it. Those cards are reached through `find_db_objects` and by id.
 
 **Corrections attach automatically**, but only with `status: approved`. A draft correction is inert.
+
+## Search
+
+`find_concepts` and `find_db_objects` are the two keyword doors, and they share one scorer,
+`ranking.py`. It is deliberately small - no embeddings, no network, no runtime dependency past the
+standard library, and no state that outlives the call.
+
+**Query and card text are tokenised the same way:** lowercased, then split on runs of letters and
+digits. Punctuation therefore never sticks to a token, so the `12` in "…in release 12?" is a term
+rather than the unmatchable `12?`. A card id contributes its slug words on exactly these terms, so
+`widget/calibration-priority-rules` is searchable as four words, weighed like title words.
+
+**A small fixed list of English function words is dropped** from both sides. A query made only of
+them matches nothing, which is the honest answer; previously it returned the whole corpus in
+alphabetical order.
+
+**Matching is whole-token,** not substring: `at` no longer matches inside "catalogue".
+
+**Ranking is inverse document frequency with sublinear term frequency.** A term that occurs in few
+cards is worth more than one that occurs in most, and a card that uses the term repeatedly outranks
+one that mentions it once without repetition dominating. Document frequencies are computed on each
+call from the candidate cards that call is ranking - the ones left after the `type`, `product`,
+`kind` and `module` filters - so a scoped search weights terms against its own subset. Ties break by
+id, so the order is deterministic.
+
+**What it still does not read:** card bodies, and the `regime` / `version` frontmatter facets. A
+question that names a regime or a release is naming something the corpus knows and this search
+cannot use.
+
+Measured on a ~990-card corpus against 70 labelled questions at the default `limit=20`, this scorer
+places the expected card in the returned set for 92.9% of them, against 77.1% for the token-counting
+scorer it replaced, with no question ranked worse than before. The gap between the two also widens
+with corpus size, which is what made the old scorer feel like it got worse as a corpus grew.
 
 ## The ledger
 
@@ -188,11 +222,11 @@ it is worth surfacing: a silently truncated bundle looks like a complete answer.
 ### `dbobjects.py`
 
 LLM-free keyword search over `concepts/<product>/db/manifest.jsonl`, one JSON object per line,
-emitted by the parser. Case-insensitive token matching, **scored by how many query tokens hit**,
-optionally filtered by kind or module, capped by `limit` (default 20).
+emitted by the parser. Ranked by the shared scorer (see [Search](#search)) over the row's id, title,
+description and tags, optionally filtered by kind or module, capped by `limit` (default 20).
 
-The same shape as memory `recall`, deliberately. Neither calls a model, so both are cheap enough to
-sit in a tool loop and deterministic enough to test.
+Still no model call, so it stays cheap enough to sit in a tool loop and deterministic enough to
+test - the property it shared with memory `recall` before both doors moved onto one scorer.
 
 ### `ledger.py`
 

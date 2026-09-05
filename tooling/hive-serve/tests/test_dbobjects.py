@@ -27,7 +27,11 @@ def test_search_by_comment_keyword_and_filters(tmp_path):
     assert "widgets/db/tables/MASTER_STAGING_DATA" not in ids     # no 'allocation' match
     assert [h["id"] for h in search(tmp_path, "allocation", kind="table")] == ["widgets/db/tables/ALLOCATION"]
     assert search(tmp_path, "inbound", module="DOM")[0]["id"] == "widgets/db/tables/MASTER_STAGING_DATA"
-    assert len(search(tmp_path, "a", limit=1)) == 1
+    # Was `search(tmp_path, "a", limit=1)`: under the old substring scorer the bare letter
+    # `a` matched every row, which is precisely the defect the shared idf scorer removes -
+    # `a` is a stopword now and selects nothing. The cap is asserted with a real term.
+    assert len(search(tmp_path, "allocation", limit=1)) == 1
+    assert search(tmp_path, "a") == []
 
 
 def test_missing_manifest_returns_empty(tmp_path):
