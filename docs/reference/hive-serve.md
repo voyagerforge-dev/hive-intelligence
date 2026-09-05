@@ -48,7 +48,7 @@ Fifteen, in three groups.
 |---|---|
 | `resolver.py` | the core: id to file mapping, corpus index, cross-link traversal with isolation guards, corrections co-pull |
 | `tools.py` | transport-agnostic wrappers over the resolver, shared by both doors |
-| `ranking.py` | the keyword scorer both search doors share |
+| `ranking.py` | the keyword scorer behind `find_concepts` |
 | `dbobjects.py` | keyword search over the per-product database-object manifests; backs `find_db_objects` |
 | `ledger.py` | SQLite objectives, entries and personal memory, with enum validation and owner-scoped access |
 | `identity.py` | resolve the caller's owner id from the trusted header, else the configured default |
@@ -80,9 +80,13 @@ real schema would swamp it. Those cards are reached through `find_db_objects` an
 
 ## Search
 
-`find_concepts` and `find_db_objects` are the two keyword doors, and they share one scorer,
-`ranking.py`. It is deliberately small - no embeddings, no network, no runtime dependency past the
-standard library, and no state that outlives the call.
+`find_concepts` ranks concept cards with `ranking.py`. It is deliberately small - no embeddings,
+no network, no runtime dependency past the standard library, and no state that outlives the call.
+
+**`find_db_objects` is not on this scorer and its ranking is unchanged:** it still counts
+case-insensitive substring hits, because matching a fragment of a half-remembered schema object name
+(`alloc` finding `ALLOCATION`) is what that door is for, and whole-token matching would remove it.
+Bringing it onto `ranking.py` needs prefix or stem matching first, and is tracked as follow-up.
 
 **Query and card text are tokenised the same way:** lowercased, then split on runs of letters and
 digits. Punctuation therefore never sticks to a token, so the `12` in "…in release 12?" is a term
@@ -98,9 +102,9 @@ alphabetical order.
 **Ranking is inverse document frequency with sublinear term frequency.** A term that occurs in few
 cards is worth more than one that occurs in most, and a card that uses the term repeatedly outranks
 one that mentions it once without repetition dominating. Document frequencies are computed on each
-call from the candidate cards that call is ranking - the ones left after the `type`, `product`,
-`kind` and `module` filters - so a scoped search weights terms against its own subset. Ties break by
-id, so the order is deterministic.
+call from the candidate cards that call is ranking - the ones left after the `type` and `product`
+filters - so a scoped search weights terms against its own subset. Ties break by id, so the order is
+deterministic.
 
 **What it still does not read:** card bodies, and the `regime` / `version` frontmatter facets. A
 question that names a regime or a release is naming something the corpus knows and this search
@@ -222,11 +226,12 @@ it is worth surfacing: a silently truncated bundle looks like a complete answer.
 ### `dbobjects.py`
 
 LLM-free keyword search over `concepts/<product>/db/manifest.jsonl`, one JSON object per line,
-emitted by the parser. Ranked by the shared scorer (see [Search](#search)) over the row's id, title,
-description and tags, optionally filtered by kind or module, capped by `limit` (default 20).
+emitted by the parser. Case-insensitive token matching, **scored by how many query tokens hit**,
+optionally filtered by kind or module, capped by `limit` (default 20).
 
-Still no model call, so it stays cheap enough to sit in a tool loop and deterministic enough to
-test - the property it shared with memory `recall` before both doors moved onto one scorer.
+The same shape as memory `recall`, deliberately. Neither calls a model, so both are cheap enough to
+sit in a tool loop and deterministic enough to test. This door keeps substring matching on purpose;
+see [Search](#search) for why `find_concepts` moved off it and this one has not.
 
 ### `ledger.py`
 

@@ -27,11 +27,7 @@ def test_search_by_comment_keyword_and_filters(tmp_path):
     assert "widgets/db/tables/MASTER_STAGING_DATA" not in ids     # no 'allocation' match
     assert [h["id"] for h in search(tmp_path, "allocation", kind="table")] == ["widgets/db/tables/ALLOCATION"]
     assert search(tmp_path, "inbound", module="DOM")[0]["id"] == "widgets/db/tables/MASTER_STAGING_DATA"
-    # Was `search(tmp_path, "a", limit=1)`: under the old substring scorer the bare letter
-    # `a` matched every row, which is precisely the defect the shared idf scorer removes -
-    # `a` is a stopword now and selects nothing. The cap is asserted with a real term.
-    assert len(search(tmp_path, "allocation", limit=1)) == 1
-    assert search(tmp_path, "a") == []
+    assert len(search(tmp_path, "a", limit=1)) == 1
 
 
 def test_missing_manifest_returns_empty(tmp_path):
@@ -50,3 +46,15 @@ def test_ranking_more_tokens_matched_first(tmp_path):
     ids = [h["id"] for h in hits]
     # ALLOCATION table matches all three tokens; DOM_ALLOC only matches 'allocation'
     assert ids[0] == "widgets/db/tables/ALLOCATION"
+
+
+def test_search_matches_a_fragment_of_an_object_name(tmp_path):
+    """A half-remembered name is how an agent reaches a schema object.
+
+    Object names are identifiers, not English words, so this door matches substrings:
+    `alloc` has to reach `ALLOCATION` and `stag` has to reach `MASTER_STAGING_DATA`.
+    Whole-token matching, which `find_concepts` uses, would return neither.
+    """
+    _seed(tmp_path)
+    assert "widgets/db/tables/ALLOCATION" in [h["id"] for h in search(tmp_path, "alloc")]
+    assert [h["id"] for h in search(tmp_path, "stag")] == ["widgets/db/tables/MASTER_STAGING_DATA"]

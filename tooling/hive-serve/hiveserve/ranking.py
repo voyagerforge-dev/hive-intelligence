@@ -1,11 +1,10 @@
-"""Shared keyword ranking for the two LLM-free search doors.
+"""Keyword ranking for `find_concepts`, the LLM-free concept-search door.
 
-Both `find_concepts` (concept cards) and `find_db_objects` (database-object manifests)
-used to score a row by counting how many raw whitespace-split query tokens appeared as
-*substrings* of its joined text. Measured over a real ~990-card corpus with 70 labelled
-questions, that scorer put the right card in the top 20 only 77.1% of the time although it
-matched it 98.6% of the time, and it got worse as the corpus grew (88.6% at 100 cards).
-Four things caused that, and this module fixes all four:
+`find_concepts` used to score a card by counting how many raw whitespace-split query
+tokens appeared as *substrings* of its joined text. Measured over a real ~990-card corpus
+with 70 labelled questions, that scorer put the right card in the top 20 only 77.1% of the
+time although it matched it 98.6% of the time, and it got worse as the corpus grew (88.6%
+at 100 cards). Four things caused that, and this module fixes all four:
 
 * **Punctuation stuck to query tokens.** `"...in release 12?"` split on whitespace yields
   `12?`, which matches nothing - and the discarded token is usually the most specific word
@@ -22,7 +21,13 @@ Four things caused that, and this module fixes all four:
 Still deliberately absent: embeddings, a network call, any runtime dependency beyond the
 standard library, and any persistent state. Document frequencies are computed per call
 from the candidate rows the caller passes in, which is the collection actually being
-ranked - so a product- or module-filtered search weights terms against that subset.
+ranked - so a product-filtered search weights terms against that subset.
+
+`find_db_objects` is deliberately not on this scorer and keeps its own substring matching.
+Its rows are schema object names rather than prose, so reaching one by a fragment of a
+half-remembered name (`alloc` finding `ALLOCATION`) is what that door is for, and
+whole-token matching takes exactly that away. Moving it here needs prefix or stem matching
+first.
 """
 from __future__ import annotations
 

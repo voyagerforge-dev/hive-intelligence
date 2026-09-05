@@ -464,10 +464,9 @@ versus plan versus teach* belongs with the agent.
 | Work ledger | `start_objective`, `list_objectives`, `get_objective`, `append_entry`, `set_status`, `record_quiz_result` |
 | Personal memory | `remember`, `recall`, `forget`, `promote` |
 
-`find_db_objects` is **LLM-free**: whole-token, idf-weighted keyword ranking over each product's
-`db/manifest.jsonl`, filterable by kind or module, using the same scorer as `find_concepts` (see
-[hive-serve reference](../reference/hive-serve.md#search)). Find an object by name, or by what it
-means through its verbatim `COMMENT ON` text, then read the exact schema.
+`find_db_objects` is **LLM-free**, the same shape as `recall`: case-insensitive token matching over
+each product's `db/manifest.jsonl`, ranked by hits, filterable by kind or module. Find an object by
+name, or by what it means through its verbatim `COMMENT ON` text, then read the exact schema.
 
 > **`/healthz` does not check the corpus.** A service with a stale or empty mount answers
 > `{"ok":true}` while serving nothing. Alert on the card-count gauge; see

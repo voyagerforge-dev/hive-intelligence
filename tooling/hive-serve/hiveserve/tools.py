@@ -38,7 +38,9 @@ def find_concepts(concepts_dir, query, clients_dir=None, product=None, limit=20)
     tokens, weighted by inverse document frequency. See that module for why counting raw
     substring hits ranked the right card outside the top 20 on nearly a quarter of a measured
     question set. The fields searched, the filters, the cap and the returned shape are all
-    unchanged; only the order is different.
+    unchanged, but the matched set is not: dropping stopwords and matching whole tokens
+    changes which cards score above zero, so a query of only stopwords now returns nothing
+    and a query fragment no longer matches inside a longer word.
     """
     candidates = [c for c in load_index(concepts_dir, clients_dir)
                   if c.get("type") == "concept"
