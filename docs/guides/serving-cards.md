@@ -41,7 +41,7 @@ proxy is actually there and actually strips the header from inbound requests.
 | `GET /healthz` | `{"ok":true}` if the process is alive |
 | `GET /metrics` | Prometheus exposition |
 | `GET /concepts` | lean index: id, title, product, type |
-| `GET /find_concepts?q=` | keyword search over titles and descriptions |
+| `GET /find_concepts?q=` | ranked keyword search over ids, titles and descriptions |
 | `GET /card/{card_id}` | one card, raw markdown |
 | `POST /resolve` | a bundle: several cards plus their corrections |
 
@@ -87,7 +87,7 @@ Fifteen tools in three groups.
 | Tool | Does |
 |---|---|
 | `list_concepts` | the lean index, optionally filtered by product or client |
-| `find_concepts` | keyword search |
+| `find_concepts` | ranked keyword search |
 | `get_card` | one card by id |
 | `resolve` | a bundle, with corrections attached |
 | `find_db_objects` | search the database-object tier, which is excluded from the index |

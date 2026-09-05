@@ -46,3 +46,15 @@ def test_ranking_more_tokens_matched_first(tmp_path):
     ids = [h["id"] for h in hits]
     # ALLOCATION table matches all three tokens; DOM_ALLOC only matches 'allocation'
     assert ids[0] == "widgets/db/tables/ALLOCATION"
+
+
+def test_search_matches_a_fragment_of_an_object_name(tmp_path):
+    """A half-remembered name is how an agent reaches a schema object.
+
+    Object names are identifiers, not English words, so this door matches substrings:
+    `alloc` has to reach `ALLOCATION` and `stag` has to reach `MASTER_STAGING_DATA`.
+    Whole-token matching, which `find_concepts` uses, would return neither.
+    """
+    _seed(tmp_path)
+    assert "widgets/db/tables/ALLOCATION" in [h["id"] for h in search(tmp_path, "alloc")]
+    assert [h["id"] for h in search(tmp_path, "stag")] == ["widgets/db/tables/MASTER_STAGING_DATA"]

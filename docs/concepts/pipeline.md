@@ -449,7 +449,7 @@ routes **and** a mounted MCP streamable-HTTP app from one FastAPI process.
 | `GET` | `/healthz` | liveness. **Does not check the corpus** |
 | `GET` | `/metrics` | Prometheus exposition |
 | `GET` | `/concepts` | the lean index: ids, titles, descriptions |
-| `GET` | `/find_concepts` | keyword search over that index |
+| `GET` | `/find_concepts` | ranked keyword search over that index |
 | `GET` | `/card/{card_id}` | one card's markdown |
 | `POST` | `/resolve` | a bundle of cards, neighbours, **and any active corrections** |
 

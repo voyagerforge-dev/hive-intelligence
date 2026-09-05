@@ -82,7 +82,8 @@ curl -s "localhost:8099/find_concepts?q=calibration"
 widget/calibration-routine | Widget Calibration Routine
 ```
 
-Keyword search over titles and descriptions. No embeddings, no scores, no ranker.
+Keyword search over ids, titles and descriptions, ranked by how rare the matched words are.
+No embeddings, no model. See [hive-serve](../reference/hive-serve.md#search) for the scorer.
 
 **Resolve a card, and watch the correction arrive with it:**
 

@@ -1,6 +1,7 @@
 """Transport-agnostic read tools over the OKF resolver."""
 from __future__ import annotations
 
+from hiveserve.ranking import rank
 from hiveserve.resolver import get_card, load_index, resolve
 
 _LEAN_FIELDS = ("id", "title", "product", "type", "regime", "version",
@@ -32,24 +33,24 @@ def find_concepts(concepts_dir, query, clients_dir=None, product=None, limit=20)
     Mirrors find_db_objects: a broad or topic question ("explain the architecture") should
     never dump the whole 990-card index. This returns a small, ranked set, with the
     description kept for the matches so the model can choose which ids to resolve.
+
+    Ranking is `ranking.rank` - whole-token matching over stopword-stripped, punctuation-free
+    tokens, weighted by inverse document frequency. See that module for why counting raw
+    substring hits ranked the right card outside the top 20 on nearly a quarter of a measured
+    question set. The fields searched, the filters, the cap and the returned shape are all
+    unchanged, but the matched set is not: dropping stopwords and matching whole tokens
+    changes which cards score above zero, so a query of only stopwords now returns nothing
+    and a query fragment no longer matches inside a longer word.
     """
-    tokens = [t for t in query.lower().split() if t]
-    if not tokens:
-        return []
-    hits = []
-    for c in load_index(concepts_dir, clients_dir):
-        if c.get("type") != "concept":
-            continue
-        if product is not None and c.get("product") != product:
-            continue
-        hay = " ".join([c.get("title") or "", c.get("description") or "",
-                        c.get("id") or ""]).lower()
-        score = sum(1 for t in tokens if t in hay)
-        if score > 0:
-            hits.append((score, c))
-    hits.sort(key=lambda sc: (-sc[0], sc[1].get("id") or ""))
+    candidates = [c for c in load_index(concepts_dir, clients_dir)
+                  if c.get("type") == "concept"
+                  and (product is None or c.get("product") == product)]
+    # Document frequencies come from `candidates`, so idf describes the collection actually
+    # being searched. That is also the whole index this call already loaded: there is no
+    # cached or precomputed state anywhere behind this function.
+    hits = rank(query, candidates, limit)
     return [{"id": c.get("id"), "title": c.get("title"), "product": c.get("product"),
-             "description": c.get("description")} for _, c in hits[:limit]]
+             "description": c.get("description")} for c in hits]
 
 
 def get_card_text(concepts_dir, card_id: str, clients_dir=None) -> str:

@@ -25,6 +25,7 @@ import subprocess
 import time
 import uuid
 
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
@@ -63,15 +64,22 @@ def ledger_dsn():
          "-p", f"{PORT}:5432", IMAGE],
         check=True, capture_output=True,
     )
+    dsn = f"postgresql://test:test@127.0.0.1:{PORT}/test"
     try:
+        # Wait on the DSN the tests use, not on pg_isready inside the container. The image's
+        # entrypoint runs a temporary bootstrap server with listen_addresses='' during initdb:
+        # pg_isready answers over the unix socket and reports READY while the published port
+        # still refuses, so a probe there returns green ~0.5s before any test can connect and
+        # the whole ledger suite errors with "server closed the connection unexpectedly".
         for _ in range(60):
-            if subprocess.run([rt, "exec", name, "pg_isready", "-U", "test", "-q"],
-                              capture_output=True, check=False).returncode == 0:
+            try:
+                psycopg.connect(dsn, connect_timeout=2).close()
                 break
-            time.sleep(1)
+            except psycopg.OperationalError:
+                time.sleep(1)
         else:
             pytest.fail(f"Postgres in {name} never became ready.")
-        yield f"postgresql://test:test@127.0.0.1:{PORT}/test"
+        yield dsn
     finally:
         subprocess.run([rt, "rm", "-f", name], capture_output=True, check=False)
 
