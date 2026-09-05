@@ -31,6 +31,12 @@ environment, so it must be **exported** to have any effect at all. See
 The same rule covers `.env.example`: no absolute path under anyone's home directory. Those files
 are what a new operator copies, and a dead path there is invisible until it produces nothing.
 
+**Client scope is one predicate, and it is structural.** A card is scoped to a client by its
+`clients/<client>/...` path, never by what its frontmatter claims, and every door that offers a
+card to a caller asks `hiveserve.resolver.out_of_client_scope`. Do not write a second copy of that
+test: the one in the evaluation selector drifted to `memory` alone and put every client's `issue`
+cards into every selector prompt, which reached the model gateway before anyone noticed.
+
 ## Working on it
 
 Each package under `tooling/` is its own distribution with its own venv, `.env.example`, tests and
