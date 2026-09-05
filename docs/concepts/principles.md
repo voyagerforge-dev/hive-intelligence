@@ -31,8 +31,8 @@ The serving layer calls no model. See [architecture](architecture.md#no-model-at
 
 **The cost.** Retrieval is keyword and id based, not semantic. A question phrased in words no card
 uses may find nothing. That is a real limitation, and the intended response is to fix the card's
-description rather than add a ranker: if a concept cannot be found by the words people use for it,
-its description is wrong, and a semantic index would have hidden that.
+description rather than add a semantic ranker: if a concept cannot be found by the words people use
+for it, its description is wrong, and a semantic index would have hidden that.
 
 ## Two clean stores
 
@@ -81,9 +81,9 @@ endpoint. None requires the named product. Renaming them is a breaking change fo
 deployment, so it belongs with a major version. See
 [configuration](../reference/configuration.md#names-that-mention-a-vendor).
 
-**Retrieval is lexical.** Covered above. Fix descriptions, not the ranker. If you need semantic
-search over the same content, embed the cards and keep your own index: see
-[alongside an existing RAG system](../guides/alongside-rag.md).
+**Retrieval is lexical.** Covered above. Fix descriptions first: no lexical scorer can match a word
+no card uses. If you need semantic search over the same content, embed the cards and keep your own
+index: see [alongside an existing RAG system](../guides/alongside-rag.md).
 
 **Client isolation is enforced at serving, not at rest.** Memory and issue cards for every client
 sit in one repository, separated by directory and by resolver logic. Whoever can read the

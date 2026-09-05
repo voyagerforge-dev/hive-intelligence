@@ -21,10 +21,10 @@ Hive inverts the order. Instead of indexing everything and hoping the ranker sor
 distils documents into **cards**: one concept each, small enough to read, reviewed by a person
 before entering the corpus, and stored as plain markdown in git.
 
-At serving time there is no ranking model, no embedding, and no similarity score. The agent asks
-for concepts by id, or searches a lean index of titles and descriptions, and gets back exactly the
-cards a human approved. The reasoning happens in the agent. The judgement about what is true
-happened earlier, and left an audit trail.
+At serving time there is no model, no embedding, and no vector index. The agent asks for concepts
+by id, or searches a lean index of titles and descriptions, and gets back exactly the cards a human
+approved. The reasoning happens in the agent. The judgement about what is true happened earlier,
+and left an audit trail.
 
 ```
 documents  ──►  atomic markdown  ──►  concept cards  ──►  Claude
@@ -49,7 +49,7 @@ Hive is usually read as an alternative to RAG. It is also useful as a stage in f
 that is the smaller commitment.
 
 **As the system.** Cards are served directly to an agent by id, with corrections attached. No
-embeddings, no vector store, no ranking. Deterministic and auditable.
+embeddings, no vector store, no model. Deterministic and auditable.
 
 **In front of an existing RAG system.** Hive replaces ingestion and leaves retrieval alone. A card
 is already a chunk: one reviewed concept, deduplicated, with boilerplate stripped and no accidental
