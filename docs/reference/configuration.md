@@ -56,8 +56,8 @@ flagged where they appear.
 | `BIFROST_BASE` | empty | model gateway, **evaluation only**. Serving makes no model calls |
 | `BIFROST_API_KEY` | empty | as above |
 | `SELECT_MODEL` | `deepseek-v4-flash` | evaluation harness only |
-| `ANSWER_MODEL` | `minimax-m3` | evaluation harness only |
-| `JUDGE_MODEL` | `minimax-m3` | evaluation harness only |
+| `ANSWER_MODEL` | `deepseek-v4` | evaluation harness only |
+| `JUDGE_MODEL` | `deepseek-v4` | evaluation harness only |
 | `BIFROST_TIMEOUT_S` | `300` | |
 
 `IDENTITY_HEADER` names a header that is trusted on arrival. There is no signature check. Anything

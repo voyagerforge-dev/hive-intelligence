@@ -105,3 +105,69 @@ def test_score_memory_hit_isolation_and_cross_client():
     # expected memory missing from bundle -> not ok
     assert score_memory("clients/alpha/memory/m", ["widgets/a"], "alpha", [None])["memory_ok"] is False
 
+
+# --- a model that returns nothing is a broken run, not a score of zero ------------------
+
+class SilentLLM:
+    """A model whose calls return None - four failed retries in `hivegen.llm`, an
+    exhausted provider token plan, or a key the gateway rejects."""
+
+    def complete(self, system, user): return None
+
+
+def _one_card(tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntitle: A\ndescription: d\nrelated: []\nsources: [a.md]\n---\n\nbody about x\n")
+    return [{"id": "q1", "question": "x?", "expected_card_ids": ["a"]}]
+
+
+def test_run_eval_marks_a_silent_judge_as_a_failure(tmp_path):
+    qa = _one_card(tmp_path)
+    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=FixedAnswer(),
+                   judge_llm=SilentLLM(),
+                   get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text())
+    agg = res["aggregate"]
+    assert agg["failed"] is True
+    assert agg["judge_empty"] == 1 and agg["answer_empty"] == 0
+    assert agg["unscored"] == 1 and agg["correct"] == 0 and agg["grounded"] == 0
+
+
+def test_run_eval_marks_a_silent_answerer_as_a_failure(tmp_path):
+    qa = _one_card(tmp_path)
+    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=SilentLLM(),
+                   judge_llm=JudgeLLM('{"grounded": false, "correct": false, "note": "empty"}'),
+                   get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text())
+    agg = res["aggregate"]
+    # the judge answered, so nothing is `unscored` - the failure is upstream of it
+    assert agg["unscored"] == 0
+    assert agg["answer_empty"] == 1 and agg["failed"] is True
+
+
+def test_run_eval_does_not_mark_a_judge_that_merely_replied_with_garbage(tmp_path):
+    """Unparseable is a verdict this cannot read; silent is no verdict at all.
+
+    Both score `unscored`, and only the second means the run measured nothing. Failing on
+    the first would refuse a run whose models were working.
+    """
+    qa = _one_card(tmp_path)
+    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=FixedAnswer(),
+                   judge_llm=JudgeLLM("not json"),
+                   get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text())
+    assert res["aggregate"]["unscored"] == 1
+    assert res["aggregate"]["failed"] is False
+
+
+def test_run_eval_healthy_run_is_not_marked_failed(tmp_path):
+    qa = _one_card(tmp_path)
+    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=FixedAnswer(),
+                   judge_llm=JudgeLLM('{"grounded": true, "correct": true, "note": "ok"}'),
+                   get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text())
+    assert res["aggregate"]["failed"] is False
+    assert res["aggregate"]["answer_empty"] == 0 and res["aggregate"]["judge_empty"] == 0
+
+
+def test_empty_model_roles_names_the_role_and_the_count():
+    from hiveserve.eval import empty_model_roles
+    assert empty_model_roles({"answer_empty": 0, "judge_empty": 0}) == []
+    assert empty_model_roles({"answer_empty": 3, "judge_empty": 70}) == [
+        ("answer", 3), ("judge", 70)]

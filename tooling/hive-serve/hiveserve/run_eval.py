@@ -21,7 +21,7 @@ from hivegen.corpus import require_dir
 from hivegen.llm import BifrostChat
 
 from hiveserve.config import get_settings
-from hiveserve.eval import load_qa, run_eval
+from hiveserve.eval import empty_model_roles, load_qa, run_eval
 from hiveserve.resolver import client_of_id, clients_base, get_card, load_index
 
 USAGE = (
@@ -223,6 +223,36 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
     return None, warn_if_cross_client_is_unexercised(qa, set())
 
 
+_ROLE_SETTING = {"answer": "ANSWER_MODEL", "judge": "JUDGE_MODEL"}
+
+
+def refuse_if_a_model_returned_nothing(aggregate: dict, settings) -> None:
+    """Exit nonzero, naming the role, when a model produced nothing on any row.
+
+    A model that answers nothing is not a low score. `hivegen.llm` retries four times and
+    then returns ``None``; the answer becomes ``""``, the judge returns ``unscored``, and
+    the aggregate reads ``correct: 0, grounded: 0`` on a clean exit - which is exactly what
+    a blank ``BIFROST_API_KEY`` looks like, and also what a model whose provider token plan
+    is used up looks like (HTTP 429, no key can fix it). The shipped default was in that
+    state, so this was not hypothetical.
+
+    The report is already on disk carrying ``failed`` when this runs, because a caveat that
+    exists only in a terminal is a caveat nobody reads.
+    """
+    failures = empty_model_roles(aggregate)
+    for role, count in failures:
+        setting = _ROLE_SETTING[role]
+        print(f"[run_eval] FAILED: the {role} model ({setting}="
+              f"{getattr(settings, f'{role}_model')!r}) returned nothing for {count} of "
+              f"{aggregate['n']} question(s), so this run measured nothing. Zeros here are "
+              "an absent measurement, not a result. Check that BIFROST_API_KEY is set and "
+              f"that the gateway at BIFROST_BASE serves {setting}: an exhausted provider "
+              "token plan refuses with 429 and looks identical to a missing key.",
+              flush=True)
+    if failures:
+        raise SystemExit(1)
+
+
 def main() -> None:
     mode = sys.argv[1] if len(sys.argv) > 1 else "progressive"
     if mode not in ("progressive", "ceiling"):
@@ -258,6 +288,7 @@ def main() -> None:
     report = out_dir / f"report-{mode}-{qa_path.stem}.json"
     report.write_text(json.dumps(res, indent=2))
     print(f"mode={mode} qa={qa_path.stem} aggregate={res['aggregate']} report={report}")
+    refuse_if_a_model_returned_nothing(res["aggregate"], s)
 
 
 if __name__ == "__main__":

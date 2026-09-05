@@ -186,6 +186,22 @@ That flag is scoped to `cross_client` alone: `memory_ok` for a row carrying `exp
 real and failable measurement, since it also requires that client's own memory card to have been
 retrieved. Reports are written under `OKF_DATA_DIR`.
 
+### A model that returns nothing fails the run
+
+`unscored` counts rows the judge did not score. It cannot, on its own, tell a judge that replied
+with something unparseable from a judge that never replied - and only the second means the run
+measured nothing. `hivegen.llm` retries four times and then returns `None`; the answer becomes `""`,
+the judge returns `unscored`, and the aggregate reads `correct: 0, grounded: 0` on a **clean exit**.
+That is what a blank `BIFROST_API_KEY` produces, and also what a model whose provider token plan is
+used up produces (HTTP 429, which no key can fix). The shipped `ANSWER_MODEL` / `JUDGE_MODEL` default
+was in that state, which is why it changed to `deepseek-v4` on 2026-09-06.
+
+`run_eval` now separates the two. Rows carry `answer_empty` and `judge_empty`; the aggregate carries
+their counts plus `failed`, and the CLI prints one line naming the role, the setting, the configured
+model and the count, then **exits nonzero**. The report is written first, so the marker survives in
+`OKF_DATA_DIR` rather than only in a terminal. An unparseable-but-present verdict still scores
+`unscored` and does **not** fail the run.
+
 ## Internals
 
 Module-level detail, verified against the code on 2026-07-30.

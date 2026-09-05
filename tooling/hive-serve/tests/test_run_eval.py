@@ -611,3 +611,80 @@ def test_a_set_with_no_client_rows_never_records_cross_client_as_measured(corpus
     report = json.loads(
         (tmp_path / "data" / "eval" / "report-progressive-wave-replen.json").read_text())
     assert report["aggregate"]["cross_client_unexercised"] is True
+
+
+# --- a model that answers nothing must not exit clean on zeros -------------------------
+#
+# `hivegen.llm` retries four times and then returns None. The answer becomes "", the judge
+# returns `unscored`, and the aggregate reads correct 0 / grounded 0 with exit status 0 -
+# the same shape a blank BIFROST_API_KEY produces, and the shape the shipped default
+# ANSWER_MODEL/JUDGE_MODEL actually produced once its provider token plan was used up.
+
+class _SilentModel:
+    def complete(self, system, user): return None
+
+
+@pytest.fixture
+def live_corpus(tmp_path, monkeypatch):
+    """The same one-card corpus, but with the real `run_eval` left in place."""
+    concepts = tmp_path / "corpus" / "concepts"
+    concepts.mkdir(parents=True)
+    (concepts / "wave-replen.md").write_text(CARD)
+    evals = tmp_path / "corpus" / "eval"
+    evals.mkdir()
+    (evals / "wave-replen.jsonl").write_text(json.dumps(QA_ROW) + "\n")
+
+    monkeypatch.chdir(tmp_path)
+    for key in ("CONCEPTS_DIR", "CLIENTS_DIR", "EVAL_DIR", "OKF_DATA_DIR",
+                "ANSWER_MODEL", "JUDGE_MODEL"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("CONCEPTS_DIR", str(concepts))
+    monkeypatch.setenv("EVAL_DIR", str(evals))
+    monkeypatch.setenv("OKF_DATA_DIR", str(tmp_path / ".data"))
+    get_settings.cache_clear()
+    yield tmp_path / ".data" / "eval"
+    get_settings.cache_clear()
+
+
+def _report(report_dir):
+    return json.loads((report_dir / "report-progressive-wave-replen.json").read_text())
+
+
+def test_eval_exits_nonzero_and_names_the_role_when_a_model_returns_nothing(
+        live_corpus, monkeypatch, capsys):
+    monkeypatch.setattr(run_eval_module, "BifrostChat", lambda *a, **k: _SilentModel())
+    _argv(monkeypatch, "progressive", "wave-replen")
+
+    with pytest.raises(SystemExit) as exc:
+        run_eval_module.main()
+    assert exc.value.code == 1
+
+    out = capsys.readouterr().out
+    assert "FAILED" in out
+    assert "answer model (ANSWER_MODEL=" in out and "judge model (JUDGE_MODEL=" in out
+    assert "'deepseek-v4'" in out          # the role's configured model, named
+
+    # and the marker is in the written report, not only on the terminal
+    agg = _report(live_corpus)["aggregate"]
+    assert agg["failed"] is True
+    assert agg["answer_empty"] == 1 and agg["judge_empty"] == 1
+    assert agg["correct"] == 0 and agg["grounded"] == 0   # the zeros that used to exit 0
+
+
+def test_eval_exits_clean_and_marks_nothing_when_the_models_answer(live_corpus, monkeypatch):
+    class _Working:
+        def complete(self, system, user):
+            if "REFERENCE" in user:
+                return '{"grounded": true, "correct": true, "note": "ok"}'
+            if "INDEX" in user:
+                return '{"card_ids": ["wave-replen"]}'
+            return "Replen feeds waves [widgets.md]."
+
+    monkeypatch.setattr(run_eval_module, "BifrostChat", lambda *a, **k: _Working())
+    _argv(monkeypatch, "progressive", "wave-replen")
+
+    run_eval_module.main()
+
+    agg = _report(live_corpus)["aggregate"]
+    assert agg["failed"] is False
+    assert agg["correct"] == 1 and agg["grounded"] == 1

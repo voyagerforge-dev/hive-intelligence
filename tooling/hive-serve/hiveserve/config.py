@@ -10,8 +10,16 @@ class Settings(BaseSettings):
     bifrost_base: str = ""
     bifrost_api_key: str = ""
     select_model: str = "deepseek-v4-flash"
-    answer_model: str = "minimax-m3"
-    judge_model: str = "minimax-m3"
+    # deepseek-v4 since 2026-09-06. The previous default, minimax-m3, is refused by its
+    # provider for an exhausted token plan (HTTP 429, "Token Plan usage limit reached"),
+    # which is not an authentication failure and not something a key can fix. Left as the
+    # default it produced four retries, then None, then an empty answer, an unscored
+    # verdict, and an aggregate of correct 0 / grounded 0 with exit status 0 - the same
+    # shape a blank BIFROST_API_KEY produces. run_eval now refuses that outcome loudly;
+    # this makes the shipped default one the gateway actually serves. SELECT_MODEL is
+    # deliberately unchanged.
+    answer_model: str = "deepseek-v4"
+    judge_model: str = "deepseek-v4"
     bifrost_timeout_s: int = 300
     max_cards: int = 8
     # 40K chars is ~10K tokens. The old 80K produced ~18K-token bundles that overran the

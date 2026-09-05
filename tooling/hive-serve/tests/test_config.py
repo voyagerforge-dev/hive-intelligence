@@ -8,8 +8,10 @@ def test_settings_reads_env(monkeypatch, tmp_path):
     monkeypatch.setenv("BIFROST_API_KEY", "k")
     s = get_settings()
     assert s.select_model == "deepseek-v4-flash"
-    assert s.answer_model == "minimax-m3"
-    assert s.judge_model == "minimax-m3"
+    # deepseek-v4 since 2026-09-06: minimax-m3 is refused by its provider for an
+    # exhausted token plan, and a model that never answers reads as correct 0 / grounded 0.
+    assert s.answer_model == "deepseek-v4"
+    assert s.judge_model == "deepseek-v4"
     assert s.bifrost_timeout_s == 300
     assert s.max_cards == 8
     assert s.resolve_depth == 1
@@ -101,3 +103,19 @@ def test_a_copied_env_example_does_not_contradict_the_code_defaults(tmp_path, mo
     assert s.max_chars == Settings.model_fields["max_chars"].default
     assert s.max_cards == Settings.model_fields["max_cards"].default
     assert s.resolve_depth == Settings.model_fields["resolve_depth"].default
+
+
+def test_env_example_matches_the_shipped_model_defaults():
+    """A `.env.example` naming a different model from `config.py` makes the documented
+    first step - copy it to `.env` - silently change which models the harness calls."""
+    from pathlib import Path
+
+    example = dict(
+        line.split("=", 1)
+        for line in Path(__file__).resolve().parents[1].joinpath(".env.example")
+        .read_text().splitlines()
+        if "=" in line and not line.startswith("#"))
+    s = Settings()
+    assert example["SELECT_MODEL"] == s.select_model
+    assert example["ANSWER_MODEL"] == s.answer_model
+    assert example["JUDGE_MODEL"] == s.judge_model
