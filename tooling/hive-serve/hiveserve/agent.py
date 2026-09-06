@@ -51,14 +51,29 @@ def _index_text(index: list[dict]) -> str:
     return "\n".join(f"- {c['id']}: {tag(c)}{c['title']}, {c['description']}" for c in index)
 
 
-def select_ids(index, question: str, llm, *, known_ids: set[str]) -> list[str]:
+def select_ids(index, question: str, llm, *, known_ids: set[str]) -> tuple[list[str], bool]:
+    """Selected ids, and whether the model produced nothing at all.
+
+    The second value separates two events an empty id list used to conflate. A model
+    that replied with unusable or unknown ids made a retrieval miss, which `select_hit`
+    measures honestly. A model that replied with NOTHING measured nothing, and scoring
+    that as a miss is how a run reports a retrieval collapse it never observed - see
+    `eval.empty_model_roles`.
+    """
     user = f"INDEX:\n{_index_text(index)}\n\nQUESTION: {question}"
+    answered = False
     for _ in range(2):
-        data = extract_json(llm.complete(_SELECT_SYS, user) or "")
-        ids = [i for i in (data or {}).get("card_ids", []) if i in known_ids]
+        raw = llm.complete(_SELECT_SYS, user)
+        if (raw or "").strip():
+            answered = True
+        data = extract_json(raw or "")
+        found = (data or {}).get("card_ids")
+        if not isinstance(found, list):
+            found = []
+        ids = [i for i in found if isinstance(i, str) and i in known_ids]
         if ids:
-            return ids
-    return []
+            return ids, False
+    return [], not answered
 
 
 def answer_question(concepts_dir, question, *, select_llm, answer_llm,
@@ -73,15 +88,18 @@ def answer_question(concepts_dir, question, *, select_llm, answer_llm,
     concepts = [c for c in index
                 if c.get("type") != "correction" and not out_of_client_scope(c, client)]
     if mode == "ceiling":
+        # No selection call is made, so the selector cannot have returned nothing.
+        select_empty = False
         selected = [c["id"] for c in concepts]
         resolved = resolve(concepts_dir, selected, depth=0, max_cards=len(selected) or 1,
                            corrections=corr_map, clients_dir=clients_dir, client=client)
     else:
-        selected = select_ids(concepts, question, select_llm, known_ids={c["id"] for c in concepts})
+        selected, select_empty = select_ids(concepts, question, select_llm,
+                                            known_ids={c["id"] for c in concepts})
         resolved = resolve(concepts_dir, selected, depth=depth, max_cards=max_cards,
                            max_chars=max_chars, corrections=corr_map,
                            clients_dir=clients_dir, client=client)
     user = f"KNOWLEDGE CARDS:\n{resolved['bundle']}\n\nQUESTION: {question}"
     answer = answer_llm.complete(_ANSWER_SYS, user) or ""
-    return {"answer": answer, "selected_ids": selected,
+    return {"answer": answer, "selected_ids": selected, "select_empty": select_empty,
             "bundle_ids": resolved["card_ids"], "bundle_cards": resolved["card_texts"], "mode": mode}

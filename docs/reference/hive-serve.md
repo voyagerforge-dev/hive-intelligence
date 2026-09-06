@@ -216,9 +216,13 @@ are unchanged; their values can still change when the selector's candidate set c
 ### A model that returns nothing fails the run
 
 `unscored` alone does not distinguish an unparseable judge reply from no reply. Rows therefore
-carry `answer_empty` and `judge_empty`, treating `None`, empty strings and whitespace-only replies
-as empty. The aggregate carries their counts plus `failed`, which is true if either role returned
-nothing on **any** row. Such a report is incomplete, not a valid low-scoring baseline.
+carry `select_empty`, `answer_empty` and `judge_empty`, treating `None`, empty strings and
+whitespace-only replies as empty. Answer and judge make one call per row, so their flags describe
+that one reply. Selection retries once, so `select_empty` is true only when the selector produced
+nothing on **every** attempt; a row where it replied on either attempt, even unusably, is a genuine
+retrieval miss rather than an absent measurement. The aggregate carries their counts plus `failed`,
+which is true if any of the three roles returned nothing on **any** row. Such a report is
+incomplete, not a valid low-scoring baseline.
 
 After writing the report, the CLI prints one diagnostic per failing role naming its setting,
 configured model and affected row count, then **exits with status 1**. Check `BIFROST_API_KEY`,
@@ -226,8 +230,17 @@ gateway model availability and provider quota; an exhausted token plan can fail 
 valid key. Model defaults and overrides are in [configuration](configuration.md#hive-serve).
 
 An unparseable-but-present judge reply still scores `unscored` and does **not** by itself fail the
-run. Empty selector output remains a retrieval miss, measured by `select_hit` and `bundle_hit`,
-rather than an empty-model failure.
+run. The same holds for the selector: a reply this cannot parse, or one naming only unknown ids,
+is a genuine retrieval miss measured by `select_hit` and `bundle_hit`.
+
+**`select_empty` joined them on 2026-09-06.** The selector was excluded until then, on the
+reasoning that a selector returning nothing is just a retrieval miss. DeepSeek V4 Flash 0731,
+measured as a candidate selection default, produced no usable `card_ids` list on 16 of 16 real
+selection prompts: 7 empty responses and 9 replies in a different JSON schema. The 7 are what this
+guard catches - the harness scored them as retrieval misses and reported a collapse it had never
+observed, the same shape of false zero the answer and judge guards already existed to prevent. The
+other 9 are not covered and are not meant to be: a wrong-schema reply is an unparseable selection
+naming no card ids, which stays a genuine retrieval miss by the rule above.
 
 ## Internals
 

@@ -90,10 +90,14 @@ def judge_answer(question, answer, reference_text, llm) -> dict:
             "note": data.get("note", ""), "judge_empty": False}
 
 
-# The two roles that produce a verdict. `select` is not one of them: a selector that
-# returns nothing is a retrieval miss, which the select_hit / bundle_hit columns already
-# measure honestly.
-_EMPTY_MODEL_ROLES = ("answer", "judge")
+# Every role whose silence invalidates the run. `select` was excluded until 2026-09-06,
+# on the reasoning that a selector returning nothing is a retrieval miss the select_hit
+# column already measures. That was wrong: a candidate selection default produced no usable
+# card_ids on 16 of 16 real selection prompts, 7 of them empty responses, and those 7 were
+# reported as a retrieval collapse the harness had never observed. A model that says
+# nothing measures nothing, whichever role it holds. The other 9 replies used a different
+# JSON schema; an unparseable selection names no cards and stays a genuine miss.
+_EMPTY_MODEL_ROLES = ("select", "answer", "judge")
 
 
 def empty_model_roles(aggregate: dict) -> list[tuple[str, int]]:
@@ -137,6 +141,7 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
         verdict = judge_answer(item["question"], res["answer"], ref, judge_llm)
         rows.append({"id": item["id"], "question": item["question"],
                      "selected_ids": res["selected_ids"], "bundle_ids": res["bundle_ids"],
+                     "select_empty": res["select_empty"],
                      "answer_empty": not (res["answer"] or "").strip(),
                      **sel, **reg, **ver, **prod, **corr, **mem, **verdict, "answer": res["answer"]})
     agg = {
@@ -154,6 +159,7 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
         # Not scores: the count of rows on which a model returned nothing at all. Zeros
         # produced this way are the absence of a measurement, and `failed` says so in the
         # written report rather than only on a terminal nobody kept.
+        "select_empty": sum(1 for r in rows if r["select_empty"]),
         "answer_empty": sum(1 for r in rows if r["answer_empty"]),
         "judge_empty": sum(1 for r in rows if r["judge_empty"]),
     }

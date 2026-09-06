@@ -18,7 +18,7 @@ _THINK = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 
 
 def extract_json(text: str) -> dict | None:
-    # Reasoning models (e.g. minimax-m3) wrap chain-of-thought in <think>…</think>
+    # Reasoning models (e.g. minimax/minimax-m3) wrap chain-of-thought in <think>…</think>
     # before the answer; that prose can contain braces, so strip it first.
     text = _THINK.sub("", text or "").strip()
     if not text:

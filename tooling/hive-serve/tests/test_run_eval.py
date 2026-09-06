@@ -636,7 +636,7 @@ def live_corpus(tmp_path, monkeypatch):
 
     monkeypatch.chdir(tmp_path)
     for key in ("CONCEPTS_DIR", "CLIENTS_DIR", "EVAL_DIR", "OKF_DATA_DIR",
-                "ANSWER_MODEL", "JUDGE_MODEL"):
+                "SELECT_MODEL", "ANSWER_MODEL", "JUDGE_MODEL"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("CONCEPTS_DIR", str(concepts))
     monkeypatch.setenv("EVAL_DIR", str(evals))
@@ -662,13 +662,46 @@ def test_eval_exits_nonzero_and_names_the_role_when_a_model_returns_nothing(
     out = capsys.readouterr().out
     assert "FAILED" in out
     assert "answer model (ANSWER_MODEL=" in out and "judge model (JUDGE_MODEL=" in out
-    assert "'deepseek-v4'" in out          # the role's configured model, named
+    assert "'deepseek/deepseek-v4-pro'" in out   # the role's configured model, named
 
     # and the marker is in the written report, not only on the terminal
     agg = _report(live_corpus)["aggregate"]
     assert agg["failed"] is True
     assert agg["answer_empty"] == 1 and agg["judge_empty"] == 1
     assert agg["correct"] == 0 and agg["grounded"] == 0   # the zeros that used to exit 0
+
+
+def test_eval_exits_nonzero_when_only_the_selector_returns_nothing(
+        live_corpus, monkeypatch, capsys):
+    """A silent SELECTOR used to score as a retrieval miss and exit 0. A candidate selection
+    default returned nothing on 7 of 16 real selection prompts, and the harness reported
+    those as part of a retrieval collapse it had never observed."""
+    class _SilentSelector:
+        """Answers and judges normally; only the selection call returns nothing."""
+        def complete(self, system, user):
+            if "INDEX" in user:
+                return None
+            if "REFERENCE" in user:
+                return '{"grounded": true, "correct": true, "note": "ok"}'
+            return "Replen feeds waves [widgets.md]."
+
+    monkeypatch.setattr(run_eval_module, "BifrostChat", lambda *a, **k: _SilentSelector())
+    _argv(monkeypatch, "progressive", "wave-replen")
+
+    with pytest.raises(SystemExit) as exc:
+        run_eval_module.main()
+    assert exc.value.code == 1
+
+    out = capsys.readouterr().out
+    assert "FAILED" in out
+    assert "select model (SELECT_MODEL=" in out
+    assert "'deepseek/deepseek-v4-flash'" in out
+
+    agg = _report(live_corpus)["aggregate"]
+    assert agg["failed"] is True
+    assert agg["select_empty"] == 1
+    # The zeros that used to exit 0: no cards selected means nothing to answer from.
+    assert agg["select_hit"] == 0 and agg["bundle_hit"] == 0
 
 
 def test_eval_exits_clean_and_marks_nothing_when_the_models_answer(live_corpus, monkeypatch):

@@ -24,8 +24,9 @@ class SelectLLM:
 ])
 def test_selector_delivers_rules_index_and_question(rule):
     llm = SelectLLM('{"card_ids": ["pre-wave-process"]}')
-    selected = select_ids(INDEX, "pre-wave?", llm, known_ids={"pre-wave-process"})
+    selected, select_empty = select_ids(INDEX, "pre-wave?", llm, known_ids={"pre-wave-process"})
     assert selected == ["pre-wave-process"]
+    assert select_empty is False
     assert len(llm.calls) == 1
     system, user = llm.calls[0]
     assert rule in system
@@ -36,14 +37,70 @@ def test_selector_delivers_rules_index_and_question(rule):
 
 def test_select_ids_parses_and_filters_unknown():
     llm = SelectLLM('{"card_ids": ["pre-wave-process", "bogus"]}')
-    out = select_ids(INDEX, "pre-wave?", llm, known_ids={"pre-wave-process"})
+    out, select_empty = select_ids(INDEX, "pre-wave?", llm, known_ids={"pre-wave-process"})
     assert out == ["pre-wave-process"]
+    assert select_empty is False
 
 
 def test_select_ids_retries_then_empty():
+    """Unusable output is a retrieval miss, not an absent measurement: the model spoke."""
     llm = SelectLLM("no json here")
-    out = select_ids(INDEX, "q", llm, known_ids={"pre-wave-process"})
+    out, select_empty = select_ids(INDEX, "q", llm, known_ids={"pre-wave-process"})
     assert out == []
+    assert select_empty is False
+
+
+@pytest.mark.parametrize("replies", [[None, "no json here"], ["no json here", None]])
+def test_select_ids_counts_a_row_as_empty_only_when_every_attempt_was_blank(replies):
+    """Selection retries once, so the flag is per row, not per reply: if the model spoke on
+    EITHER attempt the row is a retrieval miss `select_hit` measures honestly, not an
+    absent measurement. Order must not matter - a reply is not un-said by a later silence."""
+    class _Scripted:
+        def __init__(self, replies):
+            self.replies = list(replies)
+
+        def complete(self, system, user):
+            return self.replies.pop(0)
+
+    out, select_empty = select_ids(INDEX, "q", _Scripted(replies),
+                                   known_ids={"pre-wave-process"})
+    assert out == []
+    assert select_empty is False
+
+
+@pytest.mark.parametrize("body", [
+    '{"card_ids": null}',
+    '{"card_ids": "pre-wave-process"}',
+    '{"card_ids": 3}',
+    '{"card_ids": {"id": "pre-wave-process"}}',
+])
+def test_select_ids_treats_a_non_list_card_ids_as_a_miss(body):
+    """A wrong-shaped reply names no card ids, so it is a retrieval miss on that attempt -
+    never an exception, which would lose the whole run on one malformed row. The model did
+    speak, so it is a miss and not an absent measurement."""
+    llm = SelectLLM(body)
+    out, select_empty = select_ids(INDEX, "q", llm, known_ids={"pre-wave-process"})
+    assert out == []
+    assert select_empty is False
+
+
+def test_select_ids_keeps_only_the_string_ids_it_knows():
+    """An id list may carry members that are not strings; testing them for membership of a
+    set of ids must not raise on an unhashable one."""
+    llm = SelectLLM('{"card_ids": [{"id": "pre-wave-process"}, 7, "bogus", "pre-wave-process"]}')
+    out, select_empty = select_ids(INDEX, "q", llm, known_ids={"pre-wave-process"})
+    assert out == ["pre-wave-process"]
+    assert select_empty is False
+
+
+def test_select_ids_reports_a_selector_that_returned_nothing():
+    """A silent selector measured nothing. Scoring that as a miss is how a run reports
+    a retrieval collapse it never observed, so the empty case must be distinguishable."""
+    class _Silent:
+        def complete(self, system, user): return None
+    out, select_empty = select_ids(INDEX, "q", _Silent(), known_ids={"pre-wave-process"})
+    assert out == []
+    assert select_empty is True
 
 
 CARD = """---

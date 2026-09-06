@@ -69,7 +69,7 @@ if __name__ == "__main__":  # pragma: no cover
             print(f"  CANDIDATE {a} <> {b}")
         sys.exit(0)
     from hivegen.llm import BifrostChat
-    llm = BifrostChat(base, key, os.environ.get("CONFLICT_MODEL", "minimax-m3"))
+    llm = BifrostChat(base, key, os.environ.get("CONFLICT_MODEL", "minimax/minimax-m3"))
     blocking, review = gate(candidates, mems, llm)
     for a, b in review:
         print(f"REVIEW {a} <> {b}, human check")

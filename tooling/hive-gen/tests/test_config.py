@@ -13,8 +13,10 @@ def test_settings_reads_env(monkeypatch, tmp_path):
         monkeypatch.setenv(k, v)
     s = get_settings()
     assert s.r2_bucket == "b"
-    assert s.taxonomy_model == "minimax-m3"
-    assert s.assign_model == "deepseek-v4-flash"
+    # Provider-qualified since 2026-09-06: OpenRouter is called directly and has no
+    # alias layer, so an unqualified `minimax-m3` resolves nowhere.
+    assert s.taxonomy_model == "minimax/minimax-m3"
+    assert s.assign_model == "deepseek/deepseek-v4-flash"
     assert s.max_chars == 24000
     get_settings.cache_clear()
 
@@ -96,3 +98,13 @@ def test_a_copied_env_example_leaves_the_r2_location_required_and_unset(tmp_path
     assert s.r2_endpoint == ""
     assert s.r2_bucket == ""
     assert s.r2_prefix == ""
+
+
+def test_env_example_matches_the_shipped_model_defaults(tmp_path, monkeypatch):
+    """A `.env.example` naming a different model from `config.py` makes the documented
+    first step - copy it to `.env` - silently change which models the pipeline calls.
+    OpenRouter has no alias layer, so a bare id copied out of here reaches a live endpoint
+    and comes back as an unknown model."""
+    s = _settings_from_env_example(tmp_path, monkeypatch)
+    for field in ("taxonomy_model", "assign_model", "distill_model"):
+        assert getattr(s, field) == Settings.model_fields[field].default

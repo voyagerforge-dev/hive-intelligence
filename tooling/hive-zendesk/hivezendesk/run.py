@@ -142,7 +142,7 @@ def main() -> int:
     ap.add_argument("--workers", type=int, help="concurrency for rebuild (default from config)")
     ap.add_argument("--batch-size", type=int, help="cards per LLM call in rebuild")
     ap.add_argument("--model", help="override the rerank model for this run "
-                                    "(e.g. openrouter/claude-opus-4-8)")
+                                    "(e.g. anthropic/claude-opus-4.8)")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
