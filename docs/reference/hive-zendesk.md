@@ -160,8 +160,10 @@ rerank; it builds no gateway client at all under `--dry-run`, so a costing run n
 
 What a dry `relink` reports is the bill, not the outcome. `shortlisted=` is exactly the number of
 rerank calls the real run would make; `linked=` and `declined=` stay 0 because those are the model's
-answers and the model was never asked. `no_shortlist=` and `cleared=` are exact either way: an entry
-the lexical pass offers nothing for is retracted without any model call.
+answers and the model was never asked. `no_shortlist=` is exact either way: an entry the lexical
+pass offers nothing for is retracted without any model call. `cleared=` counts only those
+retractions, which makes it a floor rather than an exact figure: a real run also retracts the stale
+links of an entry the model declines, and a dry run cannot know a decline without asking.
 
 `--limit` is applied **before** counting, so the verification reflects what was actually requested.
 Applying it afterwards would make every limited run fail its own count check.

@@ -18,12 +18,10 @@ on:
   push:
     branches: [main]
 
-# A new push to the same PR cancels the in-flight run instead of stacking runners. Runs on
-# main are NOT cancelled: a cancelled run is the newest run on the branch, so cancelling one
-# would leave the badge reporting "cancelled" for a commit that was never actually tested.
+# A new push to the same PR cancels the in-flight run instead of stacking runners.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 # Least privilege, stated explicitly rather than inherited from the repository default, which
 # differs between repositories and changes when one is made public. Nothing here writes: the
