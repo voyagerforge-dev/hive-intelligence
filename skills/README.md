@@ -28,10 +28,10 @@ its own marketplace entry, in a repository of its own.
 support practice Hive was first built for: four of the five `description:` lines name that vendor's
 products, `hive/` names one product's configuration regimes (OPS versus Traditional), and
 `contribute/` names them in its body and enumerates one corpus's facet values. The retrieval
-procedure they describe is general; the nouns are not. A deployment in another domain is expected
-to copy these bodies and replace the vocabulary with its own; nothing in the engine, the card model
-or the test fixtures requires these nouns.
-Generalising the skills upstream so that step is unnecessary is still open work. See
+procedure they describe is general; the nouns are not. A deployment in another domain replaces the
+vocabulary in its own fork of this directory rather than copying the bodies out; nothing in the
+engine, the card model or the test fixtures requires these nouns. Generalising the skills upstream
+so that step is unnecessary is still open work. See
 [known limitations](../docs/concepts/principles.md#known-limitations).
 
 A deployment fork inherits this directory the same way it inherits `tooling/` and `docs/`:
