@@ -116,10 +116,20 @@ than skip when they cannot, because a skipped ledger test reports green.
 The five published distributions ship as **one engine at one version**. Publication happens only
 from a pushed `v*` tag, to PyPI, wheels only, over Trusted Publishing with no token stored anywhere.
 
-- [CHANGELOG.md](CHANGELOG.md) is what changed in each version, mirrored from the annotated tags,
-  which are the record.
-- [Distributing the engine](docs/architecture/engine-distribution.md) is how a version is cut and
-  what a consumer pins.
+There is no changelog file in this repository, deliberately. The release workflow is the record, so
+what changed in a version lives where that version was actually cut:
+
+- **[Releases](https://github.com/voyagerforge-dev/hive-intelligence/releases)** and
+  **[tags](https://github.com/voyagerforge-dev/hive-intelligence/tags)** on GitHub. Every version is
+  an annotated tag, and its message says what changed and what it breaks. `git show v0.6.0` reads
+  the same thing offline.
+- **PyPI** for what is installable: [vf-hive-prep](https://pypi.org/project/vf-hive-prep/),
+  [vf-hive-gen](https://pypi.org/project/vf-hive-gen/),
+  [vf-hive-serve](https://pypi.org/project/vf-hive-serve/),
+  [vf-hive-dbparse](https://pypi.org/project/vf-hive-dbparse/),
+  [vf-hive-zendesk](https://pypi.org/project/vf-hive-zendesk/). All five carry the same version.
+- **[Distributing the engine](docs/architecture/engine-distribution.md)** is how a version is cut
+  and what a consumer pins.
 
 ## Contributing
 

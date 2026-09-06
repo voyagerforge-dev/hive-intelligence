@@ -114,8 +114,14 @@ is our fault rather than a verdict - a nudge on the thread is welcome.
 ## Releases
 
 You do not cut one, but it is worth knowing what a version means here: the five published
-distributions ship as one engine at one version, and [CHANGELOG.md](CHANGELOG.md) mirrors the
-annotated tags that are the record.
+distributions ship as one engine at one version.
+
+**Do not add a changelog entry to a pull request, and do not add a changelog file.** There is no
+changelog in this repository on purpose - a hand-maintained one rots, and nothing here generates
+one. The annotated tag is the record: `tools/set-release-version.sh` stamps the version, the tag
+message written at release time says what changed, and it surfaces on
+[the releases page](https://github.com/voyagerforge-dev/hive-intelligence/releases). Put the "why"
+in your commit message instead, where it is already expected.
 
 ## Licensing
 

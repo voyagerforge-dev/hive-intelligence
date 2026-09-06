@@ -25,7 +25,7 @@ Homepage = "https://github.com/voyagerforge-dev/hive-intelligence"
 Documentation = "https://github.com/voyagerforge-dev/hive-intelligence/blob/main/docs/reference/hive-dbparse.md"
 Source = "https://github.com/voyagerforge-dev/hive-intelligence"
 Issues = "https://github.com/voyagerforge-dev/hive-intelligence/issues"
-Changelog = "https://github.com/voyagerforge-dev/hive-intelligence/blob/main/CHANGELOG.md"
+"Release notes" = "https://github.com/voyagerforge-dev/hive-intelligence/releases"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3", "ruff>=0.7"]

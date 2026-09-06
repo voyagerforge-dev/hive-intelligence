@@ -26,7 +26,7 @@ Homepage = "https://github.com/voyagerforge-dev/hive-intelligence"
 Documentation = "https://github.com/voyagerforge-dev/hive-intelligence/blob/main/docs/reference/hive-author.md"
 Source = "https://github.com/voyagerforge-dev/hive-intelligence"
 Issues = "https://github.com/voyagerforge-dev/hive-intelligence/issues"
-Changelog = "https://github.com/voyagerforge-dev/hive-intelligence/blob/main/CHANGELOG.md"
+"Release notes" = "https://github.com/voyagerforge-dev/hive-intelligence/releases"
 
 [project.scripts]
 hiveauthor = "hiveauthor.server:main"
