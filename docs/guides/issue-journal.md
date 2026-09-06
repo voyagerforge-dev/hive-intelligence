@@ -29,8 +29,12 @@ uv run hivezendesk <mode> --client <key> --customers <path> \
 |---|---|
 | `backfill` | first run, over all available history |
 | `incremental` | since the last recorded run |
-| `rebuild` | re-distil existing cards, for example after a prompt change |
-| `relink` | recompute links from issue cards to concept cards, no model calls |
+| `rebuild` | re-distil existing cards without re-fetching them, for example after a prompt change |
+| `relink` | recompute links from issue cards to concept cards, without re-distilling |
+
+**All four call a model**, so all four cost something. `rebuild` and `relink` exist because the two
+model stages fail independently: a bad linking pass is repairable without redoing the distillation,
+which is the expensive half. Neither is a free operation.
 
 ## Dry-run first, every time
 

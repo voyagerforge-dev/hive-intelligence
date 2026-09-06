@@ -70,7 +70,9 @@ be pending at a time. A release can therefore legitimately be partial; the workf
 fails the run and names what it could not account for, and the gap is closed by a NEW version,
 never by re-running the tag.
 [docs/architecture/engine-distribution.md](docs/architecture/engine-distribution.md) has all of
-it, including why a release on this private repository was not an option.
+it, including why attaching artefacts to a GitHub release was not an option. That decision was
+taken while this repository was private; it is now public, which does not change the release path
+but does invalidate any statement that the source is not readable.
 
 ## Maintaining this file
 

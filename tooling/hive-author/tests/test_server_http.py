@@ -26,8 +26,8 @@ def test_refuses_to_start_when_unconfigured(missing):
 
 
 # ---------------------------------------------------------------------------
-# Choosing a forge, and a token that rotates. Both arrived 2026-08-15 when EXAMPLECO
-# returned to github.com and started authenticating as a GitHub App.
+# Choosing a forge, and a token that rotates. The second is what a GitHub App
+# installation token needs: it lasts an hour and this process outlives it.
 # ---------------------------------------------------------------------------
 
 def test_forge_kind_selects_the_client():

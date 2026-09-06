@@ -85,10 +85,19 @@ deployment, so it belongs with a major version. See
 no card uses. If you need semantic search over the same content, embed the cards and keep your own
 index: see [alongside an existing RAG system](../guides/alongside-rag.md).
 
+**Some domain vocabulary is still baked into `hive-prep`.** A curation-plan entry with no
+`product` falls back to the literal string `WMS`, the domain Hive was first built for, in
+`hiveprep/slugs.py` and `hiveprep/transform.py`. Set `product` on every entry in the plan and you
+will never meet it; leave one unset and you get slugs and frontmatter stamped with a product that
+means nothing in your corpus. It is a wrong default rather than a loud failure, which is the shape
+this project otherwise avoids, and changing it is a breaking change for any corpus already built on
+it. Related: the functional-area map and guide-topic vocabulary above.
+
 **Client isolation is enforced at serving, not at rest.** Memory and issue cards for every client
 sit in one repository, separated by directory and by resolver logic. Whoever can read the
 repository can read all of it. If clients need cryptographic separation, they need separate
 corpora.
 
-**The ledger is the only state not in git.** A SQLite file holding objectives and personal memory.
-Back it up, because nothing else will bring it back.
+**The ledger is the only state not in git.** A Postgres database holding objectives and personal
+memory; see [the ledger](../reference/hive-serve.md#the-ledger). Back it up, because nothing else
+will bring it back.

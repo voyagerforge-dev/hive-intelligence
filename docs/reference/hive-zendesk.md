@@ -63,6 +63,7 @@ and is measured separately.
 | `model.py` | `Ticket`, `IssueCard`, `RunReport`, `RunError` |
 | `llm.py` | chat client with defensive JSON extraction |
 | `config.py` | typed settings |
+| `profile.py` | the corpus profile's `linking` section: default product, and the words that mark an entry |
 | `run.py` | CLI orchestration |
 
 ## Safety properties
@@ -137,12 +138,16 @@ refuses, because the partial result looks like a complete one and nothing downst
 
 ### `run.py`, the modes
 
-| Mode | Does |
-|---|---|
-| `backfill` | a bounded historical range |
-| `incremental` | since the last run |
-| `rebuild` | re-emit cards from stored records, no model call |
-| `relink` | re-run linking only, against the current corpus |
+| Mode | Does | Model calls |
+|---|---|---|
+| `backfill` | a bounded historical range | distil, then link |
+| `incremental` | since the last run | distil, then link |
+| `rebuild` | re-distil cards from stored records, without re-fetching | reshape, batched |
+| `relink` | re-run linking only, against the current corpus | rerank only |
+
+**Every mode calls a model.** `rebuild` skips the fetch, not the distillation; `relink` skips the
+distillation, not the rerank that chooses the links. `--dry-run` is the only way to run any of them
+without spending anything.
 
 `--dry-run` fetches and gates but **never calls the model and never writes**. That is how a backfill
 is sized and costed before any money is spent.
@@ -155,8 +160,9 @@ repairable without re-distilling, which is the expensive half.
 
 ## Tests
 
-107 tests. Fakes only: the connector and both model clients are injected, so the suite
-runs with no network and no models.
+Fakes only: the connector and both model clients are injected, so the suite runs with no network
+and no models. Use `uv run pytest --collect-only -q` in `tooling/hive-zendesk/` for the current
+inventory rather than a count written down here.
 
 ## Configuration
 

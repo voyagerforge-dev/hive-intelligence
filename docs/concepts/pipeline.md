@@ -1,6 +1,6 @@
 # The pipeline, end to end
 
-How a raw vendor document becomes a grounded answer inside Claude. This is the long-form
+How a raw vendor document becomes a grounded answer inside an agent. This is the long-form
 reference: every stage, every gate, and the mechanisms layered on top of them.
 
 [Architecture](architecture.md) is the short version. Read that first if you want the shape;
@@ -50,10 +50,10 @@ flowchart LR
         s1[REST door · MCP door]
     end
 
-    claude["Claude<br/>(the agent loop)"]
-    ledger[("SQLite work ledger<br/>per-owner state")]
+    agent["An MCP or REST client<br/>(the agent loop)"]
+    ledger[("Postgres work ledger<br/>per-owner state")]
 
-    raw --> P --> atomic --> G --> cards --> S --> claude
+    raw --> P --> atomic --> G --> cards --> S --> agent
     S <-->|read cards| cards
     S <-->|read/write work| ledger
 ```
@@ -70,8 +70,8 @@ deployment configures.
 | **Git is the system of record** | Cards are plain markdown. Curation gates are pull requests and diffs. Zero infrastructure, auditable, and readable without Hive. |
 | **The model proposes, a human disposes, git records** | Every model stage writes a *reviewable artifact* and stops. Nothing reaches the corpus without a human flip. |
 | **LLM-free serving** | The serving layer calls no model. It retrieves cards and records work state. |
-| **Two clean stores** | Knowledge is read-only versioned git. Work state is mutable per-person SQLite. Never mixed. |
-| **Small and recoverable** | One new piece of infrastructure, a SQLite file. Pipelines degrade gracefully: conversion runs without a GPU if the vision tier is unavailable. |
+| **Two clean stores** | Knowledge is read-only versioned git. Work state is mutable per-person rows in Postgres. Never mixed. |
+| **Small and recoverable** | One new piece of infrastructure, a Postgres database, which is one your platform already knows how to back up. Pipelines degrade gracefully: conversion runs without a GPU if the vision tier is unavailable. |
 
 ## Stage 1: document preparation
 
@@ -329,7 +329,7 @@ or open a pull request. A human approval label fires the workflow that builds th
 the PR.
 
 ```
-Claude → hive-author → issue → human approval label → workflow → PR → merge → next corpus sync
+agent → hive-author → issue → human approval label → workflow → PR → merge → next corpus sync
 ```
 
 Two hard-separated tools that structurally cannot cross: `submit_memory_promotion` (requires a
@@ -412,7 +412,7 @@ heavy retrieval stack.
 flowchart TB
     subgraph stores["Stores"]
         git[("git: concepts/**.md<br/>knowledge · read-only, versioned")]
-        db[("sqlite: objectives.db<br/>work state · mutable, per-owner")]
+        db[("Postgres: LEDGER_DSN<br/>work state · mutable, per-owner")]
     end
 
     subgraph core["hiveserve core"]
@@ -431,7 +431,7 @@ flowchart TB
     ledgerc --- mcp
 
     rest --> callers["schedulers · scripts · HTTP tools"]
-    mcp --> claude["Claude (streamable-HTTP or stdio)"]
+    mcp --> agent["MCP client (streamable-HTTP or stdio)"]
 ```
 
 Two transports, one codebase: `serve --stdio` runs MCP over stdio; `serve --http` serves the REST
@@ -443,7 +443,7 @@ routes **and** a mounted MCP streamable-HTTP app from one FastAPI process.
 |---|---|---|
 | `GET` | `/healthz` | liveness. **Does not check the corpus** |
 | `GET` | `/metrics` | Prometheus exposition |
-| `GET` | `/concepts` | the lean index: ids, titles, descriptions |
+| `GET` | `/concepts` | the lean index: ids, titles, products, types |
 | `GET` | `/find_concepts` | ranked keyword search over that index |
 | `GET` | `/card/{card_id}` | one card's markdown |
 | `POST` | `/resolve` | a bundle of cards, neighbours, **and any active corrections** |
@@ -486,7 +486,10 @@ A one-off "explain X" stays on the base skill. No learning plan.
 
 ### The work ledger
 
-One SQLite file in WAL mode. It holds **per-owner state**, never canonical knowledge.
+One Postgres database, named by `LEDGER_DSN`. It holds **per-owner state**, never canonical
+knowledge, and it is the only thing here that is not a file in git. See
+[the ledger](../reference/hive-serve.md#the-ledger) for the storage contract and why it is not a
+file.
 
 ```mermaid
 erDiagram
@@ -531,15 +534,15 @@ parameter**, so one person can never read or write another's objectives or memor
 
 ### A session in motion
 
-The **diagnose** skill sets the behaviour, Claude is the loop, and the layer retrieves and records:
+The **diagnose** skill sets the behaviour, the agent is the loop, and the layer retrieves and records:
 
 ```mermaid
 sequenceDiagram
     actor U as Consultant
-    participant C as Claude
+    participant C as Agent
     participant M as hive-serve (MCP door)
     participant G as git cards
-    participant L as SQLite ledger
+    participant L as Postgres ledger
 
     U->>C: "waves running slow at <client>" (diagnose engages)
     C->>M: start_objective(mode=investigate, goal=…)
@@ -571,9 +574,9 @@ flowchart LR
         k3["versioned · curated via PR"]
         k4["portable, zero-infra"]
     end
-    subgraph W["Per-owner state · SQLite"]
+    subgraph W["Per-owner state · Postgres"]
         direction TB
-        w1["objectives.db"]
+        w1["named by LEDGER_DSN"]
         w2["mutable, per-owner"]
         w3["objectives + entries + memory"]
         w4["cites cards, never stores them"]
@@ -606,12 +609,12 @@ flowchart LR
 2. **Create.** `hive-gen` proposes a concept, assigns this document and its siblings to it, and
    distils a card, cross-linked to its neighbours and citing the atomic source. After review it is
    promoted.
-3. **Serve.** A consultant asks Claude. The skill engages, calls `resolve`, reads the card and its
+3. **Serve.** A consultant asks the agent. The skill engages, calls `resolve`, reads the card and its
    neighbours plus any active corrections, and answers **citing the card's `sources:`**. Findings
    are logged to the ledger, so the investigation resumes later.
 
-No vector database, no re-embedding, no external index. Git files and an agent, with a thin SQLite
-memory.
+No vector database, no re-embedding, no external index. Git files and an agent, with a thin
+relational memory beside them.
 
 ## See also
 

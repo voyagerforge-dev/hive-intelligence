@@ -1,0 +1,65 @@
+name: Feature request
+description: Propose a change to what the engine does.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem before the solution. The most useful requests here are the ones
+        that name something that went wrong, or something that cannot be done at all.
+
+        Two things are out of scope by design, and a request for either will be closed with
+        a pointer rather than acted on:
+
+        - **A corpus, or anything that assumes one lives at a particular path.** The corpus is
+          a separate repository; see
+          [the boundary](https://github.com/voyagerforge-dev/hive-intelligence/blob/main/docs/architecture/product-deployment-boundary.md).
+        - **A deployment**: hosts, addresses, mount paths, schedulers.
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Which distribution
+      options:
+        - vf-hive-prep
+        - vf-hive-gen
+        - vf-hive-serve
+        - vf-hive-dbparse
+        - vf-hive-zendesk
+        - hive-author (not published to PyPI)
+        - the documentation
+        - across several
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and what stops you today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like instead
+      description: If you have a shape in mind, describe it. If you do not, say so - that is fine.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried or considered
+      description: Including workarounds you are living with.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: breaking
+    attributes:
+      label: Compatibility
+      options:
+        - label: This would change behaviour for existing deployments, and I have said how above.
+          required: false

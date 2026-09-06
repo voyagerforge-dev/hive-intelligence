@@ -205,11 +205,12 @@ def confine_to_one_product(links: list[str]) -> list[str]:
 
 
 def set_product(text: str, product: str) -> str:
-    """Stamp the entry's product facet.
+    """Stamp the entry's product facet, from the entry's own evidence.
 
-    `emit.py` hardcodes `product: wms` on every issue card, so a ticket about database
-    another product was stamped with the default, restricted to that product's targets, and
-    could never link to the card that actually explains it.
+    This is where the facet is decided. `emit.py` deliberately omits `product` when it is
+    undecided rather than writing a default, because a card stamped with the wrong product is
+    restricted to that product's link targets and can never reach the card that actually
+    explains it - which is worse than a card claiming nothing.
     """
     if _PROD_RE.search(text):
         return _PROD_RE.sub(lambda _: f"product: {product}", text, count=1)

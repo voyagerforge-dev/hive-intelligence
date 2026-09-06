@@ -53,7 +53,7 @@ right, and it does nothing. The corpus continues serving the outdated claim.
 
 This is the single easiest thing to get wrong. It is worth doing once deliberately, on the fixture
 corpus, so you recognise the shape of it later: see
-[getting started](getting-started.md#3-query-it).
+[getting started](getting-started.md#4-query-it).
 
 ## Memory
 
@@ -74,8 +74,8 @@ submitted_by: someone@example.com
 
 Two levels.
 
-**Personal memory** lives in the SQLite ledger, is private to one person, and never enters the
-corpus. It is a working notebook: `remember`, `recall`, `forget`. No review, no ceremony, no
+**Personal memory** lives in [the ledger](../reference/hive-serve.md#the-ledger), is private to
+one person, and never enters the corpus. It is a working notebook: `remember`, `recall`, `forget`. No review, no ceremony, no
 visibility to anyone else.
 
 **Client memory** is a card in the corpus, visible to everyone working with that client, hard

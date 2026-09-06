@@ -14,11 +14,16 @@ A consumer pinned each package at a git tag and a subdirectory:
 vf-hive-gen = { git = "ssh://…/hive-intelligence.git", tag = "v0.4.0", subdirectory = "tooling/hive-gen" }
 ```
 
-Resolving that needs read access to this repository, which is private. So every machine that
-builds the consumer needs a credential for the engine's **source**, and in practice that meant
-one person's key against one host: the consumer built on a single workstation, its CI never tried,
-and the deployed tree was placed by hand. Nothing announced any of this. It looked like a normal
-dependency until someone else tried to build it.
+Resolving that needs read access to this repository, which was private when the decision below was
+taken. So every machine that builds the consumer needed a credential for the engine's **source**,
+and in practice that meant one person's key against one host: the consumer built on a single
+workstation, its CI never tried, and the deployed tree was placed by hand. Nothing announced any of
+this. It looked like a normal dependency until someone else tried to build it.
+
+A git pin has a second problem that outlives the credential and is the reason opening the
+repository does not retire this decision: a tag is a repository plus a revision, so a consumer
+pinning one is coupled to *where the engine lives*, not to *what it is*. A version on an index is
+not.
 
 A released artefact fixes the shape: a consumer pins a version, not a repository.
 
@@ -57,8 +62,14 @@ is that step, and until it exists nothing new reaches PyPI.
 
 ## Where the artefacts go, and why
 
-**PyPI, wheels only, published by GitHub Actions with Trusted Publishing. This repository stays
-private.**
+**PyPI, wheels only, published by GitHub Actions with Trusted Publishing.**
+
+> **The premise below has since changed, and the conclusion has not.** This was decided while the
+> repository was private, and the question then was who may hold the artefact. The repository is now
+> open, which settles that question in the same direction the decision already went: shape 1, a
+> public artefact and no consumer credential. What is no longer true is the paragraph below about
+> the rest of the repository staying private - it does not, and nothing in the release path depended
+> on it. The record is kept as it was written, because the reasoning is what a future reader needs.
 
 The finding that shaped the choice: **for pure Python, the artefact IS the source.** A wheel
 built here contains the package's `.py` files verbatim - `unzip -l` any of them. So "ship
@@ -69,18 +80,19 @@ only who may hold the artefact. That leaves two shapes and no third:
 2. the artefact is gated, and someone holds a secret that must be issued, rotated and handed on.
 
 One candidate that looks like a third shape is not one. Attaching the artefacts to a **release on
-this private repository** does not remove source access: reading a release through the GitHub API
+a private repository** does not remove source access: reading a release through the GitHub API
 requires the fine-grained token permission *Contents (read)*, which is the same permission that
 permits cloning the source. There is no download-only release permission. That option moves the
 credential rather than removing it.
 
 Shape 1 was chosen. What that publishes is the five packages' own modules and nothing else: a
 wheel carries the package directory plus `LICENSE` and `NOTICE`. The git history, `docs/`,
-`skills/`, the CI, every test suite, every `.env.example` and the whole of `hive-author` stay
-private, and a consumer sees **less** than it did when it resolved a git tag and got the entire
-repository. Sdists are deliberately not built: they would add tests, lockfiles and a deployment
-example that buy a consumer nothing, and every file in a published artefact is a file someone has
-to have audited.
+`skills/`, the CI, every test suite, every `.env.example` and the whole of `hive-author` are not in
+any wheel. That was framed at the time as keeping them private; with the repository open it is
+simply the difference between what a consumer *installs* and what a reader can *browse*, and the
+narrower artefact is still the right one. Sdists are deliberately not built: they would add tests,
+lockfiles and a deployment example that buy a consumer nothing, and every file in a published
+artefact is a file someone has to have audited.
 
 Trusted Publishing means **no PyPI token exists anywhere**. PyPI verifies a short-lived OIDC
 token minted by the release workflow for this repository; there is nothing to store, nothing to

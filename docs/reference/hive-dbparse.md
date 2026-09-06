@@ -152,8 +152,9 @@ safe YAML.
 
 ## Tests
 
-103 tests. Fakes and DDL fixtures only. No database is needed, because the parser reads
-SQL text.
+Fakes and DDL fixtures only. No database is needed, because the parser reads SQL text. Use
+`uv run pytest --collect-only -q` in `tooling/hive-dbparse/` for the current inventory rather
+than a count written down here.
 
 ## Output
 

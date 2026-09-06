@@ -62,6 +62,7 @@ tolerant** (a failure on one concept is reported and skipped rather than killing
 | `run.py` | orchestrate the gate-aware pipeline |
 | `llm.py` | OpenAI-compatible chat client with defensive JSON extraction |
 | `config.py` | typed settings |
+| `profile.py` | the corpus profile: a corpus's domain vocabulary as data rather than as code |
 | `corpus.py` | `require_dir`: refuse a configured corpus path that is unset or not a directory, naming the setting. Shared with `hive-serve` |
 
 ## Slicing
@@ -227,8 +228,10 @@ allowlist and a client id must match `\A[a-z0-9-]+\Z`. They parse attacker-influ
 
 ## Tests
 
-116 tests, 3 of which skip without a live corpus. Fakes only; the model client is injected. Nothing in the suite makes a network
-call.
+Fakes only; the model client is injected, so nothing in the suite makes a network call. A few
+assertions need the card-submission surface that ships with a corpus and skip with a stated reason
+without it. Use `uv run pytest --collect-only -q` in `tooling/hive-gen/` for the current inventory
+rather than a count written down here.
 
 ## Configuration
 

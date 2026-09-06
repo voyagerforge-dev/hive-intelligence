@@ -58,8 +58,10 @@ services:
       # this directory fresh is your choice (a git pull on a timer, a sync job, a mounted volume).
       - ${CORPUS_DIR:?set CORPUS_DIR to your card corpus}:/data/concepts:ro
 
-      # Client-scoped memory. Hard-isolated at serve time: a caller identified as one client cannot
-      # read another's cards. Omit this mount if you are not using client memory.
+      # Client-scoped memory. Scoped at serve time: cards for the client selected on a request
+      # never arrive alongside another client's. That is retrieval scope, NOT access control -
+      # the client is chosen by the caller, and anyone who can read this directory can read all
+      # of it. Omit this mount if you are not using client memory.
       - ${CLIENTS_DIR:-/dev/null}:/data/clients:ro
 
     ports:

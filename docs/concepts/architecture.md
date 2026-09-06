@@ -25,7 +25,7 @@ and the diagrams, read [the pipeline end to end](pipeline.md).
    └──────────────┘
         │                        ▲
         ▼                        │
-     Claude  ────────────────────┘
+   an agent  ───────────────────┘
         │
         ▼
    ┌──────────────┐
@@ -85,12 +85,12 @@ surfaces. See [the resolver reference](../reference/hive-serve.md#the-resolver) 
 |---|---|
 | `GET /healthz` | liveness. See the warning below |
 | `GET /metrics` | Prometheus exposition |
-| `GET /concepts` | the lean index: ids, titles, descriptions |
+| `GET /concepts` | the lean index: ids, titles, products, types |
 | `GET /find_concepts` | ranked keyword search over that index |
 | `GET /card/{card_id}` | one card, raw |
 | `POST /resolve` | several cards plus their corrections, as one bundle |
 
-**MCP**, for Claude, exposing fifteen tools in three groups: retrieval (`list_concepts`,
+**MCP**, for any client that speaks it, exposing fifteen tools in three groups: retrieval (`list_concepts`,
 `find_concepts`, `get_card`, `resolve`, `find_db_objects`), work state (`start_objective`,
 `list_objectives`, `get_objective`, `append_entry`, `set_status`, `record_quiz_result`), and
 personal memory (`remember`, `recall`, `forget`, `promote`).
@@ -104,7 +104,7 @@ personal memory (`remember`, `recall`, `forget`, `promote`).
 | | Knowledge | Work state |
 |---|---|---|
 | What | cards | objectives, entries, personal memory |
-| Where | markdown in git | SQLite |
+| Where | markdown in git | Postgres |
 | Lifecycle | reviewed, versioned, shared | mutable, per-person, private |
 | Written by | curation, through review | the agent, during use |
 
@@ -123,7 +123,7 @@ stages 1 and 2.
 
 Consequences worth naming:
 
-- **Cheap.** Serving is file reads and a SQLite query.
+- **Cheap.** Serving is file reads and, for work state, one database query.
 - **Deterministic.** The same request returns the same cards, every time.
 - **Auditable.** What the agent saw is exactly what is in git at that commit.
 - **Portable.** No gateway, no keys, no vendor.

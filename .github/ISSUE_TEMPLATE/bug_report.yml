@@ -1,0 +1,74 @@
+name: Bug report
+description: Something in the engine behaves differently from what the docs say.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Two things before you start:
+
+        - **Do not report a security problem here.** [SECURITY.md](https://github.com/voyagerforge-dev/hive-intelligence/blob/main/SECURITY.md)
+          has the private route.
+        - **Do not paste a corpus, real customer data, or credentials.** Describe the shape
+          instead; the synthetic fixture corpus under
+          `tooling/hive-serve/tests/fixtures/corpus/` is usually enough to reproduce with.
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Which distribution
+      options:
+        - vf-hive-prep
+        - vf-hive-gen
+        - vf-hive-serve
+        - vf-hive-dbparse
+        - vf-hive-zendesk
+        - hive-author (not published to PyPI)
+        - the documentation
+        - not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The engine version, or the commit if you are running from source.
+      placeholder: "0.6.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and where the docs say so
+      description: A link to the page or the line makes this much faster to act on.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Paste the error or the wrong output verbatim.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Shortest way to reproduce it
+      description: |
+        Commands and settings, from a clean checkout if you can. Redact secrets;
+        `LEDGER_DSN` in particular usually carries a password.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Python version, operating system, and how it is installed (wheel or source).
+    validations:
+      required: false

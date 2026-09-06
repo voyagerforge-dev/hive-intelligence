@@ -12,6 +12,20 @@ released, and on the sharp edges (corpus paths, the ruff pin, the ledger tests).
 whoever is next in the code, human or otherwise. Read it before a first pull request; this file
 does not repeat it.
 
+Participation here is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Opening an issue
+
+Two forms, and GitHub will offer them:
+[a bug report](.github/ISSUE_TEMPLATE/bug_report.yml) and
+[a feature request](.github/ISSUE_TEMPLATE/feature_request.yml). Neither is mandatory - a blank
+issue is still accepted - but they ask for the things that otherwise cost a round trip.
+
+**Never open a public issue for a security problem**; [SECURITY.md](SECURITY.md) has the private
+route. And please do not attach a corpus, customer data or a credential to any issue: describe the
+shape instead, and the synthetic fixtures under `tooling/hive-serve/tests/fixtures/corpus/` are
+usually enough to reproduce against.
+
 ## Getting set up
 
 You need **Python 3.12 or newer**, [**uv**](https://docs.astral.sh/uv/), and - only for
@@ -85,6 +99,9 @@ Please get CI green before asking for a look.
   [docs/reference/configuration.md](docs/reference/configuration.md) is where settings are
   described.
 
+[The pull request template](.github/PULL_REQUEST_TEMPLATE.md) is this list as a checklist, and
+GitHub fills it in for you.
+
 Big changes go better as an issue first, describing the problem before the solution. That is a
 suggestion, not a gate.
 
@@ -93,6 +110,12 @@ suggestion, not a gate.
 Hive is maintained by a small team who also implement it for customers, so there is no promised
 review turnaround and no formal governance to point you at. Pull requests are read, and a stale one
 is our fault rather than a verdict - a nudge on the thread is welcome.
+
+## Releases
+
+You do not cut one, but it is worth knowing what a version means here: the five published
+distributions ship as one engine at one version, and [CHANGELOG.md](CHANGELOG.md) mirrors the
+annotated tags that are the record.
 
 ## Licensing
 

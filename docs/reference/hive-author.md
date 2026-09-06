@@ -19,8 +19,8 @@ one, writes a card directly into the corpus.** Every card was merged by a person
 
 | Tool | Files | Labelled |
 |---|---|---|
-| `submit_memory_promotion` | a client-scoped memory card | `okf-memory` |
-| `submit_correction` | a correction against a concept id | `okf-correction` |
+| `submit_memory_promotion` | a client-scoped memory card | `hive-memory` |
+| `submit_correction` | a correction against a concept id | `hive-correction` |
 
 They are hard-separated: separate builders, separate labels, separate validation. Memory promotion
 requires a client and refuses without one, because a memory card with no client is either a concept
@@ -40,9 +40,10 @@ label. The corpus changes when a person merges.
 | Module | Purpose |
 |---|---|
 | `submissions.py` | pure issue-body builders, and the client-required guard on memory promotion |
-| `github_client.py` | injectable issue client: a protocol, a real client, and an in-memory fake for tests |
+| `issue_client.py` | injectable issue client: a protocol, one client per forge kind, and an in-memory fake for tests |
 | `mcp_app.py` | registers the two tools, resolves the caller, delegates to `submissions` |
 | `identity.py` | resolve the owner id from the trusted header, else the default |
+| `metrics.py` | Prometheus registry and per-tool instrumentation |
 | `config.py` | typed settings |
 | `server.py` | wire settings and a client factory, mount under a FastAPI app with `/healthz`, run |
 
@@ -70,13 +71,19 @@ The two builders are hard-separated and cannot cross. Memory **requires** a clie
 > filter or CODEOWNER route saw only half the submissions. Nothing failed; the halves were just
 > invisible to each other.
 
-### `github_client.py`
+### `issue_client.py`
 
-A protocol with two implementations: the real HTTP client, and a fake used throughout the tests. The
-real one needs **only `issues:write`**.
+A protocol with three implementations: one real client per forge kind, and a fake used throughout
+the tests. A real one needs **only** the permission to open issues on one repository.
 
 Injecting the client is what lets the entire suite run with no token and no network, which matters
 for a service whose only job is to hold a credential.
+
+**Two clients exist because of one field.** GitHub's issue API takes label *names*; Forgejo's takes
+integer *IDs* and answers a name with 422. `FORGE_KIND` selects between them and is refused at
+startup if it is unknown, rather than being inferred from `FORGE_API`: guessing wrong fails at the
+moment somebody is waiting on a submission. Everything else about the two APIs is close enough to
+share.
 
 ### `mcp_app.py`, `identity.py`, `server.py`
 
@@ -86,17 +93,25 @@ from the trusted gate header so `submitted_by` provenance is server-derived, nev
 
 ## Tests
 
-11 tests. Fakes only, no network, no token.
+Fakes only, no network, no token. Use `uv run pytest --collect-only -q` in
+`tooling/hive-author/` for the current inventory rather than a count written down here.
 
 ## Configuration
 
 See [configuration](configuration.md#hive-author).
 
-`GITHUB_TOKEN` and `GITHUB_REPO` have **no default** and are validated at startup. A
-plausible-looking default repository would file issues into somebody else's project, which is worse
-than failing to start.
+`FORGE_API`, `FORGE_REPO` and `FORGE_KIND` have **no default** and are validated at startup,
+along with a credential, which is either `FORGE_TOKEN` or `FORGE_TOKEN_FILE`. A plausible-looking
+default repository would file issues into somebody else's project, which is worse than failing to
+start.
 
-Scope the token to issue creation on the corpus repository. Anything else it can do is blast radius.
+**`FORGE_TOKEN_FILE` exists because some tokens expire faster than the process lives.** A GitHub
+App installation token lasts an hour while this server runs for days, so it cannot be an
+environment variable read once at startup. Point `FORGE_TOKEN_FILE` at a file that something else
+keeps fresh and the client re-reads it on every submission. Set one or the other, never both.
+
+Scope the credential to issue creation on the corpus repository. Anything else it can do is blast
+radius.
 
 ## Gotchas
 

@@ -38,21 +38,26 @@ cd tooling/hive-prep
 uv sync --extra dev
 ```
 
-The commands run in sequence:
+The commands run in sequence. `hiveprep <command> --help` has the arguments.
 
 | Step | Does |
 |---|---|
-| `scan` | inventory the source tree, hash contents, group duplicates |
-| `dups` | report content-identical files across the tree |
-| `validate-plan` | check the curation plan is well formed **(gate 1)** |
-| `dedup` | drop the duplicates the plan marks |
-| `normalize` | clean up whitespace, encodings, structure |
-| `route` | decide converter per file, based on format |
-| `transform` | convert to markdown and strip boilerplate |
-| `stamp` | write metadata frontmatter |
-| `validate-atomic` | check every output is well formed |
+| `scan` | walk the source tree and write a file inventory CSV with folder-derived hints |
+| `dups` | report byte-identical duplicate sets |
+| `validate-plan` | check the curation plan is well formed **(review 1)** |
+| `dedup-formats` | collapse same-document format variants, such as `X.doc` beside `X.docx`, so each document has one slug |
+| `normalize` | convert the plan's includes to PDF intermediates, through LibreOffice |
+| `route` | report how many files land in each conversion tier, without using a GPU **(review 2)** |
+| `transform` | convert to atomic markdown and strip boilerplate |
+| `stamp` | write plan metadata into the frontmatter |
+| `validate-atomic` | check every output is well formed: unique slugs, enums, relations |
 
-### Gate 1: the curation plan
+There are **two things to look at in this stage**, not one. They are numbered here in the order you
+meet them; [hive-prep](../reference/hive-prep.md#two-gates) calls the same two its gate 1 and gate
+2, and the three whole-system gates counted in [principles](../concepts/principles.md) are review 1
+here plus the two in stage 2 below.
+
+### Review 1: the curation plan
 
 `scan` and the curation pass produce a plan file listing every source document with a proposed
 decision: include, exclude, duplicate-of, supersedes, plus derived metadata.
@@ -64,8 +69,18 @@ wrong means distilling documents you did not want, or missing ones you did, and 
 after two model stages have run over them.
 
 The design principle underneath: put the intelligence up front in one reviewable artifact, then let
-deterministic code do the rest. Everything after gate 1 is ordinary software operating on an
+deterministic code do the rest. Everything after this review is ordinary software operating on an
 approved decision, which means it is reproducible and explainable.
+
+### Review 2: the tier tally
+
+`route` is a precheck. It reports how many files will go through each conversion tier - text,
+vision, passthrough - and uses no GPU and no model doing it.
+
+**Look at the vision count before running `transform`.** That is the one that costs money, and
+`route` exists so the bill is a number you approved rather than one you discovered. A tally far
+larger than you expected usually means the plan is including scanned material you did not mean to
+keep, which is cheaper to fix in the plan than after conversion.
 
 ### Boilerplate stripping
 
@@ -88,7 +103,7 @@ cd tooling/hive-gen
 uv sync --extra dev
 ```
 
-### Gate 2: the taxonomy
+### Review 3: the taxonomy
 
 Given the documents for one functional area, the model proposes the distinct concepts in them and
 which documents cover each. It writes `taxonomy.<area>.draft.yaml` and **stops**.
@@ -108,7 +123,7 @@ cheaper to fix than a directory of distilled prose. Expect to merge concepts tha
 thing, split ones that are really two, and delete ones that are an artifact of how a document was
 organised rather than a real idea.
 
-### Gate 3: the drafts
+### Review 4: the drafts
 
 Re-run the same command with an approved taxonomy present. The model now reads each concept's
 source documents and writes one card per concept into `drafts/`, each carrying `status: draft`.

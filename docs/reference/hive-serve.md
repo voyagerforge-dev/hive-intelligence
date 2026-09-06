@@ -10,9 +10,12 @@ Narrative version: [serving cards](../guides/serving-cards.md).
 ## Running
 
 ```bash
-hiveserve serve --http      # REST and MCP over HTTP
-hiveserve serve --stdio     # MCP over stdio, for Claude Desktop and Claude Code
+hiveserve serve --http      # REST and MCP over streamable HTTP
+hiveserve serve --stdio     # MCP over stdio, for any client that speaks it
 ```
+
+Both transports require `LEDGER_DSN` and refuse to start without it. See
+[the ledger](#the-ledger).
 
 ## REST
 
@@ -54,7 +57,7 @@ Fifteen, in three groups.
 | `tools.py` | transport-agnostic wrappers over the resolver, shared by both doors |
 | `ranking.py` | the keyword scorer behind `find_concepts` |
 | `dbobjects.py` | keyword search over the per-product database-object manifests; backs `find_db_objects` |
-| `ledger.py` | SQLite objectives, entries and personal memory, with enum validation and owner-scoped access |
+| `ledger.py` | Postgres objectives, entries and personal memory, with enum validation and owner-scoped access |
 | `identity.py` | resolve the caller's owner id from the trusted header, else the configured default |
 | `app.py` | the REST door |
 | `mcp_app.py` | the MCP door, each tool metrics-wrapped |
@@ -134,8 +137,18 @@ with corpus size, which is what made the old scorer feel like it got worse as a 
 
 ## The ledger
 
-One SQLite file at `OKF_DATA_DIR`, holding objectives, their entries and personal memory, keyed by
-owner and validated against enums.
+**Postgres, at `LEDGER_DSN`.** Objectives, their entries and personal memory, keyed by owner and
+validated against enums.
+
+`LEDGER_DSN` has no default and there is no file fallback: `hiveserve serve` refuses to start
+without it, on either transport. `OKF_DATA_DIR` is unrelated scratch space and despite its name
+holds no ledger.
+
+It was a SQLite file under `OKF_DATA_DIR` until 2026-08-19. It moved because it is the only
+mutable state this service holds, and a managed platform backs up a database it manages and does
+not back up a file in a volume. Being a database is what makes it get backed up. There is
+deliberately no dual-engine support: two placeholder styles chosen at runtime is how you get a
+query that is fine against the engine you tested and broken against the one you deployed.
 
 **The only state in the system that is not in git.** Cards restore from any clone. This does not.
 
@@ -288,8 +301,13 @@ see [Search](#search) for why `find_concepts` moved off it and this one has not.
 
 ### `ledger.py`
 
-Three tables in one SQLite file, WAL mode: `objective`, `entry`, `memory`. Enum-validated on write
-and **owner-scoped on every read and write**.
+Three tables in one Postgres database: `objective`, `entry`, `memory`. Enum-validated on write and
+**owner-scoped on every read and write**. `entry` and `memory` carry a `seq BIGSERIAL` that
+replaces SQLite's `rowid` as the tiebreaker for equal timestamps; without it the order of two rows
+written in the same clock tick is whatever the planner returns.
+
+The schema is created on first connection, one statement at a time, because psycopg reports a
+multi-statement failure against the whole batch rather than the statement.
 
 ### `identity.py`
 

@@ -42,6 +42,7 @@ each conversion tier. Approving it before `transform` is what stops a surprise v
 |---|---|
 | `cli.py` | Click command group wiring each stage to a subcommand |
 | `config.py` | typed environment-backed settings |
+| `profile.py` | the corpus profile, as far as this package needs it: the folder-name aliases mapping a directory segment to a product |
 | `scanner.py` | recursive walk to a streaming inventory CSV |
 | `folder_parser.py` | classification hints from folder segments |
 | `dups.py` | SHA-256 duplicate grouping |
@@ -199,9 +200,10 @@ which is also what a correct re-run over an already-stamped corpus prints.
 
 ## Tests
 
-128 tests. Fakes only. The Docling and vision clients are injected, so the suite runs with
-no network, no GPU
+Fakes only. The Docling and vision clients are injected, so the suite runs with no network, no GPU
 and no converter service. Tests that need LibreOffice skip with a stated reason when it is absent.
+Use `uv run pytest --collect-only -q` in `tooling/hive-prep/` for the current inventory rather than
+a count written down here.
 
 ## Configuration
 
