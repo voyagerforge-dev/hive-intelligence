@@ -98,11 +98,11 @@ clients, and a wired corrections override. They deliberately carry no real-world
 vocabulary, which is exactly what makes them a fair check that the machinery is domain-neutral.
 
 **The skills under `skills/` do name a domain, deliberately.** The five agent skills are worked
-examples written for the Manhattan WMOS/SCALE support practice Hive was first built for, and they
-say so on their first line. What each one describes - how to ground an answer in cards, work a
-diagnosis, teach a topic, file a correction - is general; the nouns are not. They ship to be copied
-and adapted to your own domain. The engine, the card model and the fixtures carry no domain
-knowledge of their own; [skills/README.md](skills/README.md) has the detail, and
+examples written for the Manhattan WMOS/SCALE support practice Hive was first built for, and four
+of the five say so in their `description:` line. What each one describes - how to ground an answer
+in cards, work a diagnosis, teach a topic, file a correction - is general; the nouns are not. They
+ship to be copied and adapted to your own domain. Nothing in the engine, the card model or the
+fixtures requires those nouns; [skills/README.md](skills/README.md) has the detail, and
 [known limitations](docs/concepts/principles.md#known-limitations) lists the vocabulary still baked
 into the tooling.
 

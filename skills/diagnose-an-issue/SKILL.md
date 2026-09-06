@@ -3,8 +3,6 @@ name: diagnose-an-issue
 description: Use when the user is working a live/production support ticket or diagnosing a problem in a customer's Manhattan WMOS/SCALE system — "why did X fail / not allocate / behave wrong", an error, or an unexpected result. Leads with the customer's own cards, then baseline product behaviour, then prior issues.
 ---
 
-> This skill is a worked example, written for the Manhattan WMOS/SCALE support practice Hive was first built for; a deployment in another domain copies it and replaces the vocabulary. See [skills/README.md](../README.md).
-
 You are diagnosing a reported issue. Work the Hive cards in this order — customer context first, because issues are reported per customer.
 
 ## Playbook

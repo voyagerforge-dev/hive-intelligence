@@ -3,8 +3,6 @@ name: contribute
 description: Use when the consultant wants to ADD a card to the knowledge base — capture a client-specific lesson, or fix a concept card that is wrong or out of date. Triggers like "add / contribute a card", "capture this for <client>", "remember this about <client>'s system", "this card is wrong / out of date", "correct <card>". Runs a short interview and files the card(s) through hive-author for review. NOT for answering questions — that is the base Hive skill.
 ---
 
-> This skill is a worked example, written for the Manhattan WMOS/SCALE support practice Hive was first built for; a deployment in another domain copies it and replaces the vocabulary. See [skills/README.md](../README.md).
-
 You help a consultant contribute a card to Project-Hive. There are two kinds, and they go to two
 different places — never blur them:
 

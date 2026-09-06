@@ -3,8 +3,6 @@ name: plan-an-implementation
 description: Use when designing, building, or improving something in Manhattan WMOS/SCALE — creating a new process or configuration, enhancing something that exists, drafting a test plan or specification, or turning a known root cause (from a test cycle or build) into a fix/change plan. Triggers like "help me set this up", "how should we configure X for this client", "let's redesign X", "write a test plan for Y". Warns from the client's own incident history before you design.
 ---
 
-> This skill is a worked example, written for the Manhattan WMOS/SCALE support practice Hive was first built for; a deployment in another domain copies it and replaces the vocabulary. See [skills/README.md](../README.md).
-
 You are advising on an implementation — either creating something new or making something existing better.
 
 ## Playbook

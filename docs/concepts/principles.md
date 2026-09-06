@@ -103,9 +103,10 @@ product-less entry at gate 1 and lists the products your corpus profile declares
 pointing back at `validate-plan`. Related: the functional-area map and guide-topic vocabulary above.
 
 **The skills carry the same vocabulary, and are the first thing an outside reader meets.** The
-`description:` lines in `skills/` name one vendor's products, and `contribute/` enumerates one
-corpus's facet values as if they were the product's. The procedures are general; the nouns are not.
-This is the largest single-vendor surface left, and generalising it is open work. See
+`description:` lines in four of the five skills name one vendor's products, and `contribute/` names
+them in its body and enumerates one corpus's facet values as if they were the product's. The
+procedures are general; the nouns are not. This is the largest single-vendor surface left, and
+generalising it is open work. See
 [skills/README.md](../../skills/README.md).
 
 **Client isolation is enforced at serving, not at rest.** Memory and issue cards for every client
