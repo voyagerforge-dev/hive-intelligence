@@ -24,7 +24,10 @@ variable does not fail loudly, it starts the service with a default instead. Ren
 tracked work and belongs with a major version, not a documentation pass.
 
 The model defaults are likewise recommendations rather than requirements, and name models that must
-exist on *your* gateway. Set them explicitly.
+exist on *your* gateway, under the id that gateway uses: OpenRouter, the address the `.env.example`
+files sample, namespaces ids by provider (`deepseek/deepseek-v4-flash-0731`). Set them explicitly -
+against a reachable gateway a wrong id comes back as an unknown model, so the error names the model
+rather than the setting.
 
 ## A note on `OKF_` prefixes
 

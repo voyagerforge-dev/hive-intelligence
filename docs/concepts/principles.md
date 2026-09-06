@@ -59,8 +59,8 @@ nobody can see.
 
 ## Product and deployment are separate
 
-No host, address, mount path, scheduler or corpus appears in this repository. A deployment is a
-fork of the product plus a corpus plus its own infrastructure configuration.
+No deployment's host, address, mount path, scheduler or corpus appears in this repository. A
+deployment is a fork of the product plus a corpus plus its own infrastructure configuration.
 
 This is enforced rather than encouraged, and it is the reason several defaults are empty where a
 convenient value would fit. See
