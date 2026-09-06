@@ -10,7 +10,7 @@ def _s(**kw):
 
 def test_rerank_model_defaults_to_the_cheap_tier():
     """On a 16-item labelled set Qwen, minimax-m3 and deepseek all scored ~80% and kept
-    the SAME wrong links, while claude-opus-4-8 scored 92%. Opus is an on-demand
+    the SAME wrong links, while anthropic/claude-opus-4.8 scored 92%. Opus is an on-demand
     escalation, so the default reranker is the cheap tier."""
     assert _s().rerank_model == "minimax/minimax-m3"
 

@@ -98,3 +98,13 @@ def test_a_copied_env_example_leaves_the_r2_location_required_and_unset(tmp_path
     assert s.r2_endpoint == ""
     assert s.r2_bucket == ""
     assert s.r2_prefix == ""
+
+
+def test_env_example_matches_the_shipped_model_defaults(tmp_path, monkeypatch):
+    """A `.env.example` naming a different model from `config.py` makes the documented
+    first step - copy it to `.env` - silently change which models the pipeline calls.
+    OpenRouter has no alias layer, so a bare id copied out of here reaches a live endpoint
+    and comes back as an unknown model."""
+    s = _settings_from_env_example(tmp_path, monkeypatch)
+    for field in ("taxonomy_model", "assign_model", "distill_model"):
+        assert getattr(s, field) == Settings.model_fields[field].default

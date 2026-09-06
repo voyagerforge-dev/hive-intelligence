@@ -19,8 +19,9 @@ class Settings(BaseSettings):
     distill_model: str = ""
     # Linking is a separate job from distilling and is measured separately. On a 16-item
     # labelled set Qwen, minimax-m3 and deepseek all scored ~80% and kept the SAME wrong
-    # links, while claude-opus-4-8 scored 92% - a capability cliff, not a gradient. So the
-    # cheap tier is the default and Opus is an on-demand escalation, not the norm.
+    # links, while anthropic/claude-opus-4.8 scored 92% - a capability cliff, not a
+    # gradient. So the cheap tier is the default and Opus is an on-demand escalation,
+    # not the norm.
     # Provider-qualified since 2026-09-06: OpenRouter is called directly and has no
     # alias layer, so a bare `minimax-m3` resolves nowhere.
     rerank_model: str = "minimax/minimax-m3"
