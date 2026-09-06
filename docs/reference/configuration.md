@@ -1,9 +1,9 @@
 # Configuration
 
-Every package reads settings from the environment, or from a `.env` file beside it. Names below are
-the environment variable names; each package's `config.py` is the authority.
-
-Each package ships a `.env.example` listing the keys it actually needs.
+Packages that have settings read them from the environment, or from a `.env` file beside them, and
+ship a `.env.example` listing the keys they actually need. Names below are the environment variable
+names; the package's `config.py` is the authority. `hive-dbparse` has no settings at all - see
+[below](#hive-dbparse).
 
 ## Names that mention a vendor
 
@@ -106,7 +106,7 @@ silently serves another deployment's client memory.
 | `MAX_CHARS` | `24000` | source characters per distillation call |
 | `BIFROST_TIMEOUT_S` | `300` | |
 | `CORPUS_PROFILE` | empty | path to the corpus profile, the domain vocabulary that ships with a corpus. Empty means look for `corpus-profile.yaml` in the working directory, then beside `ATOMIC_DIR` |
-| `CARD_BASE_URL` | `/card` | used by `conformance_pass` for the `resource` field. **A path, not a host, and deliberately so** - see below. Read from the environment by the script, not through `config.py` |
+| `CARD_BASE_URL` | `/card` | the base a card id resolves under, in the `resource` field. Read by both card-writing scripts, `conformance_pass` (concept cards) and `memory_from_issue` (client memory cards). **A path, not a host, and deliberately so** - see below. Read from the environment by the scripts, not through `config.py` |
 
 **`CARD_BASE_URL` defaults to a path because a card outlives a hostname.** One corpus wrote 991
 cards with an absolute URI and had to rewrite every one of them when its deployment moved domains.
@@ -169,7 +169,7 @@ point of it being a separate service from `hive-serve`.
 | `CONNECTOR_API_KEY` | empty | |
 | `BIFROST_BASE` | empty | model gateway |
 | `BIFROST_API_KEY` | empty | |
-| `DISTILL_MODEL` | `minimax-m3` | |
+| `DISTILL_MODEL` | empty | **required**, refused at startup unless `--model` is passed. No default on purpose: an environment that fails to load `.env` would otherwise distil a whole run with an unintended model, silently, and the cards carry no record of which one wrote them |
 | `RERANK_MODEL` | `minimax-m3` | linking is measured separately from distilling |
 | `DISTILL_MAX_TOKENS` | `4000` | must cover reasoning **and** the answer for a reasoning model. At 2000 it spends the budget thinking and returns nothing |
 | `BIFROST_TIMEOUT_S` | `300` | |
@@ -184,14 +184,15 @@ point of it being a separate service from `hive-serve`.
 
 ## hive-dbparse
 
-No environment configuration. Everything is command-line: `--src`, `--out`, `--limit-modules`.
+No environment configuration, and no `config.py` or `.env.example`. Everything is command-line: see
+[the option table](hive-dbparse.md#running).
 
 ## Settings that have no default on purpose
 
 `CONNECTOR_BASE`, `FORGE_API`, `FORGE_REPO`, `FORGE_KIND`, `LEDGER_DSN`, `EVAL_DIR`,
 `CARD_CORPUS_ROOT`, `R2_ENDPOINT`,
-`R2_BUCKET`, `R2_PREFIX` and the gateway addresses are empty by default and validated at startup
-or at the point of use.
+`R2_BUCKET`, `R2_PREFIX`, hive-zendesk's `DISTILL_MODEL` and the gateway addresses are empty by
+default and validated at startup or at the point of use.
 
 `CONCEPTS_DIR` and `CLIENTS_DIR` are the two that did not join that list, and they are the
 weakest link in it: both carry a **relative** default that a working directory can make real. See

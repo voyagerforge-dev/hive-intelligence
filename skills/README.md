@@ -4,7 +4,7 @@ Agent skills for working with a Hive corpus. They are **product surface**, which
 live here rather than in a deployment's plugin repository.
 
 A skill describes how to use the product: how to answer from cards, how to run a diagnosis,
-how to file a correction. None of that is specific to whose corpus is loaded or which
+how to file a correction. That procedure does not depend on whose corpus is loaded or which
 hostname serves it. Two deployments of Hive should behave the same way when a consultant
 asks the same question, and they only do if the behaviour is defined once, here.
 
@@ -18,12 +18,17 @@ asks the same question, and they only do if the behaviour is defined once, here.
 
 ## What lives here and what does not
 
-**Here:** the skill bodies. Deployment-neutral. No hostname, no marketplace metadata, no
-connector URL.
+**Here:** the skill bodies. No hostname, no marketplace metadata, no connector URL.
 
-**Not here:** the packaging. A deployment wraps these in a plugin with its own
-`.claude-plugin/`, its own `.mcp.json` naming its own MCP endpoint, and its own marketplace
-entry, in a repository of its own.
+**Not here:** the packaging, which *is* deployment-specific. A deployment wraps these in a
+plugin with its own `.claude-plugin/`, its own `.mcp.json` naming its own MCP endpoint, and
+its own marketplace entry, in a repository of its own.
+
+The bodies still carry the product vocabulary of the domain Hive was first built for: the
+`description:` lines name one vendor's products, and `contribute/` enumerates one corpus's
+facet values. The retrieval procedure they describe is general; the nouns are not, and
+generalising them is open work. See
+[known limitations](../docs/concepts/principles.md#known-limitations).
 
 A deployment fork inherits this directory the same way it inherits `tooling/` and `docs/`:
 by merging `upstream`. That is the whole point of putting them here. A skill fixed once is

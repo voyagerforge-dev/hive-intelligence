@@ -31,9 +31,8 @@ usually enough to reproduce against.
 You need **Python 3.12 or newer**, [**uv**](https://docs.astral.sh/uv/), and - only for
 `hive-serve`'s ledger tests - **docker or podman**.
 
-Six packages live under `tooling/`, and each one is a separate distribution with its own venv,
-dependencies, tests, `.env.example` and `config.py`. There is no root-level install. Work in the
-package you are changing:
+Six packages live under `tooling/`, and each one is a separate distribution with its own venv and
+dependencies. There is no root-level install. Work in the package you are changing:
 
 ```
 cd tooling/hive-serve        # or hive-prep, hive-gen, hive-author, hive-dbparse, hive-zendesk
@@ -41,9 +40,8 @@ uv sync --extra dev
 uv run pytest -q
 ```
 
-Tests are colocated in `tests/` beside the package. A package's `config.py` is the authority on its
-settings; `.env.example` shows them, and must never contain an absolute path under anyone's home
-directory.
+Tests are colocated in `tests/` beside the package. For how settings are laid out per package, and
+the rules a `.env.example` has to keep, see [AGENTS.md](AGENTS.md).
 
 Some assertions depend on a live corpus, on its evaluation datasets, or on the GitHub
 card-submission surface. Those skip with a stated reason when their subject is absent, and in this

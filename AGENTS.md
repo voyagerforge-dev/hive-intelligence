@@ -37,9 +37,11 @@ caller-selected context into identity-bound authorization.
 
 ## Working on it
 
-Each package under `tooling/` is its own distribution with its own venv, `.env.example`, tests and
-`config.py` (the authority for its settings). Per package: `uv sync --extra dev && uv run pytest`.
-Tests are colocated in `tests/` beside the package.
+Each package under `tooling/` is its own distribution with its own venv, `pyproject.toml` and tests.
+Where a package has settings, its `config.py` is the authority for them and its `.env.example` is
+what an operator copies. `hive-dbparse` is the exception: no settings, no `config.py`, no
+`.env.example` - it is configured entirely on the command line. Per package:
+`uv sync --extra dev && uv run pytest`. Tests are colocated in `tests/` beside the package.
 
 CI (`.github/workflows/fastapi-svcs.yml`) runs `ruff check .`, opt-in `mypy`, and `pytest` for
 **every** package whenever a PR touches any `.py`, so one package's backlog reddens everyone's PR.

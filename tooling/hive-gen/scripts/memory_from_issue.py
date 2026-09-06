@@ -14,7 +14,11 @@ from hivegen.profile import load_profile
 # does not declare them, and the check is skipped: a hardcoded list rejects every product
 # that exists in some other corpus, which is a validator that fails closed on valid data.
 ALLOWED_PRODUCTS = set(load_profile().card_products)
-BASE_URL = "https://hive.example.com/card"
+# The base a memory card's id resolves under. Same lookup and same default as
+# `conformance_pass.BASE_URL`, which carries the rationale: a card is a path, not a host,
+# because it outlives any one deployment's hostname. The two card-writing scripts have to
+# agree, or a corpus ends up with concept cards on a path and memory cards on a hostname.
+BASE_URL = os.environ.get("CARD_BASE_URL", "/card")
 _CLIENT_RE = re.compile(r"\A[a-z0-9-]+\Z")  # \A..\Z (not ^..$): reject a trailing newline too
 
 
