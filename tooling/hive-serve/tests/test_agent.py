@@ -68,6 +68,31 @@ def test_select_ids_counts_a_row_as_empty_only_when_every_attempt_was_blank(repl
     assert select_empty is False
 
 
+@pytest.mark.parametrize("body", [
+    '{"card_ids": null}',
+    '{"card_ids": "pre-wave-process"}',
+    '{"card_ids": 3}',
+    '{"card_ids": {"id": "pre-wave-process"}}',
+])
+def test_select_ids_treats_a_non_list_card_ids_as_a_miss(body):
+    """A wrong-shaped reply names no card ids, so it is a retrieval miss on that attempt -
+    never an exception, which would lose the whole run on one malformed row. The model did
+    speak, so it is a miss and not an absent measurement."""
+    llm = SelectLLM(body)
+    out, select_empty = select_ids(INDEX, "q", llm, known_ids={"pre-wave-process"})
+    assert out == []
+    assert select_empty is False
+
+
+def test_select_ids_keeps_only_the_string_ids_it_knows():
+    """An id list may carry members that are not strings; testing them for membership of a
+    set of ids must not raise on an unhashable one."""
+    llm = SelectLLM('{"card_ids": [{"id": "pre-wave-process"}, 7, "bogus", "pre-wave-process"]}')
+    out, select_empty = select_ids(INDEX, "q", llm, known_ids={"pre-wave-process"})
+    assert out == ["pre-wave-process"]
+    assert select_empty is False
+
+
 def test_select_ids_reports_a_selector_that_returned_nothing():
     """A silent selector measured nothing. Scoring that as a miss is how a run reports
     a retrieval collapse it never observed, so the empty case must be distinguishable."""

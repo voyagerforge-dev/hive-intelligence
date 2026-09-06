@@ -67,7 +67,10 @@ def select_ids(index, question: str, llm, *, known_ids: set[str]) -> tuple[list[
         if (raw or "").strip():
             answered = True
         data = extract_json(raw or "")
-        ids = [i for i in (data or {}).get("card_ids", []) if i in known_ids]
+        found = (data or {}).get("card_ids")
+        if not isinstance(found, list):
+            found = []
+        ids = [i for i in found if isinstance(i, str) and i in known_ids]
         if ids:
             return ids, False
     return [], not answered
