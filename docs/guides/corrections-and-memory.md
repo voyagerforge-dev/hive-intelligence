@@ -78,8 +78,11 @@ Two levels.
 one person, and never enters the corpus. It is a working notebook: `remember`, `recall`, `forget`. No review, no ceremony, no
 visibility to anyone else.
 
-**Client memory** is a card in the corpus, visible to everyone working with that client, hard
-isolated from every other client.
+**Client memory** is a card in the corpus, visible to everyone who can read the corpus. The resolver
+scopes it by client, so one client's cards never arrive in an answer scoped to another - but that is
+retrieval scope, not access control: the client is an argument the caller chooses, and `get_card`
+takes no client at all and returns any card by id. See
+[the serving trust boundary](serving-cards.md#identity-and-what-it-is-not).
 
 The path between them is deliberate and one-way.
 

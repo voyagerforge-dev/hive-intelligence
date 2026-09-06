@@ -34,8 +34,9 @@ hivezendesk <mode> --client <key> --customers <path> \
 
 Other options: `--force`, `--limit`, `--workers`, `--batch-size`, `--model`.
 
-**`--dry-run` fetches and gates but makes no model calls and writes nothing.** A real backfill is
-one model call per entry. Size it first.
+**`--dry-run` writes nothing, and for every mode but `relink` makes no model calls either.** A real
+backfill is one model call per entry. Size it first. `relink --dry-run` still pays for its rerank;
+see [`run.py`, the modes](#runpy-the-modes).
 
 ## Two models, two jobs
 
@@ -146,11 +147,13 @@ refuses, because the partial result looks like a complete one and nothing downst
 | `relink` | re-run linking only, against the current corpus | rerank only |
 
 **Every mode calls a model.** `rebuild` skips the fetch, not the distillation; `relink` skips the
-distillation, not the rerank that chooses the links. `--dry-run` is the only way to run any of them
-without spending anything.
+distillation, not the rerank that chooses the links.
 
-`--dry-run` fetches and gates but **never calls the model and never writes**. That is how a backfill
-is sized and costed before any money is spent.
+`--dry-run` never writes, in any mode. For `backfill`, `incremental` and `rebuild` it also calls no
+model: it fetches and gates and stops before the model stage, which is how a backfill is sized and
+costed before any money is spent. **`relink --dry-run` is the exception.** It suppresses the writes
+only; the rerank still runs once per card it shortlists and is billed exactly as the real run would
+be, so it is not a way to price a relink.
 
 `--limit` is applied **before** counting, so the verification reflects what was actually requested.
 Applying it afterwards would make every limited run fail its own count check.
