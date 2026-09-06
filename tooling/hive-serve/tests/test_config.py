@@ -23,15 +23,15 @@ def test_settings_reads_env(monkeypatch):
     s = get_settings()
     assert s.bifrost_base == "http://bf/v1"
     assert s.bifrost_api_key == "k"
-    # Dated/tier-named on purpose: `deepseek-v4-flash` and `deepseek-v4` both resolve to
-    # the April 23 Flash release on the gateway, so a report naming them does not say
-    # which release produced it. Neither undated name is a valid replacement here.
-    assert s.select_model == "deepseek-v4-flash-0731"
-    # V4 Pro since 2026-09-06. It replaced deepseek-v4, itself a same-day stand-in for
-    # minimax-m3, which its provider refuses on an exhausted token plan - and a model
-    # that never answers reads as correct 0 / grounded 0.
-    assert s.answer_model == "deepseek-v4-pro"
-    assert s.judge_model == "deepseek-v4-pro"
+    # Provider-qualified since 2026-09-06: the estate calls OpenRouter directly and it
+    # has no alias layer, so an unqualified `deepseek-v4-flash` resolves nowhere. The
+    # dated id also records which release produced a report.
+    assert s.select_model == "deepseek/deepseek-v4-flash-0731"
+    # V4 Pro replaced deepseek-v4, itself a same-day stand-in for minimax-m3, which its
+    # provider refuses on an exhausted token plan - and a model that never answers reads
+    # as correct 0 / grounded 0.
+    assert s.answer_model == "deepseek/deepseek-v4-pro"
+    assert s.judge_model == "deepseek/deepseek-v4-pro"
     assert s.bifrost_timeout_s == 300
     assert s.max_cards == 8
     assert s.resolve_depth == 1

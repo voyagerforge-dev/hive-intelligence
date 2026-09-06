@@ -216,9 +216,10 @@ are unchanged; their values can still change when the selector's candidate set c
 ### A model that returns nothing fails the run
 
 `unscored` alone does not distinguish an unparseable judge reply from no reply. Rows therefore
-carry `answer_empty` and `judge_empty`, treating `None`, empty strings and whitespace-only replies
-as empty. The aggregate carries their counts plus `failed`, which is true if either role returned
-nothing on **any** row. Such a report is incomplete, not a valid low-scoring baseline.
+carry `select_empty`, `answer_empty` and `judge_empty`, treating `None`, empty strings and
+whitespace-only replies as empty. The aggregate carries their counts plus `failed`, which is true
+if any of the three roles returned nothing on **any** row. Such a report is incomplete, not a
+valid low-scoring baseline.
 
 After writing the report, the CLI prints one diagnostic per failing role naming its setting,
 configured model and affected row count, then **exits with status 1**. Check `BIFROST_API_KEY`,
@@ -226,8 +227,14 @@ gateway model availability and provider quota; an exhausted token plan can fail 
 valid key. Model defaults and overrides are in [configuration](configuration.md#hive-serve).
 
 An unparseable-but-present judge reply still scores `unscored` and does **not** by itself fail the
-run. Empty selector output remains a retrieval miss, measured by `select_hit` and `bundle_hit`,
-rather than an empty-model failure.
+run. The same holds for the selector: a reply this cannot parse, or one naming only unknown ids,
+is a genuine retrieval miss measured by `select_hit` and `bundle_hit`.
+
+**`select_empty` joined them on 2026-09-06.** The selector was excluded until then, on the
+reasoning that a selector returning nothing is just a retrieval miss. An eight-set run on a newly
+defaulted selection model produced 17 misses of which every one was an empty response rather than
+a wrong choice, and the harness reported a retrieval collapse it had never observed - the same
+shape of false zero the answer and judge guards already existed to prevent.
 
 ## Internals
 

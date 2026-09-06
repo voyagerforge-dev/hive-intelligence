@@ -9,13 +9,13 @@ class Settings(BaseSettings):
 
     bifrost_base: str = ""
     bifrost_api_key: str = ""
-    # Evaluation harness only; serving makes no model calls. Names are the gateway's
-    # consumer names, not upstream ids: `deepseek-v4-flash` and `deepseek-v4` both
-    # resolve to the April 23 Flash release, so neither says which release it ran.
-    # Dated and tier-named ones do.
-    select_model: str = "deepseek-v4-flash-0731"
-    answer_model: str = "deepseek-v4-pro"
-    judge_model: str = "deepseek-v4-pro"
+    # Evaluation harness only; serving makes no model calls. Provider ids, not gateway
+    # aliases: the estate calls OpenRouter directly since 2026-09-06 and OpenRouter has
+    # no alias layer, so a bare `deepseek-v4-flash` resolves nowhere. Dated ids also say
+    # which release produced a report, which an undated alias never did.
+    select_model: str = "deepseek/deepseek-v4-flash-0731"
+    answer_model: str = "deepseek/deepseek-v4-pro"
+    judge_model: str = "deepseek/deepseek-v4-pro"
     bifrost_timeout_s: int = 300
     max_cards: int = 8
     # 40K chars is ~10K tokens. The old 80K produced ~18K-token bundles that overran the

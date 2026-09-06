@@ -58,9 +58,9 @@ flagged where they appear.
 | `RESOLVE_DEPTH` | `1` | how far to follow `related` |
 | `BIFROST_BASE` | empty | model gateway, **evaluation only**. Serving makes no model calls |
 | `BIFROST_API_KEY` | empty | as above |
-| `SELECT_MODEL` | `deepseek-v4-flash-0731` | evaluation harness only. Gateway consumer name, not an upstream id |
-| `ANSWER_MODEL` | `deepseek-v4-pro` | evaluation harness only |
-| `JUDGE_MODEL` | `deepseek-v4-pro` | evaluation harness only |
+| `SELECT_MODEL` | `deepseek/deepseek-v4-flash-0731` | evaluation harness only. Provider id, not a gateway alias |
+| `ANSWER_MODEL` | `deepseek/deepseek-v4-pro` | evaluation harness only |
+| `JUDGE_MODEL` | `deepseek/deepseek-v4-pro` | evaluation harness only |
 | `BIFROST_TIMEOUT_S` | `300` | |
 
 For `IDENTITY_HEADER`'s ledger-owner role and the mandatory proxy for wider exposure, see
@@ -103,9 +103,9 @@ silently serves another deployment's client memory.
 | `R2_PREFIX` | empty | **required when the R2 fallback is used**. A bucket holds more than one dataset, so an empty prefix is not "everything I wanted", it is "everything anyone put there" |
 | `BIFROST_BASE` | required | model gateway |
 | `BIFROST_API_KEY` | required | |
-| `TAXONOMY_MODEL` | `minimax-m3` | gate 2, the concept list |
-| `ASSIGN_MODEL` | `deepseek-v4-flash` | document to concept assignment |
-| `DISTILL_MODEL` | `minimax-m3` | gate 3, the card bodies |
+| `TAXONOMY_MODEL` | `minimax/minimax-m3` | gate 2, the concept list |
+| `ASSIGN_MODEL` | `deepseek/deepseek-v4-flash-0731` | document to concept assignment |
+| `DISTILL_MODEL` | `minimax/minimax-m3` | gate 3, the card bodies |
 | `MAX_CHARS` | `24000` | source characters per distillation call |
 | `BIFROST_TIMEOUT_S` | `300` | |
 | `CORPUS_PROFILE` | empty | path to the corpus profile, the domain vocabulary that ships with a corpus. Empty means look for `corpus-profile.yaml` in the working directory, then beside `ATOMIC_DIR` |
@@ -173,7 +173,7 @@ point of it being a separate service from `hive-serve`.
 | `BIFROST_BASE` | empty | model gateway |
 | `BIFROST_API_KEY` | empty | |
 | `DISTILL_MODEL` | empty | **required**, refused at startup unless `--model` is passed. No default on purpose: an environment that fails to load `.env` would otherwise distil a whole run with an unintended model, silently, and the cards carry no record of which one wrote them |
-| `RERANK_MODEL` | `minimax-m3` | linking is measured separately from distilling |
+| `RERANK_MODEL` | `minimax/minimax-m3` | linking is measured separately from distilling |
 | `DISTILL_MAX_TOKENS` | `4000` | must cover reasoning **and** the answer for a reasoning model. At 2000 it spends the budget thinking and returns nothing |
 | `BIFROST_TIMEOUT_S` | `300` | |
 | `CONNECTOR_PAGE_CAP` | `3000` | the source's own ceiling |

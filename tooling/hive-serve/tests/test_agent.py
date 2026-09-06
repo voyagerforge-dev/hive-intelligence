@@ -24,8 +24,9 @@ class SelectLLM:
 ])
 def test_selector_delivers_rules_index_and_question(rule):
     llm = SelectLLM('{"card_ids": ["pre-wave-process"]}')
-    selected = select_ids(INDEX, "pre-wave?", llm, known_ids={"pre-wave-process"})
+    selected, select_empty = select_ids(INDEX, "pre-wave?", llm, known_ids={"pre-wave-process"})
     assert selected == ["pre-wave-process"]
+    assert select_empty is False
     assert len(llm.calls) == 1
     system, user = llm.calls[0]
     assert rule in system
@@ -36,14 +37,27 @@ def test_selector_delivers_rules_index_and_question(rule):
 
 def test_select_ids_parses_and_filters_unknown():
     llm = SelectLLM('{"card_ids": ["pre-wave-process", "bogus"]}')
-    out = select_ids(INDEX, "pre-wave?", llm, known_ids={"pre-wave-process"})
+    out, select_empty = select_ids(INDEX, "pre-wave?", llm, known_ids={"pre-wave-process"})
     assert out == ["pre-wave-process"]
+    assert select_empty is False
 
 
 def test_select_ids_retries_then_empty():
+    """Unusable output is a retrieval miss, not an absent measurement: the model spoke."""
     llm = SelectLLM("no json here")
-    out = select_ids(INDEX, "q", llm, known_ids={"pre-wave-process"})
+    out, select_empty = select_ids(INDEX, "q", llm, known_ids={"pre-wave-process"})
     assert out == []
+    assert select_empty is False
+
+
+def test_select_ids_reports_a_selector_that_returned_nothing():
+    """A silent selector measured nothing. Scoring that as a miss is how a run reports
+    a retrieval collapse it never observed, so the empty case must be distinguishable."""
+    class _Silent:
+        def complete(self, system, user): return None
+    out, select_empty = select_ids(INDEX, "q", _Silent(), known_ids={"pre-wave-process"})
+    assert out == []
+    assert select_empty is True
 
 
 CARD = """---

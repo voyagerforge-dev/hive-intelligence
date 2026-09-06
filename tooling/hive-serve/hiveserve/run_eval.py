@@ -223,7 +223,8 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
     return None, warn_if_cross_client_is_unexercised(qa, set())
 
 
-_ROLE_SETTING = {"answer": "ANSWER_MODEL", "judge": "JUDGE_MODEL"}
+_ROLE_SETTING = {"select": "SELECT_MODEL", "answer": "ANSWER_MODEL",
+                 "judge": "JUDGE_MODEL"}
 
 
 def refuse_if_a_model_returned_nothing(aggregate: dict, settings) -> None:
