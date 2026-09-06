@@ -29,7 +29,7 @@ hivezendesk <mode> --client <key> --customers <path> \
 |---|---|
 | `backfill` | first run, over available history |
 | `incremental` | since the last recorded cursor |
-| `rebuild` | re-distil existing staged cards, for example after a prompt change |
+| `rebuild` | reshape cards already staged on R2, for example after a prompt change |
 | `relink` | recompute `related` links only, no distillation |
 
 Other options: `--force`, `--limit`, `--workers`, `--batch-size`, `--model`.
@@ -143,11 +143,15 @@ refuses, because the partial result looks like a complete one and nothing downst
 |---|---|---|
 | `backfill` | a bounded historical range | distil, then link |
 | `incremental` | since the last run | distil, then link |
-| `rebuild` | re-distil cards from stored records, without re-fetching | reshape, batched |
+| `rebuild` | reshape cards already staged on R2, without re-fetching or re-distilling each ticket | reshape, batched |
 | `relink` | re-run linking only, against the current corpus | rerank only |
 
-**Every mode calls a model.** `rebuild` skips the fetch, not the distillation; `relink` skips the
-distillation, not the rerank that chooses the links.
+**Every mode calls a model.** `rebuild` skips the per-ticket fetch and the distillation, not the
+reshape; `relink` skips the distillation, not the rerank that chooses the links.
+
+`rebuild` is not an offline mode. It still pulls each org's ticket list once, so every entry gets a
+real closed date and subject, and `CONNECTOR_BASE` is refused at startup if unset. What it avoids is
+the per-ticket fetch and re-distilling each thread.
 
 `--dry-run` never writes, in any mode. For `backfill`, `incremental` and `rebuild` it also calls no
 model: it fetches and gates and stops before the model stage, which is how a backfill is sized and

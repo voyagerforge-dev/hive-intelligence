@@ -122,6 +122,7 @@ first built against. See [known limitations](../concepts/principles.md#known-lim
 | Variable | Default | Notes |
 |---|---|---|
 | `CORPUS_ROOT` | empty | corpus-profile lookup hint only, and read from the environment, so it must be **exported**. The raw tree comes from the curation plan or the command argument. Not hive-gen's `CARD_CORPUS_ROOT` |
+| `CORPUS_PROFILE` | empty | the same profile file [hive-gen reads](#hive-gen), for the folder-name product aliases and the vocabulary `validate-plan` checks a plan against. Read from the environment, so it must be **exported**. Empty means look for `corpus-profile.yaml` in the working directory, then under `CORPUS_ROOT` and beside it |
 | `WORK_DIR` | `./hive-work` | scratch space |
 | `ATOMIC_DIR` | `./hive-work/atomic` | output, and `hive-gen`'s input |
 | `DOCLING_BASE` | empty | document converter endpoint |
@@ -164,6 +165,7 @@ point of it being a separate service from `hive-serve`.
 | Variable | Default | Notes |
 |---|---|---|
 | `CONNECTOR_BASE` | empty | **required**. Validated at startup rather than on first request |
+| `CORPUS_PROFILE` | empty | the same profile file [hive-gen reads](#hive-gen), for its `linking` section: the default product, the per-product markers, and the extra stopwords. Read from the environment, so it must be **exported**. Empty means look for `corpus-profile.yaml` in the working directory |
 | `CONNECTOR_API_KEY` | empty | |
 | `BIFROST_BASE` | empty | model gateway |
 | `BIFROST_API_KEY` | empty | |

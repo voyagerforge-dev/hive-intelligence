@@ -254,19 +254,26 @@ Alpha's own note that it calibrates to a tighter tolerance outranks the general 
 never sees it. Note the parameter is `query` here and `q` on the REST route.
 
 The ledger is the other. `start_objective(mode="investigate", goal="…")` opens a work stream in
-Postgres, and `list_objectives()` reads it back:
+Postgres, and `list_objectives()` reads them back as an array:
 
 ```json
-{
-  "id": "32e770c2104e424b8609a4b823d22c63",
-  "owner": "local-operator",
-  "mode": "investigate",
-  "goal": "why is calibration drifting",
-  "status": "open",
-  "visibility": "private",
-  "created_at": "2026-09-06T06:01:37.171828+00:00"
-}
+[
+  {
+    "id": "32e770c2104e424b8609a4b823d22c63",
+    "owner": "local-operator",
+    "mode": "investigate",
+    "goal": "why is calibration drifting",
+    "status": "open",
+    "external_ref": null,
+    "visibility": "private",
+    "created_at": "2026-09-06T06:01:37.171828+00:00",
+    "updated_at": "2026-09-06T06:01:37.171828+00:00"
+  }
+]
 ```
+
+`start_objective` and `get_objective` return one such object rather than an array, with an
+`entries` list added.
 
 `owner` is `local-operator` because stdio has no identity header and no gate in front of it. Over
 HTTP it comes from the header named by `IDENTITY_HEADER`, and it is never a tool parameter. See
