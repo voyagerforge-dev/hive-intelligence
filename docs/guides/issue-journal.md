@@ -29,12 +29,16 @@ uv run hivezendesk <mode> --client <key> --customers <path> \
 |---|---|
 | `backfill` | first run, over all available history |
 | `incremental` | since the last recorded run |
-| `rebuild` | re-distil existing cards without re-fetching them, for example after a prompt change |
+| `rebuild` | reshape cards already staged on R2, without re-fetching or re-distilling each ticket |
 | `relink` | recompute links from issue cards to concept cards, without re-distilling |
 
 **All four call a model**, so all four cost something. `rebuild` and `relink` exist because the two
 model stages fail independently: a bad linking pass is repairable without redoing the distillation,
 which is the expensive half. Neither is a free operation.
+
+`rebuild` is not an offline mode either: it still pulls each org's ticket list once, so
+`CONNECTOR_BASE` is required for it too and is refused at startup if unset. What it avoids is the
+per-ticket fetch and re-distilling each thread.
 
 ## Dry-run first, every time
 
@@ -42,8 +46,13 @@ which is the expensive half. Neither is a free operation.
 uv run hivezendesk backfill --client <key> ... --dry-run
 ```
 
-`--dry-run` fetches and gates but makes no model calls and writes no cards. A real backfill is one
-model call per entry, so sizing it first is the difference between a known cost and a surprise.
+`--dry-run` writes no cards, in any mode. For `backfill`, `incremental` and `rebuild` it also makes
+no model calls: a real backfill is one model call per entry, so sizing it first is the difference
+between a known cost and a surprise.
+
+**`relink --dry-run` is the exception.** It suppresses the writes only; the rerank still runs once
+per card it shortlists and is billed exactly as the real run would be. See
+[`run.py`, the modes](../reference/hive-zendesk.md#runpy-the-modes).
 
 ## Two failure modes worth knowing
 

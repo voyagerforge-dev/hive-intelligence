@@ -8,7 +8,7 @@ judging each candidate and free to decline.
 `--dry-run` never writes. For backfill, incremental and rebuild it calls no LLM either,
 which is how a backfill is sized and costed before any money is spent. `relink --dry-run`
 is the exception: it suppresses the writes only, and the rerank still runs and is billed
-once per scanned card.
+once per card it shortlists.
 """
 from __future__ import annotations
 

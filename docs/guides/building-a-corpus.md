@@ -111,6 +111,10 @@ CARD_CORPUS_ROOT=/path/to/your/corpus SLICE_AREA=<area> uv run python -m hivegen
 not beside the engine. It is a different tree from `hive-prep`'s `CORPUS_ROOT` - that one names the
 raw documents going in, this one is the cards coming out.
 
+`hive-gen` numbers its own two gates package-locally, so the terminal disagrees with this page by
+one: the run prints `GATE 1` when it proposes the taxonomy, which is gate 2 here, and `GATE 2` when
+it writes the drafts, which is gate 3.
+
 Review the draft, edit it, save it as `taxonomy.<area>.yaml`.
 
 Getting the concept list right is most of getting the corpus right, and a list of titles is far
