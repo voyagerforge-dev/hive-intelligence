@@ -457,11 +457,11 @@ def test_results_are_written_as_they_complete_not_at_the_end(tmp_path):
 def test_set_linked_by_records_which_model_chose_the_links():
     """`model:` records the distiller. Links can come from a different model entirely,
     and without this there is no way to tell Qwen-chosen links from Opus-chosen ones."""
-    out = set_linked_by(CARD, "openrouter/claude-opus-4-8")
-    assert "linked_by: openrouter/claude-opus-4-8" in out
+    out = set_linked_by(CARD, "anthropic/claude-opus-4.8")
+    assert "linked_by: anthropic/claude-opus-4.8" in out
     assert "## What happened" in out
     # idempotent, and does not duplicate on a second pass
-    assert set_linked_by(out, "openrouter/claude-opus-4-8") == out
+    assert set_linked_by(out, "anthropic/claude-opus-4.8") == out
     # a later run with a different model replaces it
     assert "linked_by: x" in set_linked_by(out, "x")
     assert out.count("linked_by:") == 1

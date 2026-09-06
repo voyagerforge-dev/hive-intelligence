@@ -18,9 +18,9 @@ def test_rerank_model_defaults_to_the_cheap_tier():
 def test_rerank_model_is_selectable_without_changing_the_distiller():
     """Distilling prose and choosing links are different jobs on different models: the
     corpus is distilled on-prem by Qwen but linked by a hosted model."""
-    s = _s(distill_model="local-gw/qwen3.6-27b", rerank_model="openrouter/claude-opus-4-8")
+    s = _s(distill_model="local-gw/qwen3.6-27b", rerank_model="anthropic/claude-opus-4.8")
     assert s.distill_model == "local-gw/qwen3.6-27b"
-    assert s.rerank_model == "openrouter/claude-opus-4-8"
+    assert s.rerank_model == "anthropic/claude-opus-4.8"
 
 
 def test_changing_the_distiller_alone_leaves_the_reranker_on_its_default():
