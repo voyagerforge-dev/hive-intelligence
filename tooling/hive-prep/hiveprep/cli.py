@@ -195,9 +195,13 @@ def route(plan_path, work):
 
     from hiveprep.config import get_settings
     from hiveprep.curation_plan import load_plan
+    from hiveprep.slugs import MissingProduct
     from hiveprep.transform import route_plan
     s = get_settings()
-    rows = route_plan(load_plan(Path(plan_path)), Path(work or s.work_dir), s.vision_min_chars)
+    try:
+        rows = route_plan(load_plan(Path(plan_path)), Path(work or s.work_dir), s.vision_min_chars)
+    except MissingProduct as e:
+        raise SystemExit(str(e)) from e
     tally = Counter(r.tier for r in rows)
     for r in rows:
         console.print(f"  {r.tier:11s} {r.slug}")
@@ -214,6 +218,7 @@ def transform(plan_path, work):
     from hiveprep.config import get_settings
     from hiveprep.curation_plan import load_plan
     from hiveprep.docling_client import DoclingClient
+    from hiveprep.slugs import MissingProduct
     from hiveprep.transform import transform_plan
     from hiveprep.vision import QwenVisionClient
     s = get_settings()
@@ -222,10 +227,13 @@ def transform(plan_path, work):
         if (s.prefer_docling and s.docling_base) else None
     vision = QwenVisionClient(base=s.qwen_base, api_key=s.qwen_api_key, model=s.qwen_model,
                               timeout_s=s.qwen_timeout_s)
-    res = transform_plan(load_plan(Path(plan_path)), Path(work or s.work_dir),
-                         docling=docling, vision=vision, vision_min_chars=s.vision_min_chars,
-                         prefer_docling=s.prefer_docling,
-                         strip_product=s.strip_product if s.strip_boilerplate else None)
+    try:
+        res = transform_plan(load_plan(Path(plan_path)), Path(work or s.work_dir),
+                             docling=docling, vision=vision, vision_min_chars=s.vision_min_chars,
+                             prefer_docling=s.prefer_docling,
+                             strip_product=s.strip_product if s.strip_boilerplate else None)
+    except MissingProduct as e:
+        raise SystemExit(str(e)) from e
     tally = Counter(r.tier if r.ok else "error" for r in res)
     console.print(f"[bold]{dict(tally)}[/] ({len(res)} docs) → atomic")
 
@@ -238,6 +246,7 @@ def stamp(plan_path, atomic_dir, overwrite):
     """Stamp platform/product/version/doc_type/topic frontmatter from the curation plan."""
     from hiveprep.config import get_settings
     from hiveprep.curation_plan import load_plan
+    from hiveprep.slugs import MissingProduct
     from hiveprep.stamp import stamp_from_plan
     s = get_settings()
     given = str(atomic_dir or s.atomic_dir).strip()
@@ -264,7 +273,10 @@ def stamp(plan_path, atomic_dir, overwrite):
             f"{source}={given} is not a directory (resolved to {atomic.resolve()}), "
             f"so there is nothing to stamp. It is written by `transform` and read here; "
             f"{remedy}")
-    changed = stamp_from_plan(atomic, load_plan(Path(plan_path)), only_missing=not overwrite)
+    try:
+        changed = stamp_from_plan(atomic, load_plan(Path(plan_path)), only_missing=not overwrite)
+    except MissingProduct as e:
+        raise SystemExit(str(e)) from e
     console.print(f"[bold]{len(changed)} files stamped[/] in {atomic}")
 
 

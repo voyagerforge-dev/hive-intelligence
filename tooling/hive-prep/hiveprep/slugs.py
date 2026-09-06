@@ -39,6 +39,16 @@ def passthrough_slug(product: str, rel_path: str) -> str:
     return f"{doc_slug(product, rel_path)}-{Path(rel_path).suffix.lower().lstrip('.')}"
 
 
+class MissingProduct(ValueError):
+    """A curation-plan include entry with no `product`.
+
+    Its own type so `route`, `transform` and `stamp` can turn exactly this failure into a
+    clean one-line refusal: catching bare `ValueError` there would swallow unrelated
+    failures and present them to an operator as a plan problem. `ValueError` stays the base
+    class, so callers that only care that a bad plan is refused are unaffected.
+    """
+
+
 def entry_product(entry: dict) -> str:
     """The product a curation-plan include entry is filed under. There is no default.
 
@@ -53,7 +63,7 @@ def entry_product(entry: dict) -> str:
     product = str(entry.get("product") or "").strip()
     if product:
         return product
-    raise ValueError(
+    raise MissingProduct(
         f"curation plan include {entry.get('path') or '<no path>'!r} has no `product`. "
         "It has no default: the product is the first segment of the slug every later "
         "stage keys on. Run `hiveprep validate-plan` for this corpus's known products and "
