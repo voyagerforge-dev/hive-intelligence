@@ -15,5 +15,26 @@ supported entry point; the old `tooling/hive-gen/scripts/` paths for these eight
 
 Adding a module here puts it in the wheel automatically; it does NOT become a command until
 `[project.scripts]` names it, and `tests/test_console_scripts.py` fails on a name declared
-in one place and not the other.
+in one place and not the other. Shared glue therefore lives HERE rather than in a module of
+its own, which that test would demand a command over.
 """
+from __future__ import annotations
+
+import os
+
+
+def gateway_llm():
+    """The conflict-scoring gateway from the environment, or None when it is not configured.
+
+    One definition because two commands must agree on it: `hivegen-memory-conflict-score`
+    and `hivegen-pr-conflict-gate` both score with it, and the scorer fails SAFE, so a
+    default model updated in one copy and not the other would retire the model under one
+    command and turn every candidate pair into a blocking verdict nothing measured. What an
+    absent gateway MEANS stays with each caller - the scorer is advisory, the gate refuses.
+    """
+    base = os.environ.get("BIFROST_BASE")
+    key = os.environ.get("BIFROST_API_KEY")
+    if not base or not key:
+        return None
+    from hivegen.llm import BifrostChat
+    return BifrostChat(base, key, os.environ.get("CONFLICT_MODEL", "minimax/minimax-m3"))

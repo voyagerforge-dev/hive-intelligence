@@ -1,7 +1,8 @@
 # hive-gen
 
-Atomic markdown to concept cards. Package `hivegen`, distribution `vf-hive-gen`. No console script:
-run it as `python -m hivegen.run`.
+Atomic markdown to concept cards. Package `hivegen`, distribution `vf-hive-gen`. The pipeline runner
+has no console script: run it as `python -m hivegen.run`. The distribution does ship the eight
+`hivegen-*` card commands - see [Scripts](#scripts).
 
 Also hosts the card model, corrections and memory serialisation, and the post-promote scripts.
 
@@ -128,6 +129,15 @@ existing cards and publish a commit status. Hive ships the check; the scheduler 
 deployment-side. `hivegen.scripts.pr_conflict_gate` is also importable, and a caller with glue of
 its own composes `pr_touches_memory`, `score_tree` and `verdict_to_status` directly rather than
 shelling out.
+
+`hivegen-pr-conflict-gate` decides what to score by matching `--changed-file` values against
+`clients_dir`, so the two must share a base: **run it from the directory the changed paths are
+relative to** - the repository root, for `git diff --name-only` output - and give `clients_dir` as a
+path under it. A corpus below the root is matched at its own prefix rather than at `clients/`, and a
+`clients_dir` outside the working directory is refused rather than answered, because a gate that
+matches nothing posts green over a memory change nothing scored. With no gateway configured it
+refuses too; `hivegen-memory-conflict-score` is the advisory sibling that prints the candidate pairs
+and does not fail the step.
 
 ## The model client
 

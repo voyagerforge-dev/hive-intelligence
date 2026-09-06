@@ -95,35 +95,39 @@ def test_score_tree_clears_on_low_prob(tmp_path):
     assert not blocking and not review
 
 
-def _run_gate(*args: str) -> subprocess.CompletedProcess:
+def _run_gate(*args: str, cwd) -> subprocess.CompletedProcess:
     """The command as a caller actually gets it, with the stdin CI hands a `run:` step.
 
     A GitHub Actions step gets /dev/null on stdin, so this is the shape in which the gate
     used to answer `state: success` over a pull request it had never been told anything
-    about. The gateway credentials are stripped so no test can reach a network.
+    about. `cwd` is load-bearing: the gate matches `--changed-file` values against
+    `clients_dir` relative to where it runs, so these run from the tree's own root the way
+    a workflow runs from the repository root. The gateway credentials are stripped so no
+    test can reach a network.
     """
     env = {k: v for k, v in os.environ.items()
            if k not in ("BIFROST_BASE", "BIFROST_API_KEY")}
     return subprocess.run(
         [sys.executable, "-m", "hivegen.scripts.pr_conflict_gate", *args],
         stdin=subprocess.DEVNULL, capture_output=True, text=True, env=env, check=False,
+        cwd=str(cwd),
     )
 
 
 def test_main_refuses_a_changeset_nobody_supplied(tmp_path):
     """No changed files named is not a verdict, and must never print one."""
-    concepts, clients = _tree(tmp_path)
-    r = _run_gate(str(clients), str(concepts))
+    _tree(tmp_path)
+    r = _run_gate("clients", "concepts", cwd=tmp_path)
     assert r.returncode != 0, f"the gate exited 0 without being given a changeset: {r.stdout!r}"
     assert "success" not in r.stdout
     assert "no changed files were supplied" in r.stderr.lower()
 
 
 def test_main_clears_a_supplied_changeset_that_touches_no_memory(tmp_path):
-    concepts, clients = _tree(tmp_path)
-    r = _run_gate(str(clients), str(concepts),
+    _tree(tmp_path)
+    r = _run_gate("clients", "concepts",
                   "--changed-file", "README.md",
-                  "--changed-file", "concepts/widgets/alloc.md")
+                  "--changed-file", "concepts/widgets/alloc.md", cwd=tmp_path)
     assert r.returncode == 0, r.stderr
     status = json.loads(r.stdout)
     assert status["context"] == "okf/memory-conflict"
@@ -132,9 +136,64 @@ def test_main_clears_a_supplied_changeset_that_touches_no_memory(tmp_path):
 
 def test_main_refuses_to_score_a_memory_change_without_a_gateway(tmp_path):
     """The changeset was supplied and does touch memory, so a verdict needs real scoring."""
-    concepts, clients = _tree(tmp_path)
-    r = _run_gate(str(clients), str(concepts),
-                  "--changed-file", f"{memory_lint.CLIENTS_PREFIX}alpha/memory/m1.md")
+    _tree(tmp_path)
+    r = _run_gate("clients", "concepts",
+                  "--changed-file", "clients/alpha/memory/m1.md", cwd=tmp_path)
     assert r.returncode != 0
     assert "success" not in r.stdout
     assert "BIFROST_BASE" in r.stderr
+
+
+def test_main_sees_a_memory_change_in_a_corpus_below_the_repository_root(tmp_path):
+    """The changed path and the clients tree agree; only the `clients/` literal did not.
+
+    A gate that reports green because its hardcoded prefix missed the corpus layout is the
+    exact failure `pr_touches_memory`'s docstring exists over: the green is evidence of
+    nothing and reads as evidence of something. Reaching the gateway refusal is what proves
+    the card was recognised.
+    """
+    _tree(tmp_path / "corpus")
+    r = _run_gate("corpus/clients", "corpus/concepts",
+                  "--changed-file", "corpus/clients/alpha/memory/m1.md", cwd=tmp_path)
+    assert "success" not in r.stdout, f"the gate waved through a memory change: {r.stdout!r}"
+    assert r.returncode != 0
+    assert "BIFROST_BASE" in r.stderr
+
+
+def test_main_still_clears_a_non_memory_change_in_a_corpus_below_the_root(tmp_path):
+    """Deriving the prefix must not turn every nested-corpus PR into a refusal."""
+    _tree(tmp_path / "corpus")
+    r = _run_gate("corpus/clients", "corpus/concepts",
+                  "--changed-file", "corpus/concepts/widgets/alloc.md", cwd=tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout)["state"] == "success"
+
+
+def test_main_refuses_a_clients_dir_outside_the_directory_it_runs_from(tmp_path):
+    """Nothing relative to the working directory can name a card in there, so no verdict."""
+    _tree(tmp_path / "corpus")
+    (tmp_path / "elsewhere").mkdir()
+    r = _run_gate(str(tmp_path / "corpus" / "clients"), str(tmp_path / "corpus" / "concepts"),
+                  "--changed-file", "corpus/clients/alpha/memory/m1.md",
+                  cwd=tmp_path / "elsewhere")
+    assert r.returncode != 0
+    assert "success" not in r.stdout
+    assert "outside the working directory" in r.stderr
+
+
+def test_pr_touches_memory_takes_the_prefix_of_a_corpus_below_the_root():
+    """The default is the corpus-at-the-root layout the corpus repository calls it with."""
+    nested = ["corpus/clients/alpha/memory/m1.md"]
+    assert pcg.pr_touches_memory(nested) is False
+    assert pcg.pr_touches_memory(nested, "corpus/clients/") is True
+    assert pcg.pr_touches_memory(["corpus/concepts/w/a.md"], "corpus/clients/") is False
+
+
+def test_the_derived_prefix_is_not_the_id_prefix(tmp_path, monkeypatch):
+    """Two facts, deliberately apart: card ids stay `clients/...` under any layout."""
+    _tree(tmp_path / "corpus")
+    monkeypatch.chdir(tmp_path)
+    assert pcg.changed_path_prefix("corpus/clients") == "corpus/clients/"
+    assert memory_lint.CLIENTS_PREFIX == "clients/"
+    ids = memory_lint._memories("corpus/clients")
+    assert ids and all(i.startswith(memory_lint.CLIENTS_PREFIX) for i in ids)

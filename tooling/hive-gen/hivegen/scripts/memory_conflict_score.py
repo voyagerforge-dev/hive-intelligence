@@ -6,10 +6,9 @@ Usage: hivegen-memory-conflict-score <clients_dir> <concepts_dir>"""
 from __future__ import annotations
 
 import argparse
-import os
 
 from hivegen.llm import extract_json
-from hivegen.scripts import memory_lint
+from hivegen.scripts import gateway_llm, memory_lint
 
 _SYS = (
     "You judge whether two client-memory notes about the SAME client CONFLICT, i.e. make "
@@ -56,8 +55,8 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="hivegen-memory-conflict-score",
         description="Score memory_lint's same-client candidate pairs for contradiction. "
-                    "With no gateway configured it lists the candidates and passes, because "
-                    "an unscored pair is not evidence of no conflict.")
+                    "With no gateway configured it prints the candidate pairs for a human "
+                    "to read and does not fail the step.")
     ap.add_argument("clients_dir", help="the corpus clients/ tree")
     ap.add_argument("concepts_dir", help="the corpus concepts/ tree the memories relate to")
     args = ap.parse_args(argv)
@@ -66,15 +65,12 @@ def main(argv: list[str] | None = None) -> int:
         print("memory_conflict_score: 0 candidates")
         return 0
     mems = memory_lint._memories(args.clients_dir)
-    key = os.environ.get("BIFROST_API_KEY")
-    base = os.environ.get("BIFROST_BASE")
-    if not key or not base:
+    llm = gateway_llm()
+    if llm is None:
         print(f"memory_conflict_score: {len(candidates)} candidate(s), no LLM key set, ADVISORY only:")
         for a, b in candidates:
             print(f"  CANDIDATE {a} <> {b}")
         return 0
-    from hivegen.llm import BifrostChat
-    llm = BifrostChat(base, key, os.environ.get("CONFLICT_MODEL", "minimax/minimax-m3"))
     blocking, review = gate(candidates, mems, llm)
     for a, b in review:
         print(f"REVIEW {a} <> {b}, human check")
