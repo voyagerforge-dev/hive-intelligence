@@ -173,7 +173,7 @@ single `corpus-profile.yaml`: the functional areas, the sub-slices, the guide-to
 product folder aliases, and the facet values the validators gate on.
 
 It ships with the corpus, not with Hive, and is found via `CORPUS_PROFILE`, the working directory,
-or beside `ATOMIC_DIR`. `corpus-profile.example.yaml` in the product repository documents every
+or beside `ATOMIC_DIR`. `corpus-profile.example.yaml` at the root of this repository documents every
 section and, more usefully, how to get each one wrong.
 
 A missing profile is not an error. It becomes one only when something asks for a vocabulary that

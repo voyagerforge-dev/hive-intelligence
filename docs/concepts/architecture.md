@@ -46,7 +46,7 @@ and everything downstream is ordinary code operating on an approved plan.
 This matters because the alternative, sprinkling model calls through every step, gives you a
 pipeline whose behaviour you cannot review, reproduce or explain.
 
-Commands run in sequence: `scan`, `dups`, `validate-plan`, `dedup`, `normalize`, `route`,
+Commands run in sequence: `scan`, `dups`, `validate-plan`, `dedup-formats`, `normalize`, `route`,
 `transform`, `stamp`, `validate-atomic`. See [hive-prep](../reference/hive-prep.md).
 
 ## Stage 2: card creation
