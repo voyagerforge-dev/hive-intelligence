@@ -46,12 +46,13 @@ per-ticket fetch and re-distilling each thread.
 uv run hivezendesk backfill --client <key> ... --dry-run
 ```
 
-`--dry-run` writes no cards, in any mode. For `backfill`, `incremental` and `rebuild` it also makes
-no model calls: a real backfill is one model call per entry, so sizing it first is the difference
-between a known cost and a surprise.
+`--dry-run` writes no cards and calls no model, in any mode. A real backfill is one model call per
+entry, so sizing it first is the difference between a known cost and a surprise.
 
-**`relink --dry-run` is the exception.** It suppresses the writes only; the rerank still runs once
-per card it shortlists and is billed exactly as the real run would be. See
+`relink --dry-run` runs the lexical shortlist, which is local and free, and stops there. The
+`shortlisted=` count it reports is exactly the number of rerank calls the real run would buy, so it
+prices a relink; it cannot tell you which links that run would choose, because it never asks the
+model. It needs no gateway credentials for the same reason. See
 [`run.py`, the modes](../reference/hive-zendesk.md#runpy-the-modes).
 
 ## Two failure modes worth knowing

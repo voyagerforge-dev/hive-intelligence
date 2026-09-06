@@ -5,13 +5,25 @@ name: FastAPI services CI
 # the required check (they'd wait forever for a run that never happens). The expensive service
 # matrix is instead skipped inside detect-services when the PR changed no CI-relevant files,
 # so card/docs PRs still cost only the ~10s detect + ci-ok jobs.
+#
+# It also runs on every push to `main`, which is what makes a CI badge honest: a badge reads
+# the latest run on the default branch, and with `pull_request` alone there has never been
+# one. The job set is identical; only what the matrix is derived from differs. A merge is a
+# new commit that no pull request tested (the PR tested a merge preview), and the packages
+# are cross-installed, so a main run does NOT filter by changed paths - it lints, type-checks
+# and tests every package. That is one full run per merge, and it is the whole point: a green
+# badge has to mean main is green, not that main's last commit touched nothing interesting.
 on:
   pull_request:
+  push:
+    branches: [main]
 
-# A new push to the same PR cancels the in-flight run instead of stacking runners.
+# A new push to the same PR cancels the in-flight run instead of stacking runners. Runs on
+# main are NOT cancelled: a cancelled run is the newest run on the branch, so cancelling one
+# would leave the badge reporting "cancelled" for a commit that was never actually tested.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Least privilege, stated explicitly rather than inherited from the repository default, which
 # differs between repositories and changes when one is made public. Nothing here writes: the
@@ -32,13 +44,27 @@ jobs:
       - id: find
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           # Run the service matrix only when the PR touches CI-relevant files (service code /
           # tests / packaging / Dockerfiles / this workflow). Docs- or card-only PRs emit an
           # empty matrix — which ci-ok treats as success — but the workflow still RAN, so the
           # required ci-ok check is always reported (no wedge on .md-only PRs).
-          if git diff --name-only "$BASE_SHA"...HEAD \
+          #
+          # A push to main skips that question and always runs the matrix. The badge this
+          # feeds must mean "main is green", and an empty matrix reports success without
+          # having tested anything - indistinguishable from a real pass. There is also no
+          # base to diff against that means what BASE_SHA means on a PR.
+          if [ "$EVENT_NAME" = "push" ]; then
+            echo "Push to main - running the full matrix, whatever changed."
+            changed=yes
+          elif git diff --name-only "$BASE_SHA"...HEAD \
              | grep -qE '(\.py$|/tests/|/pyproject\.toml$|(^|/)Dockerfile$|^\.github/workflows/fastapi-svcs\.yml$)'; then
+            changed=yes
+          else
+            changed=no
+          fi
+          if [ "$changed" = "yes" ]; then
             # Discover services with a pyproject.toml across all service roots
             #   (tooling/).
             # Emits the FULL relative dir path (used directly as working-directory); each path is

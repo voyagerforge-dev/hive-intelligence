@@ -85,13 +85,14 @@ deployment, so it belongs with a major version. See
 no card uses. If you need semantic search over the same content, embed the cards and keep your own
 index: see [alongside an existing RAG system](../guides/alongside-rag.md).
 
-**Some domain vocabulary is still baked into `hive-prep`.** A curation-plan entry with no
-`product` falls back to the literal string `WMS`, the domain Hive was first built for, in
-`hiveprep/slugs.py` and `hiveprep/transform.py`. Set `product` on every entry in the plan and you
-will never meet it; leave one unset and you get slugs and frontmatter stamped with a product that
-means nothing in your corpus. It is a wrong default rather than a loud failure, which is the shape
-this project otherwise avoids, and changing it is a breaking change for any corpus already built on
-it. Related: the functional-area map and guide-topic vocabulary above.
+**A curation-plan entry with no `product` is now refused rather than defaulted.** It used to fall
+back to the literal string `WMS`, the domain Hive was first built for, in `hiveprep/slugs.py` and
+`hiveprep/transform.py`. The product is the first segment of every slug, so that default filed the
+document under a product the corpus may not contain, and nothing downstream could tell that apart
+from a deliberate choice. `validate-plan` now reports a product-less entry at gate 1, and the slug
+layer refuses one that reaches it, naming the entry and the products the corpus profile declares.
+Set `product` on every include and you will never meet either. Related: the functional-area map and
+guide-topic vocabulary above.
 
 **The skills carry the same vocabulary, and are the first thing an outside reader meets.** The
 `description:` lines in `skills/` name one vendor's products, and `contribute/` enumerates one

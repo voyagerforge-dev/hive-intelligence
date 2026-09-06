@@ -92,3 +92,22 @@ def test_dedup_drop_missing_errors(tmp_path):
     body = GOOD.format(root=tmp_path).replace("dedup_groups: []",
         'dedup_groups:\n  - {keep: "a.pdf", drop: ["ghost.pdf"], reason: r}')
     assert any("drop path missing" in e for e in validate_plan(load_plan(_plan(tmp_path, body)), corpus_root=tmp_path))
+
+
+def test_a_product_less_include_is_an_error_even_with_no_declared_vocabulary(tmp_path, monkeypatch):
+    """The product has no default anywhere: it is the first segment of every slug.
+
+    The vocabulary check is corpus-specific and stays opt-in, but "no product at all" is
+    wrong in every corpus, so an empty profile must not turn it into an accepted plan.
+    """
+    monkeypatch.setattr(cp, "PRODUCTS", set())
+    body = GOOD.format(root=tmp_path).replace("product: WIDGETS, ", "")
+    errors = validate_plan(load_plan(_plan(tmp_path, body)), corpus_root=tmp_path)
+    assert any("no product" in e for e in errors)
+
+
+def test_an_unknown_product_is_reported_with_the_ones_that_are_known(tmp_path, monkeypatch):
+    monkeypatch.setattr(cp, "PRODUCTS", {"WIDGETS", "GADGETS"})
+    body = GOOD.format(root=tmp_path).replace("product: WIDGETS", "product: NOPE")
+    errors = validate_plan(load_plan(_plan(tmp_path, body)), corpus_root=tmp_path)
+    assert any("invalid product 'NOPE'" in e and "GADGETS, WIDGETS" in e for e in errors)

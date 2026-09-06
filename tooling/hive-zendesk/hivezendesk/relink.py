@@ -310,6 +310,10 @@ def rerank(title: str, description: str, candidates: list[str], titles: dict[str
 @dataclass
 class RelinkReport:
     scanned: int = 0
+    # Entries the lexical pass offered candidates for, i.e. entries that reach the rerank.
+    # One paid model call each, so this is the unit a run is costed in. In a real run it
+    # equals linked + declined; in a dry run it is the bill a real run would incur.
+    shortlisted: int = 0
     no_shortlist: int = 0
     declined: int = 0
     linked: int = 0
@@ -326,6 +330,13 @@ def relink_cards(clients: list[str], clients_dir: str | Path, concepts_dir: str 
     entry's own product facet, and `confine_to_one_product` keeps the resulting edges
     inside it. That is what lets an entry about a secondary product reach that product's cards
     without ever creating the cross-product edge OKF forbids.
+
+    `dry_run` is a **no-call** mode. The lexical shortlist still runs - it is local and
+    free - and the rerank does not, so a dry run spends nothing. `llm` may therefore be
+    None, which is the only airtight version of that promise: with no client there is
+    nothing that could issue a request. What a dry run reports is the cost of the real one
+    (`shortlisted` is exactly the number of rerank calls it would make) and not which links
+    it would choose, because that answer belongs to the model and this run never asks.
     """
     targets = load_targets(concepts_dir)
     if products:
@@ -360,6 +371,11 @@ def relink_cards(clients: list[str], clients_dir: str | Path, concepts_dir: str 
                 cands = [c for c in cands if product_of(c) in permitted]
             if not cands:
                 return p, [], False
+            if dry_run:
+                # Everything above this line is local; the rerank below is the only thing
+                # that costs money. A flag named dry-run therefore stops here rather than
+                # buying an answer it will then throw away.
+                return p, [], True
             links = rerank(str(fm.get("title", "")), str(fm.get("description", "")),
                            cands, titles, llm)
             return p, confine_to_one_product(links), True
@@ -370,6 +386,19 @@ def relink_cards(clients: list[str], clients_dir: str | Path, concepts_dir: str 
             futures = [pool.submit(work, q) for q in paths]
             results = (f.result() for f in as_completed(futures))
             for p, links, had_candidates in results:
+                if had_candidates:
+                    report.shortlisted += 1
+                if dry_run:
+                    # Nothing was asked of the model, so `linked` and `declined` are
+                    # unknowable and stay 0 - `shortlisted` above is the whole of what a
+                    # dry run can state. `cleared` stays exact for an entry the lexical
+                    # pass offered nothing for: that retraction needs no model.
+                    if not had_candidates:
+                        report.no_shortlist += 1
+                        text = p.read_text()
+                        if clear_links(text) != text:
+                            report.cleared += 1
+                    continue
                 if not links:
                     if had_candidates:
                         report.declined += 1

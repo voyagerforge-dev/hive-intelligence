@@ -194,16 +194,6 @@ def test_relink_cards_writes_the_model_choice(tmp_path):
     assert "## See also" in body
 
 
-def test_relink_cards_dry_run_writes_nothing(tmp_path):
-    d = _corpus(tmp_path)
-    before = (d / "123-fc-wave.md").read_text()
-    llm = FakeLLM(json.dumps({"picks": ["widgets/wave-allocation-process"]}))
-    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm,
-                       workers=1, dry_run=True)
-    assert rep.linked == 1
-    assert (d / "123-fc-wave.md").read_text() == before
-
-
 UNRELATED_CARD = (CARD
                   .replace("title: FC Wave failed to release", "title: Label printer jammed")
                   .replace("description: A wave allocation did not release.",
@@ -213,24 +203,67 @@ UNRELATED_CARD = (CARD
                   .replace("ref: '123'", "ref: '124'"))
 
 
-def test_dry_run_still_bills_the_rerank_once_per_shortlisted_card(tmp_path):
-    """`--dry-run` suppresses the writes, not the spend.
+class ExplodingLLM:
+    """A client that cannot be used. Any call is the failure the test is looking for."""
 
-    The docs quote this cost, so pin the unit: the model runs once for each card the
-    lexical pass shortlists, and not at all for a card it shortlists nothing for. Getting
-    that unit wrong is only discovered on an invoice.
+    model = "must-not-be-called"
+
+    def complete(self, system, user):
+        raise AssertionError("--dry-run called the rerank; a dry run must spend nothing")
+
+
+def test_dry_run_calls_no_model_and_writes_nothing(tmp_path):
+    """`--dry-run` is a no-call mode: a flag with that name must not spend money.
+
+    It used to suppress the writes only, and still bought one rerank per shortlisted card.
+    The exploding client is the assertion - any request at all fails the test - and `llm=None`
+    below proves the promise structurally: a dry run holds nothing it could call.
     """
     d = _corpus(tmp_path)
     (d / "124-printer.md").write_text(UNRELATED_CARD)
     before = {p.name: p.read_text() for p in d.glob("*.md")}
+
+    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts",
+                       ExplodingLLM(), workers=1, dry_run=True)
+
+    assert {p.name: p.read_text() for p in d.glob("*.md")} == before
+    # The model decides `linked`/`declined`, and it was never asked, so both stay 0.
+    assert (rep.linked, rep.declined) == (0, 0)
+
+
+def test_dry_run_needs_no_client_at_all(tmp_path):
+    """The costing run is the one an operator makes before they have a gateway key."""
+    _corpus(tmp_path)
+    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", None,
+                       workers=1, dry_run=True)
+    assert rep.scanned == 1 and rep.shortlisted == 1
+
+
+def test_dry_run_reports_the_rerank_calls_a_real_run_would_make(tmp_path):
+    """What a dry run is FOR: the bill, in the unit it is charged in.
+
+    One rerank per shortlisted card, none for a card the lexical pass offers nothing for.
+    Getting that unit wrong is otherwise only discovered on an invoice.
+    """
+    d = _corpus(tmp_path)
+    (d / "124-printer.md").write_text(UNRELATED_CARD)
+
+    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts",
+                       ExplodingLLM(), workers=1, dry_run=True)
+
+    assert (rep.scanned, rep.shortlisted, rep.no_shortlist) == (2, 1, 1)
+
+
+def test_shortlisted_counts_the_same_thing_in_a_real_run(tmp_path):
+    """The dry run's costing number is only trustworthy if it means one call there too."""
+    d = _corpus(tmp_path)
+    (d / "124-printer.md").write_text(UNRELATED_CARD)
     llm = FakeLLM(json.dumps({"picks": ["widgets/wave-allocation-process"]}))
 
-    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm,
-                       workers=1, dry_run=True)
+    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm, workers=1)
 
-    assert (rep.scanned, rep.no_shortlist, rep.linked) == (2, 1, 1)
-    assert llm.calls == 1
-    assert {p.name: p.read_text() for p in d.glob("*.md")} == before
+    assert rep.shortlisted == llm.calls == 1
+    assert rep.shortlisted == rep.linked + rep.declined
 
 
 def test_relink_cards_leaves_declined_entries_untouched(tmp_path):

@@ -44,7 +44,9 @@ what an operator copies. `hive-dbparse` is the exception: no settings, no `confi
 `uv sync --extra dev && uv run pytest`. Tests are colocated in `tests/` beside the package.
 
 CI (`.github/workflows/fastapi-svcs.yml`) runs `ruff check .`, `mypy` and `pytest` for **every**
-package whenever a PR touches any `.py`, so one package's backlog reddens everyone's PR. Type
+package whenever a PR touches any `.py`, so one package's backlog reddens everyone's PR. It runs
+again on every push to `main`, where it never filters by changed paths - that run is what the
+README's CI badge reports, so it has to mean the whole engine is green. Type
 checking is opt-in per package (the workflow greps `pyproject.toml` for mypy) and all six declare
 `[tool.mypy]`; a package added without it is skipped with a `::warning::`, not silently.
 Both linters are installed at the JOB level, not from any package's dev extras, so

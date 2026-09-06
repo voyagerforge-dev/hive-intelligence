@@ -82,6 +82,12 @@ and tests **every** package - so one package's backlog can redden a pull request
 it. A docs-only pull request runs the same workflow but skips the matrix, which costs seconds and
 still reports `ci-ok`.
 
+The same workflow runs again on the merge commit, on every push to `main`, and that run is what the
+CI badge at the top of the README reports. It never skips the matrix: a merge is a commit no pull
+request tested, and a badge that goes green off an empty matrix says nothing. So a change that was
+green on its pull request can still redden `main` - if that happens, it is a fix on a new pull
+request, not a re-run.
+
 [`release.yml`](.github/workflows/release.yml) also runs on pull requests that touch packaging
 (`tooling/*/pyproject.toml`, `tools/**`, `LICENSE`, `NOTICE`), where it builds the wheels and
 installs them somewhere clean. It never publishes anything from a pull request.
