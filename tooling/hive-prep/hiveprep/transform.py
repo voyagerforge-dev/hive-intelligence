@@ -10,7 +10,7 @@ from pathlib import Path
 
 from hiveprep.curation_plan import Plan
 from hiveprep.docling_client import DoclingError
-from hiveprep.slugs import PASSTHROUGH_EXTS, assign_slugs, slugify
+from hiveprep.slugs import PASSTHROUGH_EXTS, assign_slugs, entry_product, slugify
 from hiveprep.stripper import strip_boilerplate
 
 VISION_MIN_CHARS = 100
@@ -168,7 +168,7 @@ def transform_plan(plan: Plan, work_dir: Path, *, docling, vision,
         else:
             valid.append(e)
     for e, slug in zip(valid, assign_slugs(valid)):
-        rel = Path(e["path"]); product = e.get("product", "WMS"); ext = rel.suffix.lower()
+        rel = Path(e["path"]); product = entry_product(e); ext = rel.suffix.lower()
         if skip_existing and (atomic / f"{slug}.md").exists():
             results.append(TransformResult(rel.name, ok=True, md_path=atomic / f"{slug}.md", tier="skip"))
             continue

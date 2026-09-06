@@ -194,16 +194,6 @@ def test_relink_cards_writes_the_model_choice(tmp_path):
     assert "## See also" in body
 
 
-def test_relink_cards_dry_run_writes_nothing(tmp_path):
-    d = _corpus(tmp_path)
-    before = (d / "123-fc-wave.md").read_text()
-    llm = FakeLLM(json.dumps({"picks": ["widgets/wave-allocation-process"]}))
-    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm,
-                       workers=1, dry_run=True)
-    assert rep.linked == 1
-    assert (d / "123-fc-wave.md").read_text() == before
-
-
 UNRELATED_CARD = (CARD
                   .replace("title: FC Wave failed to release", "title: Label printer jammed")
                   .replace("description: A wave allocation did not release.",
@@ -213,24 +203,58 @@ UNRELATED_CARD = (CARD
                   .replace("ref: '123'", "ref: '124'"))
 
 
-def test_dry_run_still_bills_the_rerank_once_per_shortlisted_card(tmp_path):
-    """`--dry-run` suppresses the writes, not the spend.
+class ExplodingLLM:
+    """A client that cannot be used. Any call is the failure the test is looking for."""
 
-    The docs quote this cost, so pin the unit: the model runs once for each card the
-    lexical pass shortlists, and not at all for a card it shortlists nothing for. Getting
-    that unit wrong is only discovered on an invoice.
+    model = "must-not-be-called"
+
+    def complete(self, system, user):
+        raise AssertionError("--dry-run called the rerank; a dry run must spend nothing")
+
+
+def test_dry_run_calls_no_model_and_writes_nothing(tmp_path):
+    """`--dry-run` is a no-call mode: a flag with that name must not spend money.
+
+    It used to suppress the writes only, and still bought one rerank per shortlisted card.
+    The exploding client is the assertion: any request at all fails the test.
     """
     d = _corpus(tmp_path)
     (d / "124-printer.md").write_text(UNRELATED_CARD)
     before = {p.name: p.read_text() for p in d.glob("*.md")}
+
+    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts",
+                       ExplodingLLM(), workers=1, dry_run=True)
+
+    assert {p.name: p.read_text() for p in d.glob("*.md")} == before
+    # The model decides `linked`/`declined`, and it was never asked, so both stay 0.
+    assert (rep.linked, rep.declined) == (0, 0)
+
+
+def test_dry_run_reports_the_rerank_calls_a_real_run_would_make(tmp_path):
+    """What a dry run is FOR: the bill, in the unit it is charged in.
+
+    One rerank per shortlisted card, none for a card the lexical pass offers nothing for.
+    Getting that unit wrong is otherwise only discovered on an invoice.
+    """
+    d = _corpus(tmp_path)
+    (d / "124-printer.md").write_text(UNRELATED_CARD)
+
+    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts",
+                       ExplodingLLM(), workers=1, dry_run=True)
+
+    assert (rep.scanned, rep.shortlisted, rep.no_shortlist) == (2, 1, 1)
+
+
+def test_shortlisted_counts_the_same_thing_in_a_real_run(tmp_path):
+    """The dry run's costing number is only trustworthy if it means one call there too."""
+    d = _corpus(tmp_path)
+    (d / "124-printer.md").write_text(UNRELATED_CARD)
     llm = FakeLLM(json.dumps({"picks": ["widgets/wave-allocation-process"]}))
 
-    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm,
-                       workers=1, dry_run=True)
+    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm, workers=1)
 
-    assert (rep.scanned, rep.no_shortlist, rep.linked) == (2, 1, 1)
-    assert llm.calls == 1
-    assert {p.name: p.read_text() for p in d.glob("*.md")} == before
+    assert rep.shortlisted == llm.calls == 1
+    assert rep.shortlisted == rep.linked + rep.declined
 
 
 def test_relink_cards_leaves_declined_entries_untouched(tmp_path):
@@ -245,6 +269,8 @@ def test_relink_cards_leaves_declined_entries_untouched(tmp_path):
 # --- a decline must retract a stale link, not preserve it -----------------------------
 
 LINKED_CARD = CARD.replace("related: []\n", "related:\n- gadgets/performance-tuning\n")
+STALE_UNRELATED_CARD = UNRELATED_CARD.replace(
+    "related: []\n", "related:\n- gadgets/performance-tuning\n")
 
 
 def test_clear_links_empties_frontmatter_and_drops_see_also():
@@ -288,6 +314,34 @@ def test_declining_does_not_rewrite_a_card_that_had_no_links(tmp_path):
                        FakeLLM(json.dumps({"picks": []})), workers=1)
     assert rep.cleared == 0 and rep.declined == 1
     assert (d / "123-fc-wave.md").read_text() == CARD
+
+
+def test_dry_run_counts_a_model_free_retraction_without_performing_it(tmp_path):
+    """A dry run's `cleared` counts only what needs no model, and still writes nothing.
+
+    An entry the lexical pass offers nothing for is retracted without asking anything, so a
+    dry run can count that one. The retraction that follows a DECLINE it cannot count, the
+    decline being the model's answer - which makes `cleared` a floor under the real run's,
+    exactly as docs/reference/hive-zendesk.md describes it. Both cards here carry a stale
+    link; only the second is reachable without spending.
+    """
+    d = _corpus(tmp_path)
+    (d / "123-fc-wave.md").write_text(LINKED_CARD)          # shortlisted: needs the model
+    (d / "124-printer.md").write_text(STALE_UNRELATED_CARD)  # no shortlist: needs nothing
+    before = {p.name: p.read_text() for p in d.glob("*.md")}
+
+    dry = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts",
+                       ExplodingLLM(), workers=1, dry_run=True)
+
+    assert dry.cleared == 1
+    assert {p.name: p.read_text() for p in d.glob("*.md")} == before
+
+    real = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts",
+                        FakeLLM(json.dumps({"picks": []})), workers=1)
+
+    assert (real.cleared, real.declined) == (2, 1)
+    assert dry.cleared < real.cleared
+    assert not any("gadgets/performance-tuning" in p.read_text() for p in d.glob("*.md"))
 
 
 # --- product facet: OKF mandates 0 cross-product bleed (docs/architecture/pipeline.md) ---------

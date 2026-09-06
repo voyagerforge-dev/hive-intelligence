@@ -34,9 +34,8 @@ hivezendesk <mode> --client <key> --customers <path> \
 
 Other options: `--force`, `--limit`, `--workers`, `--batch-size`, `--model`.
 
-**`--dry-run` writes nothing, and for every mode but `relink` makes no model calls either.** A real
-backfill is one model call per entry. Size it first. `relink --dry-run` still pays for its rerank;
-see [`run.py`, the modes](#runpy-the-modes).
+**`--dry-run` writes nothing and calls no model, in any mode.** A real backfill is one model call
+per entry. Size it first. See [`run.py`, the modes](#runpy-the-modes).
 
 ## Two models, two jobs
 
@@ -146,18 +145,25 @@ refuses, because the partial result looks like a complete one and nothing downst
 | `rebuild` | reshape cards already staged on R2, without re-fetching or re-distilling each ticket | reshape, batched |
 | `relink` | re-run linking only, against the current corpus | rerank only |
 
-**Every mode calls a model.** `rebuild` skips the per-ticket fetch and the distillation, not the
-reshape; `relink` skips the distillation, not the rerank that chooses the links.
+**Every mode calls a model** unless `--dry-run` is passed. `rebuild` skips the per-ticket fetch and
+the distillation, not the reshape; `relink` skips the distillation, not the rerank that chooses the
+links.
 
 `rebuild` is not an offline mode. It still pulls each org's ticket list once, so every entry gets a
 real closed date and subject, and `CONNECTOR_BASE` is refused at startup if unset. What it avoids is
 the per-ticket fetch and re-distilling each thread.
 
-`--dry-run` never writes, in any mode. For `backfill`, `incremental` and `rebuild` it also calls no
-model: it fetches and gates and stops before the model stage, which is how a backfill is sized and
-costed before any money is spent. **`relink --dry-run` is the exception.** It suppresses the writes
-only; the rerank still runs once per card it shortlists and is billed exactly as the real run would
-be, so it is not a way to price a relink.
+`--dry-run` never writes and never calls a model, in any mode, which is how a run is sized and
+costed before any money is spent. `backfill`, `incremental` and `rebuild` fetch and gate and stop
+before the model stage. `relink` runs the lexical shortlist - local, free - and stops before the
+rerank, so it issues no request and a costing run needs no working gateway credentials.
+
+What a dry `relink` reports is the bill, not the outcome. `shortlisted=` is exactly the number of
+rerank calls the real run would make; `linked=` and `declined=` stay 0 because those are the model's
+answers and the model was never asked. `no_shortlist=` is exact either way: an entry the lexical
+pass offers nothing for is retracted without any model call. `cleared=` counts only those
+retractions, which makes it a floor rather than an exact figure: a real run also retracts the stale
+links of an entry the model declines, and a dry run cannot know a decline without asking.
 
 `--limit` is applied **before** counting, so the verification reflects what was actually requested.
 Applying it afterwards would make every limited run fail its own count check.

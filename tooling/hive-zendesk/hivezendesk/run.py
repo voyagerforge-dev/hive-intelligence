@@ -5,10 +5,10 @@ id it produces is a guess (measured: 4% resolved). Cards are therefore emitted w
 `related: []` and linked afterwards by `relink`, against the real card ids, with the model
 judging each candidate and free to decline.
 
-`--dry-run` never writes. For backfill, incremental and rebuild it calls no LLM either,
-which is how a backfill is sized and costed before any money is spent. `relink --dry-run`
-is the exception: it suppresses the writes only, and the rerank still runs and is billed
-once per card it shortlists.
+`--dry-run` never writes and never calls a model, in any mode. That is how a run is sized
+and costed before any money is spent. For `relink` the free lexical shortlist still runs and
+the report's `shortlisted` count is exactly the number of rerank calls a real run would buy;
+a dry run cannot say which links it would choose, because it never asks.
 """
 from __future__ import annotations
 
@@ -150,15 +150,19 @@ def main() -> int:
 
     if args.mode == "relink":
         from .relink import relink_cards
-        # Linking uses its own model: see config.rerank_model. `--model` overrides it,
+        # Linking uses its own model (see config.rerank_model); `--model` overrides it,
         # which is how an Opus escalation is run without editing config.
-        llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, args.model or s.rerank_model,
-                          s.bifrost_timeout_s, max_tokens=s.distill_max_tokens)
+        llm = BifrostChat(
+            s.bifrost_base, s.bifrost_api_key, args.model or s.rerank_model,
+            s.bifrost_timeout_s, max_tokens=s.distill_max_tokens)
         rep = relink_cards(args.client, args.clients_dir, args.concepts_dir, llm,
                            workers=args.workers or s.reshape_workers,
                            dry_run=args.dry_run)
-        log.info("scanned=%d linked=%d declined=%d no_shortlist=%d cleared=%d",
-                 rep.scanned, rep.linked, rep.declined, rep.no_shortlist, rep.cleared)
+        # `shortlisted` is the costing number: one rerank call per entry counted there.
+        log.info("%sscanned=%d shortlisted=%d linked=%d declined=%d no_shortlist=%d cleared=%d",
+                 "dry-run: " if args.dry_run else "",
+                 rep.scanned, rep.shortlisted, rep.linked, rep.declined,
+                 rep.no_shortlist, rep.cleared)
         return 0
 
     # Before any work, and before boto3: neither setting has a default. R2_BUCKET used to
@@ -230,8 +234,9 @@ def main() -> int:
                                  max_tokens=s.distill_max_tokens)
         rl = relink_cards(args.client, args.clients_dir, args.concepts_dir, rerank_llm,
                           workers=args.workers or s.reshape_workers, skip_linked=True)
-        log.info("relink: scanned=%d linked=%d declined=%d no_shortlist=%d cleared=%d",
-                 rl.scanned, rl.linked, rl.declined, rl.no_shortlist, rl.cleared)
+        log.info("relink: scanned=%d shortlisted=%d linked=%d declined=%d no_shortlist=%d "
+                 "cleared=%d", rl.scanned, rl.shortlisted, rl.linked, rl.declined,
+                 rl.no_shortlist, rl.cleared)
 
     log.info("fetched=%d emitted=%d skipped=%d cached=%d preserved=%d pii_held=%d failed=%d",
              report.fetched, report.emitted, report.skipped, report.cached,

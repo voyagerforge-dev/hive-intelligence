@@ -46,9 +46,18 @@ def validate_plan(plan: Plan, corpus_root: Path | None = None) -> list[str]:
         if not p or not (root / p).exists():
             errors.append(f"include path missing on disk: '{p}'")
         if PLATFORMS and e.get("platform") not in PLATFORMS:
-            errors.append(f"{p}: invalid platform '{e.get('platform')}'")
-        if PRODUCTS and e.get("product") not in PRODUCTS:
-            errors.append(f"{p}: invalid product '{e.get('product')}'")
+            errors.append(f"{p}: invalid platform '{e.get('platform')}' "
+                          f"(known: {', '.join(sorted(PLATFORMS))})")
+        # An entry with no product at all is invalid in every corpus, profile or not: the
+        # product is the first segment of the slug, so there is nothing to fall back to.
+        # The vocabulary check below is the corpus-specific one and stays opt-in.
+        known = f" (known: {', '.join(sorted(PRODUCTS))})" if PRODUCTS else ""
+        product = str(e.get("product") or "").strip()
+        if not product:
+            errors.append(f"{p}: no product. It has no default: the product is the first "
+                          f"segment of the slug every later stage keys on{known}")
+        elif PRODUCTS and product not in PRODUCTS:
+            errors.append(f"{p}: invalid product '{product}'{known}")
         if e.get("doc_type") not in DOC_TYPES:
             errors.append(f"{p}: invalid doc_type '{e.get('doc_type')}'")
     for g in plan.dedup_groups:

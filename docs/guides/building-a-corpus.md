@@ -67,6 +67,11 @@ The design principle underneath: put the intelligence up front in one reviewable
 deterministic code do the rest. Everything after gate 1 is ordinary software operating on an
 approved decision, which means it is reproducible and explainable.
 
+**Every include needs a `product`.** It is the first segment of the slug that `transform`, `stamp`
+and R2 all key on, so there is nothing sensible to assume when it is absent. `validate-plan` reports
+a product-less entry here, and names the products your corpus profile declares in `curation.products`
+so you can fix it in the plan rather than in the output.
+
 ### The tier tally, before `transform`
 
 `route` is a precheck. It reports how many files will go through each conversion tier - text,

@@ -1,4 +1,6 @@
-from hiveprep.slugs import assign_slugs, doc_slug, slugify
+import pytest
+
+from hiveprep.slugs import assign_slugs, doc_slug, entry_product, slugify
 
 
 def test_slugify():
@@ -28,3 +30,26 @@ def test_assign_slugs_de_collides_separator_variants():
     assert slugs[1] == "widgets-w-work-order-2"   # distinct → no overwrite
     assert slugs[2] == "widgets-w-other"
     assert len(set(slugs)) == 3
+
+
+# --- a missing product is a refusal, not a default ------------------------------------
+# It used to fall back to the literal "WMS", the domain Hive was first built for. The
+# product is the first segment of every slug, so that default silently filed a document
+# under a product the corpus may not even have.
+
+def test_a_product_less_include_is_refused_by_name():
+    with pytest.raises(ValueError) as e:
+        entry_product({"path": "w/Work Order.pdf"})
+    assert "w/Work Order.pdf" in str(e.value) and "product" in str(e.value)
+
+
+def test_an_empty_product_is_refused_like_a_missing_one():
+    """`product: ""` in a plan is a filled-in field that says nothing."""
+    for blank in ("", "   ", None):
+        with pytest.raises(ValueError):
+            entry_product({"path": "w/a.pdf", "product": blank})
+
+
+def test_assign_slugs_refuses_rather_than_slugging_under_a_guess():
+    with pytest.raises(ValueError):
+        assign_slugs([{"path": "w/a.pdf", "product": "WIDGETS"}, {"path": "w/b.pdf"}])

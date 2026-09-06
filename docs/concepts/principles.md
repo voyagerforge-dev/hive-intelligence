@@ -85,13 +85,22 @@ deployment, so it belongs with a major version. See
 no card uses. If you need semantic search over the same content, embed the cards and keep your own
 index: see [alongside an existing RAG system](../guides/alongside-rag.md).
 
-**Some domain vocabulary is still baked into `hive-prep`.** A curation-plan entry with no
-`product` falls back to the literal string `WMS`, the domain Hive was first built for, in
-`hiveprep/slugs.py` and `hiveprep/transform.py`. Set `product` on every entry in the plan and you
-will never meet it; leave one unset and you get slugs and frontmatter stamped with a product that
-means nothing in your corpus. It is a wrong default rather than a loud failure, which is the shape
-this project otherwise avoids, and changing it is a breaking change for any corpus already built on
-it. Related: the functional-area map and guide-topic vocabulary above.
+**`product` is corpus-specific vocabulary hive-prep cannot infer, and a corpus built on the old
+`WMS` default must be migrated by hand.** A curation-plan include with no `product` used to fall
+back to the literal string `WMS`, the domain Hive was first built for, in `hiveprep/slugs.py` and
+`hiveprep/transform.py`; it is refused now, because the product is the first segment of every slug
+and that default filed the document under a product the corpus may not contain. The cost falls on
+anyone who built a corpus while the default was live: this is a breaking change, and `hiveprep
+route`, `transform` and `stamp` all refuse such a plan, naming the first offending entry, before
+doing any work, so it will not run at all until every include carries a `product`.
+Reproducing the slugs, R2 keys and stamped frontmatter that corpus already has means setting
+`product: WMS` explicitly on those entries. Choosing a more accurate name instead is legitimate, but
+it re-slugs those documents, which orphans the existing atomic docs and R2 keys rather than updating
+them. This repository has no CHANGELOG, so this paragraph is the only place that note lives. On a
+new corpus the burden is only that `product` must be stated: `validate-plan` reports every
+product-less entry at gate 1 and lists the products your corpus profile declares, and `route`,
+`transform` and `stamp` each refuse a plan that reaches them with one anyway, naming the entry and
+pointing back at `validate-plan`. Related: the functional-area map and guide-topic vocabulary above.
 
 **The skills carry the same vocabulary, and are the first thing an outside reader meets.** The
 `description:` lines in `skills/` name one vendor's products, and `contribute/` enumerates one

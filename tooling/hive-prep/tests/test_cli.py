@@ -82,3 +82,62 @@ def test_stamp_refuses_a_blank_atomic_dir_rather_than_stamping_the_working_direc
     get_settings.cache_clear()
     assert r.exit_code != 0
     assert "ATOMIC_DIR" in r.output or "ATOMIC_DIR" in str(r.exception)
+
+
+# --- a product-less include is refused, not crashed on -------------------------------
+# `product` leads every slug, so `assign_slugs` refuses an include without one. That
+# refusal reaches an operator through route/transform/stamp, and each must present it the
+# way every other operator-facing refusal here does: the message alone, no traceback.
+
+def _product_less_plan(tmp_path):
+    plan = tmp_path / "plan.yaml"
+    plan.write_text(f"scope: s\ncorpus_root: {tmp_path}\nsubtree: ''\n"
+                    "include:\n"
+                    "  - path: w/Work Order.pdf\n"
+                    "    doc_type: functional-flow\n"
+                    "exclude: []\n")
+    return plan
+
+
+def _assert_clean_refusal(result):
+    assert result.exit_code != 0
+    assert isinstance(result.exception, SystemExit), "the exception escaped the command"
+    assert "w/Work Order.pdf" in result.output and "product" in result.output
+    assert "validate-plan" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_route_refuses_a_product_less_include_without_a_traceback(tmp_path, monkeypatch):
+    from hiveprep.config import get_settings
+    monkeypatch.chdir(tmp_path)
+    get_settings.cache_clear()
+
+    r = CliRunner().invoke(cli, ["route", "--plan", str(_product_less_plan(tmp_path))])
+
+    get_settings.cache_clear()
+    _assert_clean_refusal(r)
+
+
+def test_transform_refuses_a_product_less_include_without_a_traceback(tmp_path, monkeypatch):
+    from hiveprep.config import get_settings
+    monkeypatch.chdir(tmp_path)
+    get_settings.cache_clear()
+
+    r = CliRunner().invoke(cli, ["transform", "--plan", str(_product_less_plan(tmp_path))])
+
+    get_settings.cache_clear()
+    _assert_clean_refusal(r)
+
+
+def test_stamp_refuses_a_product_less_include_without_a_traceback(tmp_path, monkeypatch):
+    from hiveprep.config import get_settings
+    atomic = tmp_path / "atomic"
+    atomic.mkdir()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ATOMIC_DIR", str(atomic))
+    get_settings.cache_clear()
+
+    r = CliRunner().invoke(cli, ["stamp", "--plan", str(_product_less_plan(tmp_path))])
+
+    get_settings.cache_clear()
+    _assert_clean_refusal(r)

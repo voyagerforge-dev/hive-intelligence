@@ -1,5 +1,6 @@
 # Hive Intelligence
 
+[![CI](https://github.com/voyagerforge-dev/hive-intelligence/actions/workflows/fastapi-svcs.yml/badge.svg?branch=main&event=push)](https://github.com/voyagerforge-dev/hive-intelligence/actions/workflows/fastapi-svcs.yml?query=branch%3Amain+event%3Apush)
 [![Licence: Apache 2.0](https://img.shields.io/badge/licence-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://pypi.org/project/vf-hive-serve/)
 [![vf-hive-serve](https://img.shields.io/pypi/v/vf-hive-serve.svg?label=vf-hive-serve)](https://pypi.org/project/vf-hive-serve/)
