@@ -10,8 +10,8 @@ Until 0.7.0 they did not. The wheel shipped `packages = ["hivegen"]` and these f
 a `scripts/` directory beside it that no artifact carried, so four workflows in the corpus
 repository read them off a hand-seeded checkout on a host while importing the pinned
 `hivegen` underneath - the wrapper and the logic it wrapped came from different places, and
-only one of them was a version anything asserted. `tooling/hive-gen/scripts/` still holds a
-deprecated shim per module for those workflows to keep landing on until they switch.
+only one of them was a version anything asserted. From 0.7.0 the commands are the only
+supported entry point; the old `tooling/hive-gen/scripts/` paths for these eight are gone.
 
 Adding a module here puts it in the wheel automatically; it does NOT become a command until
 `[project.scripts]` names it, and `tests/test_console_scripts.py` fails on a name declared

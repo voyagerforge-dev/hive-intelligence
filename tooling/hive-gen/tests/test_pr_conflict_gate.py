@@ -1,3 +1,7 @@
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -89,3 +93,48 @@ def test_score_tree_clears_on_low_prob(tmp_path):
     concepts, clients = _tree(tmp_path)
     blocking, review = pcg.score_tree(clients, concepts, FakeLLM(0.1))
     assert not blocking and not review
+
+
+def _run_gate(*args: str) -> subprocess.CompletedProcess:
+    """The command as a caller actually gets it, with the stdin CI hands a `run:` step.
+
+    A GitHub Actions step gets /dev/null on stdin, so this is the shape in which the gate
+    used to answer `state: success` over a pull request it had never been told anything
+    about. The gateway credentials are stripped so no test can reach a network.
+    """
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("BIFROST_BASE", "BIFROST_API_KEY")}
+    return subprocess.run(
+        [sys.executable, "-m", "hivegen.scripts.pr_conflict_gate", *args],
+        stdin=subprocess.DEVNULL, capture_output=True, text=True, env=env, check=False,
+    )
+
+
+def test_main_refuses_a_changeset_nobody_supplied(tmp_path):
+    """No changed files named is not a verdict, and must never print one."""
+    concepts, clients = _tree(tmp_path)
+    r = _run_gate(str(clients), str(concepts))
+    assert r.returncode != 0, f"the gate exited 0 without being given a changeset: {r.stdout!r}"
+    assert "success" not in r.stdout
+    assert "no changed files were supplied" in r.stderr.lower()
+
+
+def test_main_clears_a_supplied_changeset_that_touches_no_memory(tmp_path):
+    concepts, clients = _tree(tmp_path)
+    r = _run_gate(str(clients), str(concepts),
+                  "--changed-file", "README.md",
+                  "--changed-file", "concepts/widgets/alloc.md")
+    assert r.returncode == 0, r.stderr
+    status = json.loads(r.stdout)
+    assert status["context"] == "okf/memory-conflict"
+    assert status["state"] == "success"
+
+
+def test_main_refuses_to_score_a_memory_change_without_a_gateway(tmp_path):
+    """The changeset was supplied and does touch memory, so a verdict needs real scoring."""
+    concepts, clients = _tree(tmp_path)
+    r = _run_gate(str(clients), str(concepts),
+                  "--changed-file", f"{memory_lint.CLIENTS_PREFIX}alpha/memory/m1.md")
+    assert r.returncode != 0
+    assert "success" not in r.stdout
+    assert "BIFROST_BASE" in r.stderr

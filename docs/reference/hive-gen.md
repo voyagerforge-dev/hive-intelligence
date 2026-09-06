@@ -226,8 +226,9 @@ consumer that pins `vf-hive-gen` gets them without reading a file off a host. Th
 
 They arrived at 0.7.0. Before that the wheel carried `packages = ["hivegen"]` and nothing else, so
 they were installable at no version and a consumer read them from a checkout somebody had seeded by
-hand. `tooling/hive-gen/scripts/` keeps a deprecated one-line shim per command for callers still
-invoking those paths; the shims forward to the package and will be removed once nothing reads them.
+hand. From 0.7.0 these commands are the only supported entry point: the old
+`tooling/hive-gen/scripts/` paths for them are gone, and a caller still reading one switches to the
+command.
 
 **Still in-tree only**, under `tooling/hive-gen/scripts/`, because they are corpus-build tools a
 maintainer runs from a checkout rather than a consumer's command line:

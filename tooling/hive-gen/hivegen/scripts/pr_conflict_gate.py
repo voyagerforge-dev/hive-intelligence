@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 
 from hivegen.scripts import memory_conflict_score, memory_lint
 
@@ -65,15 +64,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("clients_dir", help="the corpus clients/ tree")
     ap.add_argument("concepts_dir", help="the corpus concepts/ tree the memories relate to")
     ap.add_argument("--changed-file", action="append", default=[], metavar="PATH",
-                    help="a path the pull request changed; repeat it, or pipe one per line "
-                         "on stdin")
+                    help="a path the pull request changed; repeat it once per path")
     args = ap.parse_args(argv)
 
-    changed = list(args.changed_file)
-    if not changed and not sys.stdin.isatty():
-        changed = [ln.strip() for ln in sys.stdin.read().splitlines() if ln.strip()]
+    if not args.changed_file:
+        raise SystemExit(
+            "No changed files were supplied: pass --changed-file PATH once per path the "
+            "pull request changed. Refusing to report a verdict on a changeset nobody named.")
 
-    if not pr_touches_memory(changed):
+    if not pr_touches_memory(args.changed_file):
         print(json.dumps({"context": _CONTEXT, "state": "success",
                           "description": "no client memory card changed"}))
         return 0
