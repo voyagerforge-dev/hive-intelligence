@@ -58,9 +58,9 @@ under `concepts/`; clients are top-level folders under `clients/`.
 | `memory` | `clients/<client>/memory/` | something learned about one client |
 | `issue` | `clients/<client>/issues/` | something that happened at one client |
 
-The split matters at serving time. Concepts and corrections are shared. Memory and issues are
-**client-scoped and hard-isolated**: a caller identified as one client cannot read another's cards,
-and that is enforced in the resolver rather than left to a query filter.
+For how these types participate in retrieval, see [the resolver's scope rules](../reference/hive-serve.md#the-resolver).
+Client scoping is not an identity-based read restriction; [the serving trust boundary](../guides/serving-cards.md#identity-and-what-it-is-not)
+sets out the access model.
 
 ### concept
 

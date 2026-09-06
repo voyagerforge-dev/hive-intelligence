@@ -60,13 +60,51 @@ def score_memory(expected_memory, bundle_ids, expected_client, selected_clients)
     return {"memory_ok": cross == 0 and expected_memory in set(bundle_ids), "cross_client": cross}
 
 
+def judge_reference(expected_ids, bundle_cards: dict[str, str], get_card_fn) -> str:
+    """Build the reference under docs/reference/hive-serve.md's dated scoring contract.
+
+    Reuse saved bundle texts: reloading after a model call could grade evidence different
+    from what the answerer saw if a corpus file changed or disappeared during the call.
+    """
+    ids = dict.fromkeys([*expected_ids, *bundle_cards])
+    return "\n\n".join(filter(None, (
+        bundle_cards[cid] if cid in bundle_cards else get_card_fn(cid) for cid in ids)))
+
+
 def judge_answer(question, answer, reference_text, llm) -> dict:
+    """One verdict, plus whether the judge model answered at all.
+
+    `unscored` covers two very different events: a judge that replied with something this
+    cannot parse, and a judge that replied with nothing. Only the second means the run is
+    broken rather than the answer wrong, and telling them apart is what lets `run_eval`
+    refuse instead of reporting zeros. See `empty_model_roles`.
+    """
     user = f"QUESTION: {question}\n\nANSWER: {answer}\n\nREFERENCE:\n{reference_text}"
-    data = extract_json(llm.complete(_JUDGE_SYS, user) or "")
+    raw = llm.complete(_JUDGE_SYS, user)
+    if not (raw or "").strip():
+        return {"grounded": None, "correct": None, "note": "unscored", "judge_empty": True}
+    data = extract_json(raw)
     if not data or "correct" not in data:
-        return {"grounded": None, "correct": None, "note": "unscored"}
+        return {"grounded": None, "correct": None, "note": "unscored", "judge_empty": False}
     return {"grounded": data.get("grounded"), "correct": data.get("correct"),
-            "note": data.get("note", "")}
+            "note": data.get("note", ""), "judge_empty": False}
+
+
+# The two roles that produce a verdict. `select` is not one of them: a selector that
+# returns nothing is a retrieval miss, which the select_hit / bundle_hit columns already
+# measure honestly.
+_EMPTY_MODEL_ROLES = ("answer", "judge")
+
+
+def empty_model_roles(aggregate: dict) -> list[tuple[str, int]]:
+    """(role, row count) for every model role that returned nothing on at least one row.
+
+    Even one affected row makes the report incomplete. The counts do not diagnose the
+    cause: rejected credentials, unavailable models and exhausted quota can all yield
+    empty responses.
+    """
+    return [(role, aggregate[f"{role}_empty"])
+            for role in _EMPTY_MODEL_ROLES if aggregate.get(f"{role}_empty")]
 
 
 def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn,
@@ -95,10 +133,11 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
                                 [b for b in res["bundle_ids"] if "/corrections/" in b])
         mem = score_memory(item.get("expects_memory"), res["bundle_ids"], item.get("client"),
                            [client_of.get(i) for i in res["bundle_ids"]])
-        ref = "\n\n".join(filter(None, (get_card_fn(cid) for cid in item["expected_card_ids"])))
+        ref = judge_reference(item["expected_card_ids"], res["bundle_cards"], get_card_fn)
         verdict = judge_answer(item["question"], res["answer"], ref, judge_llm)
         rows.append({"id": item["id"], "question": item["question"],
                      "selected_ids": res["selected_ids"], "bundle_ids": res["bundle_ids"],
+                     "answer_empty": not (res["answer"] or "").strip(),
                      **sel, **reg, **ver, **prod, **corr, **mem, **verdict, "answer": res["answer"]})
     agg = {
         "n": len(rows),
@@ -112,5 +151,11 @@ def run_eval(concepts_dir, qa, *, select_llm, answer_llm, judge_llm, get_card_fn
         "correct": sum(1 for r in rows if r["correct"] is True),
         "grounded": sum(1 for r in rows if r["grounded"] is True),
         "unscored": sum(1 for r in rows if r["note"] == "unscored"),
+        # Not scores: the count of rows on which a model returned nothing at all. Zeros
+        # produced this way are the absence of a measurement, and `failed` says so in the
+        # written report rather than only on a terminal nobody kept.
+        "answer_empty": sum(1 for r in rows if r["answer_empty"]),
+        "judge_empty": sum(1 for r in rows if r["judge_empty"]),
     }
+    agg["failed"] = bool(empty_model_roles(agg))
     return {"rows": rows, "aggregate": agg}

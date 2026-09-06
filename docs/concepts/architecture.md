@@ -73,9 +73,9 @@ run applies facets, checks conformance, and regenerates the index.
 
 ### One core
 
-Card resolution, correction overlay, client isolation and facet filtering all live in one resolver.
-Both doors call the same code, so neither can drift into different behaviour, and there is exactly
-one place where isolation is enforced.
+Both doors share retrieval wrappers and the resolver, but expose different client-context
+surfaces. See [the resolver reference](../reference/hive-serve.md#the-resolver) for scope and
+[the serving trust boundary](../guides/serving-cards.md#identity-and-what-it-is-not) for access.
 
 ### Two doors
 

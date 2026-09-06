@@ -1,3 +1,5 @@
+import pytest
+
 from hiveserve.eval import (
     judge_answer,
     load_qa,
@@ -105,3 +107,148 @@ def test_score_memory_hit_isolation_and_cross_client():
     # expected memory missing from bundle -> not ok
     assert score_memory("clients/alpha/memory/m", ["widgets/a"], "alpha", [None])["memory_ok"] is False
 
+
+
+# --- the judge reference: expected cards UNION the bundle, since 2026-09-06 -------------
+#
+# The judge used to be shown only `expected_card_ids`. The answerer is told to use the
+# whole bundle and does, so an answer citing a real, correctly retrieved card the judge
+# was never given came back "ungrounded". On a measured 70-question run that artefact
+# produced ten of the eleven `correct: false` verdicts.
+
+def test_judge_reference_is_expected_then_bundle_deduplicated():
+    from hiveserve.eval import judge_reference
+    loaded = []
+
+    def get_expected(cid):
+        loaded.append(cid)
+        return f"CARD {cid}"
+
+    ref = judge_reference(["a", "expected", "a"],
+                          {"b": "SAVED b", "a": "SAVED a", "c": "SAVED c"}, get_expected)
+    assert ref == "SAVED a\n\nCARD expected\n\nSAVED b\n\nSAVED c"
+    assert loaded == ["expected"]
+
+
+def test_judge_reference_skips_missing_expected_only_cards():
+    from hiveserve.eval import judge_reference
+    ref = judge_reference(["gone"], {"a": "SAVED a"}, lambda cid: None)
+    assert ref == "SAVED a"
+
+
+@pytest.mark.parametrize("mode", ["progressive", "ceiling"])
+@pytest.mark.parametrize("mutation", ["edit", "delete"])
+def test_run_eval_judge_receives_the_actual_bundle_snapshot(tmp_path, mode, mutation):
+    cards = {
+        "a": "---\ntitle: A\ndescription: d\nrelated: [b]\nsources: [a.md]\n---\n\nbody about x\n",
+        "b": ("---\ntitle: B\ndescription: d\nrelated: []\nsources: [b.md]\n---\n\n"
+              + "linked detail\n" * 4000 + "\n---\n\nlinked tail\n"),
+        "corrections/fix": ("---\ntitle: Fix\ntype: correction\ncorrects: a\nstatus: approved\n"
+                            "---\n\ncorrected fact\n"),
+    }
+    for cid, text in cards.items():
+        path = tmp_path / f"{cid}.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+    expected = "---\ntitle: Expected\ntype: correction\nstatus: draft\n---\n\nlabelled fact\n"
+    (tmp_path / "expected.md").write_text(expected)
+    seen = {}
+    loaded = []
+
+    class Answer:
+        def complete(self, system, user):
+            seen["answer"] = user
+            (tmp_path / "a.md").write_text("replacement expected card")
+            if mutation == "delete":
+                (tmp_path / "b.md").unlink()
+            else:
+                (tmp_path / "b.md").write_text("replacement linked card")
+            (tmp_path / "corrections" / "fix.md").unlink()
+            return "answer [a.md] [b.md]"
+
+    class Judge:
+        def complete(self, system, user):
+            seen["judge"] = user
+            return '{"grounded": true, "correct": true, "note": "ok"}'
+
+    def get_expected(cid):
+        loaded.append(cid)
+        assert cid == "expected"
+        return (tmp_path / f"{cid}.md").read_text()
+
+    qa = [{"id": "q1", "question": "x?", "expected_card_ids": ["expected", "a", "a"]}]
+    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=Answer(),
+                   judge_llm=Judge(), get_card_fn=get_expected, mode=mode)
+    assert res["rows"][0]["bundle_ids"] == list(cards)
+    bundle = "\n\n---\n\n".join(cards.values())
+    assert seen["answer"] == f"KNOWLEDGE CARDS:\n{bundle}\n\nQUESTION: x?"
+    reference = "\n\n".join([expected, *cards.values()])
+    assert seen["judge"] == f"QUESTION: x?\n\nANSWER: answer [a.md] [b.md]\n\nREFERENCE:\n{reference}"
+    assert loaded == ["expected"]
+
+
+# --- a model that returns nothing is a broken run, not a score of zero ------------------
+
+class SilentLLM:
+    """A model whose calls return None - four failed retries in `hivegen.llm`, an
+    exhausted provider token plan, or a key the gateway rejects."""
+
+    def complete(self, system, user): return None
+
+
+def _one_card(tmp_path):
+    (tmp_path / "a.md").write_text(
+        "---\ntitle: A\ndescription: d\nrelated: []\nsources: [a.md]\n---\n\nbody about x\n")
+    return [{"id": "q1", "question": "x?", "expected_card_ids": ["a"]}]
+
+
+def test_run_eval_marks_a_silent_judge_as_a_failure(tmp_path):
+    qa = _one_card(tmp_path)
+    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=FixedAnswer(),
+                   judge_llm=SilentLLM(),
+                   get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text())
+    agg = res["aggregate"]
+    assert agg["failed"] is True
+    assert agg["judge_empty"] == 1 and agg["answer_empty"] == 0
+    assert agg["unscored"] == 1 and agg["correct"] == 0 and agg["grounded"] == 0
+
+
+def test_run_eval_marks_a_silent_answerer_as_a_failure(tmp_path):
+    qa = _one_card(tmp_path)
+    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=SilentLLM(),
+                   judge_llm=JudgeLLM('{"grounded": false, "correct": false, "note": "empty"}'),
+                   get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text())
+    agg = res["aggregate"]
+    # the judge answered, so nothing is `unscored` - the failure is upstream of it
+    assert agg["unscored"] == 0
+    assert agg["answer_empty"] == 1 and agg["failed"] is True
+
+
+def test_run_eval_does_not_mark_a_judge_that_merely_replied_with_garbage(tmp_path):
+    """Unparseable is a verdict this cannot read; silent is no verdict at all.
+
+    Both score `unscored`, and only the second means the run measured nothing. Failing on
+    the first would refuse a run whose models were working.
+    """
+    qa = _one_card(tmp_path)
+    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=FixedAnswer(),
+                   judge_llm=JudgeLLM("not json"),
+                   get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text())
+    assert res["aggregate"]["unscored"] == 1
+    assert res["aggregate"]["failed"] is False
+
+
+def test_run_eval_healthy_run_is_not_marked_failed(tmp_path):
+    qa = _one_card(tmp_path)
+    res = run_eval(tmp_path, qa, select_llm=FixedSelect(), answer_llm=FixedAnswer(),
+                   judge_llm=JudgeLLM('{"grounded": true, "correct": true, "note": "ok"}'),
+                   get_card_fn=lambda cid: (tmp_path / f"{cid}.md").read_text())
+    assert res["aggregate"]["failed"] is False
+    assert res["aggregate"]["answer_empty"] == 0 and res["aggregate"]["judge_empty"] == 0
+
+
+def test_empty_model_roles_names_the_role_and_the_count():
+    from hiveserve.eval import empty_model_roles
+    assert empty_model_roles({"answer_empty": 0, "judge_empty": 0}) == []
+    assert empty_model_roles({"answer_empty": 3, "judge_empty": 70}) == [
+        ("answer", 3), ("judge", 70)]

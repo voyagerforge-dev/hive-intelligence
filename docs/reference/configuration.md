@@ -56,14 +56,12 @@ flagged where they appear.
 | `BIFROST_BASE` | empty | model gateway, **evaluation only**. Serving makes no model calls |
 | `BIFROST_API_KEY` | empty | as above |
 | `SELECT_MODEL` | `deepseek-v4-flash` | evaluation harness only |
-| `ANSWER_MODEL` | `minimax-m3` | evaluation harness only |
-| `JUDGE_MODEL` | `minimax-m3` | evaluation harness only |
+| `ANSWER_MODEL` | `deepseek-v4` | evaluation harness only |
+| `JUDGE_MODEL` | `deepseek-v4` | evaluation harness only |
 | `BIFROST_TIMEOUT_S` | `300` | |
 
-`IDENTITY_HEADER` names a header that is trusted on arrival. There is no signature check. Anything
-that can reach the port can claim any identity, which is why the default binding is loopback and
-why an authenticating proxy is mandatory rather than advisable for any wider exposure. See
-[serving cards](../guides/serving-cards.md#identity-and-what-it-is-not).
+For `IDENTITY_HEADER`'s ledger-owner role and the mandatory proxy for wider exposure, see
+[the serving trust boundary](../guides/serving-cards.md#identity-and-what-it-is-not).
 
 ## hive-gen
 

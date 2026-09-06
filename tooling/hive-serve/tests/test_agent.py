@@ -1,22 +1,37 @@
-from hiveserve.agent import _SELECT_SYS, _index_text, answer_question, select_ids
+import pytest
 
-
-def test_select_prompt_carries_regime_rule():
-    assert "mutually exclusive" in _SELECT_SYS.lower()
-    assert "[ops]" in _SELECT_SYS and "[traditional]" in _SELECT_SYS
-
-
-def test_select_prompt_carries_version_rule():
-    assert "version-neutral" in _SELECT_SYS.lower()
-    assert "prefer" in _SELECT_SYS.lower()
+from hiveserve.agent import _index_text, answer_question, select_ids
 
 INDEX = [{"id": "pre-wave-process", "title": "Pre-Wave", "description": "preview wave"},
          {"id": "shipping-wave-major-minor-order", "title": "Major/Minor", "description": "m/n"}]
 
 
 class SelectLLM:
-    def __init__(self, reply): self._reply = reply
-    def complete(self, system, user): return self._reply
+    def __init__(self, reply):
+        self._reply = reply
+        self.calls = []
+
+    def complete(self, system, user):
+        self.calls.append((system, user))
+        return self._reply
+
+
+@pytest.mark.parametrize("rule", [
+    "OPS and traditional are MUTUALLY EXCLUSIVE by site configuration",
+    "PREFER cards for that release plus version-neutral (untagged) cards",
+    "pick ONLY cards of that product plus any untagged (product-neutral) cards; never mix products",
+    "Pick a client-memory card ONLY when the QUESTION is about that same client",
+])
+def test_selector_delivers_rules_index_and_question(rule):
+    llm = SelectLLM('{"card_ids": ["pre-wave-process"]}')
+    selected = select_ids(INDEX, "pre-wave?", llm, known_ids={"pre-wave-process"})
+    assert selected == ["pre-wave-process"]
+    assert len(llm.calls) == 1
+    system, user = llm.calls[0]
+    assert rule in system
+    assert user == (
+        "INDEX:\n- pre-wave-process: Pre-Wave, preview wave\n"
+        "- shipping-wave-major-minor-order: Major/Minor, m/n\n\nQUESTION: pre-wave?")
 
 
 def test_select_ids_parses_and_filters_unknown():
@@ -46,8 +61,32 @@ Pre-wave selects picktickets and stops.
 
 
 class AnswerLLM:
+    def __init__(self):
+        self.calls = []
+
     def complete(self, system, user):
+        self.calls.append((system, user))
         return "Pre-wave previews wave results [pre-wave-fs.md]."
+
+
+@pytest.mark.parametrize("mode", ["progressive", "ceiling"])
+@pytest.mark.parametrize("rule", [
+    "Answer the QUESTION using ONLY the provided knowledge cards",
+    "A correction is AUTHORITATIVE: ground your answer in the corrected fact and note the correction",
+    "Use it only for that client and never generalise it to core product behaviour or another client",
+])
+def test_answerer_delivers_rules_bundle_and_question(tmp_path, mode, rule):
+    (tmp_path / "pre-wave-process.md").write_text(CARD)
+    answerer = AnswerLLM()
+    result = answer_question(
+        tmp_path, "what is pre-wave?", mode=mode,
+        select_llm=SelectLLM('{"card_ids": ["pre-wave-process"]}'), answer_llm=answerer)
+    assert result["answer"] == "Pre-wave previews wave results [pre-wave-fs.md]."
+    assert result["bundle_cards"] == {"pre-wave-process": CARD}
+    assert len(answerer.calls) == 1
+    system, user = answerer.calls[0]
+    assert rule in system
+    assert user == f"KNOWLEDGE CARDS:\n{CARD}\n\nQUESTION: what is pre-wave?"
 
 
 def test_answer_question_progressive(tmp_path):
@@ -85,18 +124,6 @@ def test_index_text_renders_product_tag():
     assert "{gadgets}" in line
 
 
-def test_select_sys_has_product_rule():
-    assert "product" in _SELECT_SYS.lower()
-
-
-from hiveserve.agent import _ANSWER_SYS
-
-
-def test_answer_sys_has_correction_precedence():
-    s = _ANSWER_SYS.lower()
-    assert "correction" in s and ("authoritative" in s or "override" in s)
-
-
 def test_answer_excludes_corrections_from_selection(tmp_path, monkeypatch):
     from hiveserve import agent
     (tmp_path / "widgets").mkdir(); (tmp_path / "widgets" / "corrections").mkdir()
@@ -115,18 +142,6 @@ def test_answer_excludes_corrections_from_selection(tmp_path, monkeypatch):
     assert "widgets/corrections/fix" not in seen["known"]
     # ...but it IS co-pulled into the bundle
     assert "widgets/corrections/fix" in res["bundle_ids"]
-
-
-def test_select_sys_has_client_rule():
-    from hiveserve.agent import _SELECT_SYS
-    s = _SELECT_SYS.lower()
-    assert "client" in s and "memory" in s
-
-
-def test_answer_sys_has_memory_rule():
-    from hiveserve.agent import _ANSWER_SYS
-    s = _ANSWER_SYS.lower()
-    assert "memory" in s and "client" in s
 
 
 def test_index_text_shows_client_memory_tag():
@@ -161,3 +176,51 @@ def test_answer_question_client_scoped_selection(tmp_path):
     seen.clear()
     agent.answer_question(concepts, "q?", select_llm=Sel(), answer_llm=Ans(), clients_dir=clients)
     assert "clients/alpha/memory/m" not in seen["idx"]
+
+
+def test_selector_prompt_carries_no_out_of_scope_issue_card(tmp_path):
+    """Issue cards are client-scoped, and the selector's filter had drifted from the tool's.
+
+    `tools.list_concepts` excludes `("memory", "issue")` together; this filter named
+    `memory` alone, so every client's issue-card titles and descriptions went into every
+    selector prompt whichever client was asking, and even when none was. On a measured
+    corpus that was 2,295 rows and two thirds of a 215,000-token prompt of
+    client-confidential text, sent to the model gateway on every question.
+
+    Aligned, the prompt holds no issue row at all when no client is named, and only the
+    asking client's own when one is - exactly what the catalogue tool offers.
+    """
+    from hiveserve import agent
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "widgets").mkdir(parents=True)
+    (concepts / "widgets" / "a.md").write_text("---\ntitle: A\ndescription: d\nrelated: []\n---\n\nbody\n")
+    for name in ("alpha", "acme"):
+        (clients / name / "issues").mkdir(parents=True)
+        (clients / name / "issues" / "slow-pick.md").write_text(
+            f"---\ntitle: {name} slow pick\ndescription: picking is slow\ntype: issue\n"
+            "related: []\n---\n\nissue\n")
+    seen = {}
+
+    class Sel:
+        def complete(self, system, user):
+            seen["idx"] = user
+            return '{"card_ids": ["widgets/a"]}'
+
+    class Ans:
+        def complete(self, system, user): return "ok"
+
+    def prompt_for(client):
+        seen.clear()
+        agent.answer_question(concepts, "q?", select_llm=Sel(), answer_llm=Ans(),
+                              clients_dir=clients, client=client)
+        return seen["idx"]
+
+    unscoped = prompt_for(None)
+    assert "widgets/a" in unscoped
+    assert "clients/alpha/issues/slow-pick" not in unscoped
+    assert "clients/acme/issues/slow-pick" not in unscoped
+
+    scoped = prompt_for("alpha")
+    assert "clients/alpha/issues/slow-pick" in scoped      # its own, as list_concepts offers
+    assert "clients/acme/issues/slow-pick" not in scoped   # never another client's

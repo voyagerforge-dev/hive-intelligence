@@ -33,7 +33,7 @@ def test_concepts_and_card(tmp_path):
 def test_resolve(tmp_path):
     c = _client(tmp_path)
     r = c.post("/resolve", json={"ids": ["wave-replen"], "depth": 1}).json()
-    assert r["card_ids"] == ["wave-replen"]
+    assert r == {"card_ids": ["wave-replen"], "bundle": CARD, "dropped": [], "corrections": []}
 
 
 def test_card_route_accepts_path_id_with_slash(tmp_path):
@@ -49,3 +49,30 @@ def test_card_route_accepts_path_id_with_slash(tmp_path):
     assert r.status_code == 200
     assert "Omni body." in r.json()["markdown"]
     assert r.json()["id"] == "gadgets/omni-framework"
+
+
+def test_find_concepts_route_serves_no_client_card_and_takes_no_client(tmp_path):
+    """The REST door searches shared knowledge only, like `/concepts` and `/resolve`.
+
+    MCP accepts caller-selected client context independently of ledger identity. REST's
+    existing contract does not load the clients tree or accept client context.
+    """
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "widgets").mkdir(parents=True)
+    (concepts / "widgets" / "allocation-process.md").write_text(
+        "---\ntitle: Allocation Process\ndescription: how allocation assigns inventory\n---\n\nbody\n")
+    (clients / "alpha" / "memory").mkdir(parents=True)
+    (clients / "alpha" / "memory" / "second-scan.md").write_text(
+        "---\ntitle: Alpha second scan\ndescription: an extra allocation scan step\n"
+        "type: memory\n---\n\nmem\n")
+    s = Settings(concepts_dir=str(concepts), clients_dir=str(clients))
+    app = FastAPI()
+    app.include_router(build_rest_router(s))
+    c = TestClient(app)
+
+    hits = c.get("/find_concepts", params={"q": "allocation scan"}).json()
+    assert [h["id"] for h in hits] == ["widgets/allocation-process"]
+    # an unknown query parameter is ignored by FastAPI rather than scoping anything
+    named = c.get("/find_concepts", params={"q": "allocation scan", "client": "alpha"}).json()
+    assert named == hits

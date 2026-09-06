@@ -11,11 +11,6 @@ from hiveserve.resolver import get_card
 
 
 class ResolveRequest(BaseModel):
-    # Reject unknown fields rather than ignoring them. The REST door serves shared
-    # knowledge only: client-scoped memory and issue cards are reachable through MCP,
-    # which carries an identity, and not here. Without this, a caller passing
-    # `client` gets a 200 and a shared-only answer, and has no way to tell that the
-    # scoping they asked for was never applied.
     model_config = ConfigDict(extra="forbid")
 
     ids: list[str]

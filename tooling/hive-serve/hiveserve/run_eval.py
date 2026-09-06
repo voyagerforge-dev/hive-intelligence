@@ -21,7 +21,7 @@ from hivegen.corpus import require_dir
 from hivegen.llm import BifrostChat
 
 from hiveserve.config import get_settings
-from hiveserve.eval import load_qa, run_eval
+from hiveserve.eval import empty_model_roles, load_qa, run_eval
 from hiveserve.resolver import client_of_id, clients_base, get_card, load_index
 
 USAGE = (
@@ -73,9 +73,9 @@ def corpus_cards(concepts_dir: str) -> Path:
 
 
 def required_clients(row: dict) -> set[str]:
-    """The clients a qa row needs *cards* for, which is not the identity it asks as.
+    """The clients a qa row needs *cards* for, not merely its selected retrieval context.
 
-    A row's ``client`` field is who the question is asked as. An isolation control asks as
+    A row's ``client`` field selects the question's retrieval context. An isolation control asks as
     a client that deliberately has *no* memory - having none is exactly how you show that
     another client's memory does not leak into it - and scores correctly with no client
     cards of its own, because ``resolve`` excludes every out-of-scope ``clients/`` card and
@@ -96,7 +96,7 @@ def needs_client_memory(row: dict) -> bool:
 
 
 def asking_clients(qa: list[dict]) -> set[str]:
-    """The identities the set asks *as*, which is not the same as needing cards."""
+    """The client contexts the set selects, which is not the same as needing cards."""
     return {str(row["client"]) for row in qa if row.get("client")}
 
 
@@ -142,7 +142,7 @@ def warn_if_cross_client_is_unexercised(qa: list[dict], served: set[str]) -> boo
     """Say so on stdout when it is worth saying, and tell the caller either way.
 
     The notice is gated on the set asking as somebody, because its wording is about the
-    identities it asks as and there is nothing to tell an operator whose set never mentions
+    client contexts it selects and there is nothing to tell an operator whose set never mentions
     a client. The returned value is not gated: it goes into the report, where a missing
     caveat is read as a measurement.
     """
@@ -223,6 +223,30 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
     return None, warn_if_cross_client_is_unexercised(qa, set())
 
 
+_ROLE_SETTING = {"answer": "ANSWER_MODEL", "judge": "JUDGE_MODEL"}
+
+
+def refuse_if_a_model_returned_nothing(aggregate: dict, settings) -> None:
+    """Exit nonzero, naming the role, when a model produced nothing on any row.
+
+    Call only after persisting the report with its ``failed`` marker, so failure evidence
+    survives outside the terminal. The public contract is in
+    docs/reference/hive-serve.md#a-model-that-returns-nothing-fails-the-run.
+    """
+    failures = empty_model_roles(aggregate)
+    for role, count in failures:
+        setting = _ROLE_SETTING[role]
+        print(f"[run_eval] FAILED: the {role} model ({setting}="
+              f"{getattr(settings, f'{role}_model')!r}) returned nothing for {count} of "
+              f"{aggregate['n']} question(s), so this run measured nothing. Zeros here are "
+              "an absent measurement, not a result. Check that BIFROST_API_KEY is set and "
+              f"that the gateway at BIFROST_BASE serves {setting}: an exhausted provider "
+              "token plan refuses with 429 and looks identical to a missing key.",
+              flush=True)
+    if failures:
+        raise SystemExit(1)
+
+
 def main() -> None:
     mode = sys.argv[1] if len(sys.argv) > 1 else "progressive"
     if mode not in ("progressive", "ceiling"):
@@ -258,6 +282,7 @@ def main() -> None:
     report = out_dir / f"report-{mode}-{qa_path.stem}.json"
     report.write_text(json.dumps(res, indent=2))
     print(f"mode={mode} qa={qa_path.stem} aggregate={res['aggregate']} report={report}")
+    refuse_if_a_model_returned_nothing(res["aggregate"], s)
 
 
 if __name__ == "__main__":

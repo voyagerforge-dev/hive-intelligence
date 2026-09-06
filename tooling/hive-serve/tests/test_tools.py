@@ -303,3 +303,95 @@ def test_find_concepts_finds_a_card_written_in_a_non_latin_script(tmp_path):
     _write(tmp_path, "widgets/shukka-wave", "出荷ウェーブ", "出荷ウェーブ の 割当 ルール")
     _write(tmp_path, "widgets/label-printing", "ラベル印刷", "パレット の ラベル 形式")
     assert [h["id"] for h in tools.find_concepts(tmp_path, "出荷ウェーブ")] == ["widgets/shukka-wave"]
+
+
+def _two_client_world(tmp_path):
+    """Concepts plus two isolated clients, each holding one memory and one issue card."""
+    concepts = tmp_path / "concepts"
+    clients = tmp_path / "clients"
+    (concepts / "widgets").mkdir(parents=True)
+    (concepts / "widgets" / "allocation-process.md").write_text(
+        "---\ntitle: Allocation Process\ndescription: how allocation assigns inventory\n"
+        "product: widgets\n---\n\nbody\n")
+    for name in ("alpha", "acme"):
+        (clients / name / "memory").mkdir(parents=True)
+        (clients / name / "issues").mkdir(parents=True)
+        (clients / name / "memory" / "second-scan.md").write_text(
+            f"---\ntitle: {name} second scan\ndescription: an extra allocation scan step\n"
+            f"type: memory\nproduct: widgets\n---\n\nmem\n")
+        (clients / name / "issues" / "slow-pick.md").write_text(
+            f"---\ntitle: {name} slow pick\ndescription: allocation is slow at peak\n"
+            f"type: issue\nproduct: widgets\n---\n\nissue\n")
+    return concepts, clients
+
+
+def test_find_concepts_finds_client_memory_only_under_its_own_client(tmp_path):
+    concepts, clients = _two_client_world(tmp_path)
+
+    def search(client):
+        return {h["id"] for h in tools.find_concepts(concepts, "allocation scan",
+                                                     clients_dir=clients, client=client)}
+
+    assert search("alpha") == {"widgets/allocation-process", "clients/alpha/memory/second-scan"}
+    assert search(None) == {"widgets/allocation-process"}
+    assert search("acme") == {"widgets/allocation-process", "clients/acme/memory/second-scan"}
+    assert search("unknown") == {"widgets/allocation-process"}
+
+
+def test_find_concepts_without_a_client_is_unchanged_by_a_clients_tree(tmp_path):
+    """The no-client result is identical whether or not client cards exist to be skipped.
+
+    Not just "holds no client card": the ranking is idf over the candidate set, so an
+    unscoped search must also be scored against the same collection it always was.
+    """
+    concepts, clients = _two_client_world(tmp_path)
+    assert (tools.find_concepts(concepts, "allocation scan", clients_dir=clients)
+            == tools.find_concepts(concepts, "allocation scan"))
+
+
+def test_find_concepts_client_scope_is_structural_not_frontmatter(tmp_path):
+    """A card claiming another client in its frontmatter is still scoped by its path.
+
+    `load_index` derives `client` from `clients/<client>/...`, so the claim below is
+    ignored - which is the property that makes the scope rule unspoofable by card content.
+    """
+    concepts, clients = _two_client_world(tmp_path)
+    (clients / "alpha" / "memory" / "mislabelled.md").write_text(
+        "---\ntitle: Mislabelled\ndescription: allocation scan notes\ntype: issue\n"
+        "client: acme\n---\n\nmem\n")
+    (clients / "alpha" / "issues" / "mislabelled.md").write_text(
+        "---\ntitle: Mislabelled\ndescription: allocation scan notes\ntype: memory\n"
+        "client: alpha\n---\n\nissue\n")
+    assert "clients/alpha/issues/mislabelled" not in {
+        h["id"] for h in tools.find_concepts(concepts, "allocation scan",
+                                           clients_dir=clients, client="alpha")}
+    assert "clients/alpha/memory/mislabelled" in {
+        h["id"] for h in tools.find_concepts(concepts, "allocation scan",
+                                             clients_dir=clients, client="alpha")}
+    assert "clients/alpha/memory/mislabelled" not in {
+        h["id"] for h in tools.find_concepts(concepts, "allocation scan",
+                                             clients_dir=clients, client="acme")}
+
+
+def test_find_concepts_still_excludes_corrections_when_a_client_is_named(tmp_path):
+    concepts, clients = _two_client_world(tmp_path)
+    (concepts / "widgets" / "corrections").mkdir()
+    (concepts / "widgets" / "corrections" / "fix.md").write_text(
+        "---\ntitle: Allocation fix\ndescription: corrects the allocation scan step\n"
+        "type: correction\ncorrects: widgets/allocation-process\nstatus: approved\n---\n\nfix\n")
+    ids = {h["id"] for h in tools.find_concepts(concepts, "allocation scan",
+                                                clients_dir=clients, client="alpha")}
+    assert "widgets/corrections/fix" not in ids
+
+
+def test_find_concepts_memory_respects_product_limit_and_response_contract(tmp_path):
+    concepts, clients = _two_client_world(tmp_path)
+    hits = tools.find_concepts(concepts, "allocation scan", clients_dir=clients,
+                               client="alpha", product="widgets")
+    memory = next(hit for hit in hits if hit["id"] == "clients/alpha/memory/second-scan")
+    assert memory == {"id": "clients/alpha/memory/second-scan", "title": "alpha second scan",
+                      "product": "widgets", "description": "an extra allocation scan step"}
+    assert tools.find_concepts(concepts, "allocation scan", clients_dir=clients,
+                               client="alpha", product="gadgets") == []
+    assert tools.find_concepts(concepts, "allocation scan", clients_dir=clients,
+                               client="alpha", product="widgets", limit=1) == hits[:1]

@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     bifrost_base: str = ""
     bifrost_api_key: str = ""
     select_model: str = "deepseek-v4-flash"
-    answer_model: str = "minimax-m3"
-    judge_model: str = "minimax-m3"
+    answer_model: str = "deepseek-v4"
+    judge_model: str = "deepseek-v4"
     bifrost_timeout_s: int = 300
     max_cards: int = 8
     # 40K chars is ~10K tokens. The old 80K produced ~18K-token bundles that overran the

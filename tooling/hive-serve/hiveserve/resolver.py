@@ -24,6 +24,15 @@ def client_of_id(card_id: str):
     return None
 
 
+CLIENT_SCOPED_TYPES = ("memory", "issue")
+
+
+def out_of_client_scope(card: dict, client) -> bool:
+    """True when an indexed card falls outside the selected client retrieval context."""
+    return (card.get("type") in CLIENT_SCOPED_TYPES
+            and (client is None or card.get("client") != client))
+
+
 def clients_base(clients_dir):
     """The client-memory tree, or None when client memory is off.
 
@@ -172,5 +181,7 @@ def resolve(concepts_dir, ids: list[str], *, depth: int = 1, max_cards: int = 8,
             if cpath(corr) is not None:
                 correction_ids.append(corr)
     all_ids = selected + correction_ids
-    bundle = "\n\n---\n\n".join(cpath(c).read_text() for c in all_ids)
-    return {"card_ids": all_ids, "bundle": bundle, "dropped": dropped, "corrections": correction_ids}
+    card_texts = {cid: cpath(cid).read_text() for cid in all_ids}
+    bundle = "\n\n---\n\n".join(card_texts[cid] for cid in all_ids)
+    return {"card_ids": all_ids, "bundle": bundle, "card_texts": card_texts,
+            "dropped": dropped, "corrections": correction_ids}

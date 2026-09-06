@@ -55,8 +55,9 @@ more data. Treat the warning as "this run is incomplete", not as noise.
 ## What comes out
 
 Cards under `clients/<client>/issues/`, typed `issue`, linked to the concept cards they relate to.
-Client-scoped and hard-isolated like all client cards, so a caller working with one client cannot
-read another's issue history.
+Their retrieval rules are in [the resolver reference](../reference/hive-serve.md#the-resolver),
+not an identity-based prohibition on reading another client's history; see
+[the serving trust boundary](serving-cards.md#identity-and-what-it-is-not).
 
 The link back to concepts is what makes them useful: an agent resolving a concept card can see that
 this exact area has caused a specific problem at this specific client.

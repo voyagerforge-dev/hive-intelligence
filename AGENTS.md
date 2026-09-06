@@ -31,6 +31,10 @@ environment, so it must be **exported** to have any effect at all. See
 The same rule covers `.env.example`: no absolute path under anyone's home directory. Those files
 are what a new operator copies, and a dead path there is invisible until it produces nothing.
 
+Before changing client handling, read [the serving trust boundary](docs/guides/serving-cards.md#identity-and-what-it-is-not)
+and [the retrieval scope contract](docs/reference/hive-serve.md#the-resolver). Do not turn
+caller-selected context into identity-bound authorization.
+
 ## Working on it
 
 Each package under `tooling/` is its own distribution with its own venv, `.env.example`, tests and
