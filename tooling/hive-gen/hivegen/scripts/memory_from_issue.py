@@ -7,6 +7,7 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
+from hivegen.corpus import require_dir
 from hivegen.memory import record_to_memory
 from hivegen.profile import load_profile
 
@@ -74,6 +75,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("issue_body_file", help="a file holding the issue body")
     ap.add_argument("clients_dir", help="the corpus clients/ tree to write into")
     args = ap.parse_args(argv)
+    clients = require_dir(args.clients_dir, setting="clients_dir",
+                          what="the corpus tree to write the card into")
     rec = parse_issue(Path(args.issue_body_file).read_text())
     try:
         validate_record(rec)
@@ -82,7 +85,7 @@ def main(argv: list[str] | None = None) -> int:
     slug = _slug(rec["title"])
     rec["submitted_by"] = os.environ.get("ISSUE_AUTHOR", "")
     rec["resource"] = resource_for(rec["client"], slug)
-    d = Path(args.clients_dir) / rec["client"] / "memory"
+    d = clients / rec["client"] / "memory"
     d.mkdir(parents=True, exist_ok=True)
     out = d / f"{slug}.md"
     out.write_text(record_to_memory(rec))

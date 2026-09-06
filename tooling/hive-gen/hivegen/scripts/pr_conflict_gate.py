@@ -14,6 +14,7 @@ import argparse
 import json
 import os
 
+from hivegen.corpus import require_dir
 from hivegen.scripts import gateway_llm, memory_conflict_score, memory_lint
 
 _CONTEXT = "okf/memory-conflict"
@@ -100,12 +101,17 @@ def main(argv: list[str] | None = None) -> int:
                          "repository root); repeat it once per path")
     args = ap.parse_args(argv)
 
+    clients = require_dir(args.clients_dir, setting="clients_dir",
+                          what="the memory cards a verdict would be about")
+    concepts = require_dir(args.concepts_dir, setting="concepts_dir",
+                           what="the concepts the memories relate to")
+
     if not args.changed_file:
         raise SystemExit(
             "No changed files were supplied: pass --changed-file PATH once per path the "
             "pull request changed. Refusing to report a verdict on a changeset nobody named.")
 
-    if not pr_touches_memory(args.changed_file, changed_path_prefix(args.clients_dir)):
+    if not pr_touches_memory(args.changed_file, changed_path_prefix(clients)):
         print(json.dumps({"context": _CONTEXT, "state": "success",
                           "description": "no client memory card changed"}))
         return 0
@@ -119,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
             "BIFROST_BASE and BIFROST_API_KEY must be set to score a memory change. "
             "Refusing to report a verdict without having scored anything.")
 
-    status = verdict_to_status(*score_tree(args.clients_dir, args.concepts_dir, llm))
+    status = verdict_to_status(*score_tree(clients, concepts, llm))
     print(json.dumps(status))
     return 0 if status["state"] == "success" else 1
 

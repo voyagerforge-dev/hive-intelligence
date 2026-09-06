@@ -7,6 +7,8 @@ import os
 
 import yaml
 
+from hivegen.corpus import require_dir
+
 
 def _fm(p):
     with open(p) as _fh:
@@ -57,7 +59,8 @@ def main(argv: list[str] | None = None) -> int:
         description="Lint correction cards for dangling targets, bad supersedes and conflicts.")
     ap.add_argument("concepts_dir", help="the corpus concepts/ tree")
     args = ap.parse_args(argv)
-    errs, warns = lint(args.concepts_dir)
+    errs, warns = lint(require_dir(args.concepts_dir, setting="concepts_dir",
+                                   what="the correction cards to lint"))
     for w in warns:
         print(f"WARN  {w}")
     for e in errs:

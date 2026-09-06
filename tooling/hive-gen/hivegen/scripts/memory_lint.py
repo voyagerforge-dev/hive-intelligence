@@ -8,6 +8,7 @@ import os
 
 import yaml
 
+from hivegen.corpus import require_dir
 from hivegen.profile import load_profile
 
 # Valid `product:` facet values, from the corpus profile. An empty set means the profile
@@ -110,7 +111,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("clients_dir", help="the corpus clients/ tree")
     ap.add_argument("concepts_dir", help="the corpus concepts/ tree the memories relate to")
     args = ap.parse_args(argv)
-    errs, cands = lint(args.clients_dir, args.concepts_dir)
+    clients = require_dir(args.clients_dir, setting="clients_dir",
+                          what="the memory cards to lint")
+    concepts = require_dir(args.concepts_dir, setting="concepts_dir",
+                           what="the concepts the memories relate to")
+    errs, cands = lint(clients, concepts)
     for a, b in cands:
         print(f"CANDIDATE {a} <> {b} (same client, shared subject), score for conflict")
     for e in errs:

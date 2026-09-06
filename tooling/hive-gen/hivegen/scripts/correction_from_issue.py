@@ -6,6 +6,7 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
+from hivegen.corpus import require_dir
 from hivegen.corrections import record_to_correction
 from hivegen.profile import load_profile
 
@@ -62,12 +63,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("issue_body_file", help="a file holding the issue body")
     ap.add_argument("concepts_dir", help="the corpus concepts/ tree to write into")
     args = ap.parse_args(argv)
+    concepts = require_dir(args.concepts_dir, setting="concepts_dir",
+                           what="the corpus tree to write the card into")
     rec = parse_issue(Path(args.issue_body_file).read_text())
     try:
         validate_record(rec)
     except ValueError as e:
         raise SystemExit(str(e)) from e
-    d = Path(args.concepts_dir) / rec["product"] / "corrections"
+    d = concepts / rec["product"] / "corrections"
     d.mkdir(parents=True, exist_ok=True)
     out = d / f"{_slug(rec['title'])}.md"
     out.write_text(record_to_correction(rec))

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 
+from hivegen.corpus import require_dir
 from hivegen.llm import extract_json
 from hivegen.scripts import gateway_llm, memory_lint
 
@@ -60,11 +61,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("clients_dir", help="the corpus clients/ tree")
     ap.add_argument("concepts_dir", help="the corpus concepts/ tree the memories relate to")
     args = ap.parse_args(argv)
-    _errors, candidates = memory_lint.lint(args.clients_dir, args.concepts_dir)
+    clients = require_dir(args.clients_dir, setting="clients_dir",
+                          what="the memory cards to score")
+    concepts = require_dir(args.concepts_dir, setting="concepts_dir",
+                           what="the concepts the memories relate to")
+    _errors, candidates = memory_lint.lint(clients, concepts)
     if not candidates:
         print("memory_conflict_score: 0 candidates")
         return 0
-    mems = memory_lint._memories(args.clients_dir)
+    mems = memory_lint._memories(clients)
     llm = gateway_llm()
     if llm is None:
         print(f"memory_conflict_score: {len(candidates)} candidate(s), no LLM key set, ADVISORY only:")

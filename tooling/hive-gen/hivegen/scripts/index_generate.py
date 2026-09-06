@@ -12,6 +12,7 @@ import os
 
 import yaml
 
+from hivegen.corpus import require_dir
 from hivegen.profile import load_profile
 
 # Display titles for product facets. Corpus vocabulary, so it comes from the profile; a
@@ -70,7 +71,8 @@ def main(argv: list[str] | None = None) -> int:
                     "listings for a concepts bundle.")
     ap.add_argument("concepts_dir", help="the corpus concepts/ tree, rewritten in place")
     args = ap.parse_args(argv)
-    generate(args.concepts_dir)
+    generate(require_dir(args.concepts_dir, setting="concepts_dir",
+                         what="the concept cards to index"))
     return 0
 
 

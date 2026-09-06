@@ -14,6 +14,8 @@ import re
 
 import yaml
 
+from hivegen.corpus import require_dir
+
 # The base a card id resolves under. A PATH by default, deliberately.
 #
 # The comment here used to say cards are portable so the host cannot be baked in, and then
@@ -115,7 +117,8 @@ def main(argv: list[str] | None = None) -> int:
                     "sections, in place and idempotently.")
     ap.add_argument("concepts_dir", help="the corpus concepts/ tree, rewritten in place")
     args = ap.parse_args(argv)
-    process(args.concepts_dir)
+    process(require_dir(args.concepts_dir, setting="concepts_dir",
+                        what="the concept cards to rewrite"))
     return 0
 
 
