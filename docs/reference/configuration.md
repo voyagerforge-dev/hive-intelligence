@@ -58,7 +58,7 @@ flagged where they appear.
 | `RESOLVE_DEPTH` | `1` | how far to follow `related` |
 | `BIFROST_BASE` | empty | model gateway, **evaluation only**. Serving makes no model calls |
 | `BIFROST_API_KEY` | empty | as above |
-| `SELECT_MODEL` | `deepseek/deepseek-v4-flash-0731` | evaluation harness only. Provider id, not a gateway alias |
+| `SELECT_MODEL` | `deepseek/deepseek-v4-flash` | evaluation harness only. Provider id, not a gateway alias |
 | `ANSWER_MODEL` | `deepseek/deepseek-v4-pro` | evaluation harness only |
 | `JUDGE_MODEL` | `deepseek/deepseek-v4-pro` | evaluation harness only |
 | `BIFROST_TIMEOUT_S` | `300` | |
@@ -104,7 +104,7 @@ silently serves another deployment's client memory.
 | `BIFROST_BASE` | required | model gateway |
 | `BIFROST_API_KEY` | required | |
 | `TAXONOMY_MODEL` | `minimax/minimax-m3` | gate 2, the concept list |
-| `ASSIGN_MODEL` | `deepseek/deepseek-v4-flash-0731` | document to concept assignment |
+| `ASSIGN_MODEL` | `deepseek/deepseek-v4-flash` | document to concept assignment |
 | `DISTILL_MODEL` | `minimax/minimax-m3` | gate 3, the card bodies |
 | `MAX_CHARS` | `24000` | source characters per distillation call |
 | `BIFROST_TIMEOUT_S` | `300` | |

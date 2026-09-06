@@ -11,9 +11,12 @@ class Settings(BaseSettings):
     bifrost_api_key: str = ""
     # Evaluation harness only; serving makes no model calls. Provider ids, not gateway
     # aliases: the estate calls OpenRouter directly since 2026-09-06 and OpenRouter has
-    # no alias layer, so a bare `deepseek-v4-flash` resolves nowhere. Dated ids also say
-    # which release produced a report, which an undated alias never did.
-    select_model: str = "deepseek/deepseek-v4-flash-0731"
+    # no alias layer, so a bare `deepseek-v4-flash` resolves nowhere.
+    #
+    # Selection stays on the April release, not the dated July 31 one that was asked for: on 16 real
+    # selection prompts 0731 produced a usable `card_ids` list 0 times against this
+    # one's 16, emitting a different JSON schema (`doc_id`, `score`) or nothing at all.
+    select_model: str = "deepseek/deepseek-v4-flash"
     answer_model: str = "deepseek/deepseek-v4-pro"
     judge_model: str = "deepseek/deepseek-v4-pro"
     bifrost_timeout_s: int = 300

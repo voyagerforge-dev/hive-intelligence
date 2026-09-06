@@ -695,7 +695,7 @@ def test_eval_exits_nonzero_when_only_the_selector_returns_nothing(
     out = capsys.readouterr().out
     assert "FAILED" in out
     assert "select model (SELECT_MODEL=" in out
-    assert "'deepseek/deepseek-v4-flash-0731'" in out
+    assert "'deepseek/deepseek-v4-flash'" in out
 
     agg = _report(live_corpus)["aggregate"]
     assert agg["failed"] is True

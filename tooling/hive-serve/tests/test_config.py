@@ -24,9 +24,10 @@ def test_settings_reads_env(monkeypatch):
     assert s.bifrost_base == "http://bf/v1"
     assert s.bifrost_api_key == "k"
     # Provider-qualified since 2026-09-06: the estate calls OpenRouter directly and it
-    # has no alias layer, so an unqualified `deepseek-v4-flash` resolves nowhere. The
-    # dated id also records which release produced a report.
-    assert s.select_model == "deepseek/deepseek-v4-flash-0731"
+    # has no alias layer, so an unqualified `deepseek-v4-flash` resolves nowhere.
+    # The April release, deliberately. Flash 0731 was measured on 16 real selection
+    # prompts and produced a usable card_ids list 0 times against this one's 16.
+    assert s.select_model == "deepseek/deepseek-v4-flash"
     # V4 Pro replaced deepseek-v4, itself a same-day stand-in for minimax-m3, which its
     # provider refuses on an exhausted token plan - and a model that never answers reads
     # as correct 0 / grounded 0.

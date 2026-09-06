@@ -16,7 +16,7 @@ def test_settings_reads_env(monkeypatch, tmp_path):
     # Provider-qualified since 2026-09-06: OpenRouter is called directly and has no
     # alias layer, so an unqualified `minimax-m3` resolves nowhere.
     assert s.taxonomy_model == "minimax/minimax-m3"
-    assert s.assign_model == "deepseek/deepseek-v4-flash-0731"
+    assert s.assign_model == "deepseek/deepseek-v4-flash"
     assert s.max_chars == 24000
     get_settings.cache_clear()
 
