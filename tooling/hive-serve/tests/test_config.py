@@ -40,7 +40,6 @@ def test_settings_reads_env(monkeypatch):
 
 def test_settings_have_serving_defaults():
     s = Settings()
-    assert s.concepts_dir
     assert s.okf_data_dir
     assert s.host == "127.0.0.1"
     assert s.port == 8000
@@ -49,9 +48,18 @@ def test_settings_have_serving_defaults():
     assert s.identity_header
 
 
-def test_settings_has_clients_dir():
-    from hiveserve.config import Settings
-    assert Settings().clients_dir == "../../clients"
+def test_the_corpus_settings_have_no_default_to_resolve():
+    """Breaking in 0.7.0, and the point of the change.
+
+    Both used to default to a relative path - `../../concepts`, `../../clients` - resolved
+    against the working directory, so an unset setting read whatever tree happened to sit
+    two levels up rather than refusing. Empty is what makes `require_dir` refuse for
+    CONCEPTS_DIR and what `clients_base` reads as off for CLIENTS_DIR; a non-empty default
+    reinstates the trap whatever it points at.
+    """
+    s = Settings()
+    assert s.concepts_dir == ""
+    assert s.clients_dir == ""
 
 
 # --------------------------------------------------------------------------

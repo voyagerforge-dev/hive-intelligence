@@ -323,9 +323,11 @@ def test_eval_refuses_a_client_tree_whose_cards_the_index_does_not_load(client_m
 def test_an_unconfigured_clients_dir_default_is_not_reported_as_a_dead_path(corpus,
                                                                            monkeypatch,
                                                                            capsys):
-    """CLIENTS_DIR's class default is a relative guess that is a directory almost nowhere.
-    Warning about it names a path the operator never set, on every run of a deployment
-    that simply has no client memory - noise that trains people to ignore the real one."""
+    """An absent CLIENTS_DIR is a deployment with no client memory, not a misconfiguration.
+
+    It has no default to be dead since 0.7.0, so there is nothing to name; warning anyway
+    would fire on every run of such a deployment - noise that trains people to ignore the
+    real one. What must still refuse is a set that needs client memory, below."""
     monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
     monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
     monkeypatch.delenv("CLIENTS_DIR", raising=False)
@@ -355,24 +357,25 @@ def test_an_unconfigured_clients_dir_default_still_refuses_a_set_that_needs_clie
     assert client_memory["ran"] is False
 
 
-def test_a_clients_dir_explicitly_set_to_the_default_value_is_still_reported_when_dead(
+def test_an_explicitly_empty_clients_dir_is_deliberate_off_and_not_reported_as_dead(
         corpus, monkeypatch, capsys):
-    """Whether it was configured is provenance, not a guess from the value. The default is
-    the value docs publish, so it is a plausible thing to write down - an operator who did
-    write it down and whose corpus then moved must still be told the path is dead."""
-    from hiveserve.config import Settings
+    """`CLIENTS_DIR=` is what `.env.example` ships, so it is what most operators send.
 
-    default = Settings.model_fields["clients_dir"].default
+    It is indistinguishable in effect from unset and must read the same: client memory
+    off, no warning. This is the half of the provenance rule that the value cannot show -
+    a dead path the operator did write down is still reported, which is the test above -
+    and it is why empty is checked at `clients_base` rather than by asking whether the
+    setting was supplied.
+    """
     monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
     monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
-    monkeypatch.setenv("CLIENTS_DIR", default)
+    monkeypatch.setenv("CLIENTS_DIR", "")
     get_settings.cache_clear()
     _argv(monkeypatch, "progressive", "wave-replen")
 
     run_eval_module.main()
 
-    out = capsys.readouterr().out
-    assert "CLIENTS_DIR" in out and default in out
+    assert "CLIENTS_DIR" not in capsys.readouterr().out
     assert corpus["ran"] is True
     assert corpus["kwargs"]["clients_dir"] is None
 

@@ -14,7 +14,11 @@ console = Console()
 
 
 @click.group()
-@click.version_option()
+# The distribution is `vf-hive-prep`; the import package is `hiveprep`. Without
+# `package_name` click looks the metadata up under the module name and raises
+# `RuntimeError: 'hiveprep' is not installed`, in a checkout and in the published
+# wheel alike, because the distribution name is the same in both.
+@click.version_option(package_name="vf-hive-prep")
 def cli():
     """hiveprep: turn a tree of source documents into atomic markdown."""
 

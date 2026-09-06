@@ -107,6 +107,70 @@ def test_rest_door_refuses_an_unset_concepts_dir(tmp_path, monkeypatch):
     assert "CONCEPTS_DIR" in str(exc.value)
 
 
+def _no_corpus_env(monkeypatch):
+    """Every corpus setting genuinely absent, as an operator's first run has them."""
+    import os
+
+    for key in list(os.environ):
+        if key.lower() in Settings.model_fields:
+            monkeypatch.delenv(key, raising=False)
+
+
+def test_a_genuinely_unset_concepts_dir_refuses_rather_than_walking_up_to_a_stray_tree(
+        tmp_path, monkeypatch):
+    """The class default, not an explicit empty string.
+
+    The two tests above pass `concepts_dir=""` and so never reached the defect: the
+    default was `../../concepts`, resolved against the **working directory**, so an
+    unset CONCEPTS_DIR never arrived at `require_dir`'s unset branch at all. Wherever
+    a `concepts/` tree happened to sit two levels up it was accepted and its markdown
+    served as concept cards - reproduced as an arbitrary file answering `list_concepts`.
+    A default that reads a directory nobody named is the failure the 2026-08-11 corpus
+    split was audited against, and it cannot be spelled as a relative path.
+    """
+    (tmp_path / "concepts" / "decoy").mkdir(parents=True)
+    (tmp_path / "concepts" / "decoy" / "not-a-card.md").write_text("# Just some notes\n")
+    work = tmp_path / "work" / "sub"
+    work.mkdir(parents=True)
+    monkeypatch.chdir(work)
+    _no_corpus_env(monkeypatch)
+
+    settings = Settings(_env_file=None)
+
+    assert settings.concepts_dir == "", "CONCEPTS_DIR must have no default to resolve"
+    with pytest.raises(SystemExit) as exc:
+        build_mcp(settings, lambda: None)
+    assert "CONCEPTS_DIR" in str(exc.value) and "not set" in str(exc.value)
+
+
+def test_a_genuinely_unset_clients_dir_disables_client_memory_rather_than_reading_the_tree(
+        tmp_path, monkeypatch):
+    """CLIENTS_DIR is legitimately optional, so its fix is off - not a refusal.
+
+    `.env.example` and `docs/reference/configuration.md` both promise it is never a
+    startup refusal, so the relative default is wrong here for the same reason and the
+    right value is empty: `clients_base` already reads empty as off at every door.
+    """
+    from hiveserve.resolver import clients_base
+
+    (tmp_path / "clients" / "acme" / "memory").mkdir(parents=True)
+    (tmp_path / "clients" / "acme" / "memory" / "leak.md").write_text(
+        "---\ntitle: Someone else's memory\ndescription: not ours\ntype: memory\n---\n\nbody\n")
+    concepts = tmp_path / "concepts"
+    concepts.mkdir()
+    work = tmp_path / "work" / "sub"
+    work.mkdir(parents=True)
+    monkeypatch.chdir(work)
+    _no_corpus_env(monkeypatch)
+
+    settings = Settings(_env_file=None)
+
+    assert settings.clients_dir == "", "CLIENTS_DIR must have no default to resolve"
+    assert clients_base(settings.clients_dir) is None
+    # And it is still a working server: optional means optional.
+    assert build_mcp(Settings(_env_file=None, concepts_dir=str(concepts)), lambda: None)
+
+
 def _two_client_world(tmp_path):
     """Concepts plus two clients, each with memory and issue history."""
     concepts = tmp_path / "concepts"

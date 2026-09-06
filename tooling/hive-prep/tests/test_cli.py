@@ -141,3 +141,37 @@ def test_stamp_refuses_a_product_less_include_without_a_traceback(tmp_path, monk
 
     get_settings.cache_clear()
     _assert_clean_refusal(r)
+
+
+# --------------------------------------------------------------------------
+# `--version` is the one command whose whole job is to answer from installed
+# distribution metadata, so it is the one command a unit test cannot vouch for.
+# `click.version_option()` with no `package_name` looks the metadata up under
+# the *module* name, `hiveprep`, and this distribution is `vf-hive-prep`, so it
+# raised `RuntimeError: 'hiveprep' is not installed` for anyone who ran it -
+# in an editable checkout and, identically, from the published wheel, because
+# the distribution name is the same in both. Invoking the console entry point
+# in a subprocess is what makes that reachable: `CliRunner` exercises the same
+# lookup, but a green unit test over a broken installed command is exactly the
+# false positive this guards.
+# --------------------------------------------------------------------------
+
+def test_version_answers_through_the_installed_console_entry_point():
+    import shutil
+    import subprocess
+    import sys
+    from importlib.metadata import version
+    from pathlib import Path
+
+    # The interpreter's own bin directory first, so a venv is not shadowed by a
+    # hiveprep installed elsewhere on PATH; PATH second, for a layout that separates them.
+    bindir = str(Path(sys.executable).parent)
+    exe = shutil.which("hiveprep", path=bindir) or shutil.which("hiveprep")
+    assert exe, "hiveprep console script is not installed in this environment"
+    # check=False: the exit code is the assertion, and raising here would hide the
+    # stderr that says which lookup failed.
+    r = subprocess.run([exe, "--version"], capture_output=True, text=True, check=False)
+
+    assert r.returncode == 0, f"hiveprep --version exited {r.returncode}: {r.stderr}"
+    assert "Traceback" not in r.stderr, r.stderr
+    assert version("vf-hive-prep") in r.stdout, r.stdout

@@ -59,6 +59,24 @@ def build_http_app(settings):
 
 
 def main(argv=None) -> None:
+    """Start the server, or refuse in one line naming the setting that is wrong.
+
+    A startup refusal here is always a configuration mistake, and its message already
+    says which setting and why. Letting the exception escape printed that sentence under
+    fifteen frames of uvicorn and psycopg internals, which add nothing a reader can act
+    on and make a one-setting mistake read as a crash. `getting-started.md` documents the
+    single line, so this is also the guide keeping its word.
+
+    `SystemExit` - what `require_dir` raises - already prints its message without a
+    traceback, so it is left alone rather than re-wrapped.
+    """
+    try:
+        _main(argv)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from None
+
+
+def _main(argv=None) -> None:
     parser = argparse.ArgumentParser(prog="hiveserve")
     sub = parser.add_subparsers(dest="cmd", required=True)
     serve = sub.add_parser("serve")

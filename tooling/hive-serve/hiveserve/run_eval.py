@@ -178,7 +178,8 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
 
     ``configured`` says whether any source actually supplied ``CLIENTS_DIR``, which is
     provenance rather than a guess from the value: it decides only whether a dead path is
-    worth reporting, never whether the set is allowed to run.
+    worth reporting, never whether the set is allowed to run. Empty is handled before it,
+    at ``clients_base``, so an explicit ``CLIENTS_DIR=`` reads as off exactly like unset.
 
     Returns the clients tree and whether this run leaves ``cross_client`` unexercised. The
     second is decided here because this is the only place that knows which clients are
@@ -206,9 +207,9 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
             f"{', ...' if len(needs) > 5 else ''}). Scored without it every one of them "
             "misses and the aggregate reads as a property of the corpus. Point CLIENTS_DIR "
             "at the corpus's client memory, or use a set that does not need it.")
-    # Only when some source actually supplied it. The class default is a relative guess
-    # that is a directory almost nowhere, so warning on an untouched one would name a dead
-    # path the operator never set, on every run of a deployment with no client memory.
+    # Only when some source actually supplied it. An absent CLIENTS_DIR is a deployment
+    # with no client memory, and since 0.7.0 it has no default to be dead either, so there
+    # would be no path to name - warning would fire on every such run.
     if path is not None and configured:
         # "Unaffected" is only true when nothing asks as a client. When something does, its
         # memory columns are affected - satisfied trivially - and the notice below says so.
