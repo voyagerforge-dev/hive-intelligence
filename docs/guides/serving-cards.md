@@ -22,6 +22,43 @@ not, and its default will not be yours - see
 [configuration](../reference/configuration.md#hive-serve) for the full set and for the trap in
 that default.
 
+## What a deployment looks like
+
+A deployment is a fork of this repository plus a corpus. It pins the published engine rather than
+tracking a branch, copies the neutral example files and edits them, and points at a corpus it owns:
+
+```mermaid
+flowchart LR
+    pypi[("PyPI · one engine at one version<br/>vf-hive-serve==0.6.0, pinning vf-hive-gen==0.6.0")]
+    engine[("This repository<br/>Dockerfile · compose.example.yml · .env.example")]
+    corpus[("Corpus repository<br/>concepts/ · clients/<br/>owned by whoever curated it")]
+    fork["A deployment<br/>its own repository: the pinned versions,<br/>its own compose.yml and hive-serve.env"]
+
+    pypi -->|pinned dependencies| fork
+    engine -->|copied, then edited| fork
+    corpus -->|mounted at runtime| fork
+```
+
+What that deployment then runs. Only the corpus mount and the ledger hold anything; the service
+itself is stateless, and the proxy is what makes the identity header mean something:
+
+```mermaid
+flowchart LR
+    agents["Agent clients<br/>MCP or HTTP"]
+    proxy["An authenticating proxy<br/>sets IDENTITY_HEADER,<br/>strips it inbound"]
+    svc["hive-serve :8000<br/>loopback unless something<br/>in front terminates TLS"]
+    corpus[("/data/concepts · /data/clients<br/>the corpus, mounted read-only")]
+    db[("Postgres<br/>LEDGER_DSN, on its own volume")]
+
+    agents --> proxy --> svc
+    corpus --> svc
+    svc <-->|objectives · entries · memory| db
+```
+
+The engine ships no corpus and no deployment, deliberately; see
+[the product and deployment boundary](../architecture/product-deployment-boundary.md) for the rule,
+and [distributing the engine](../architecture/engine-distribution.md) for what a consumer pins.
+
 ## Identity, and what it is not
 
 `hive-serve` trusts a header. It does not verify one.

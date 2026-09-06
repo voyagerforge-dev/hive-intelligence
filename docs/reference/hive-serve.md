@@ -70,6 +70,41 @@ Fifteen, in three groups.
 Both doors call the transport-agnostic wrappers in `tools.py`. REST supplies only the concepts tree;
 MCP also supplies the clients tree and, for scoped operations, the caller-selected client.
 
+One agent question, from the MCP tool call to the card bundle that comes back. Nothing here is
+cached and nothing calls a model:
+
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant M as mcp_app.py
+    participant T as tools.py
+    participant R as resolver.py
+    participant K as ranking.py
+    participant F as concepts/ · clients/
+
+    A->>M: find_concepts(query, product?, client?)
+    M->>T: find_concepts(...)
+    T->>R: load_index(concepts_dir, clients_dir)
+    R->>F: read the frontmatter of every card
+    F-->>R: one row per card
+    R-->>T: the index, db/** excluded
+    T->>K: rank(query, candidates, limit)
+    K-->>T: scored ids
+    T-->>M: id · title · product · description
+    M-->>A: a small ranked set
+
+    A->>M: resolve(ids, depth=1, client?)
+    M->>T: resolve_cards(...)
+    T->>R: resolve(...)
+    R->>F: read each seed card, follow related one level
+    F-->>R: card texts
+    Note over R: drops cross-regime and cross-client neighbours,<br/>caps at max_cards and max_chars
+    R->>R: corrections_by_target - attach status approved only
+    R-->>T: card_ids · bundle · card_texts · dropped · corrections
+    T-->>M: the four transport keys
+    M-->>A: the card bundle
+```
+
 ## The resolver
 
 **Ids are paths.** `widget/calibration-routine` maps to `<concepts>/widget/calibration-routine.md`;

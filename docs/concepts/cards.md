@@ -48,6 +48,35 @@ breaks loudly rather than resolving to something stale.
 The corollary is that **the folder layout is part of the contract**. Products are top-level folders
 under `concepts/`; clients are top-level folders under `clients/`.
 
+## The lifecycle of a card
+
+A card carries exactly one lifecycle field, `status`, and the code recognises exactly two values in
+it. `hivegen.promote.promote` is the only thing that moves a file out of `drafts/`, and it moves
+nothing that is not already `approved`:
+
+```mermaid
+stateDiagram-v2
+    direction TB
+    state "in drafts/, status draft" as draft
+    state "in drafts/, status approved" as approved
+    state "in drafts/, held back" as held
+    state "in concepts/PRODUCT/, served" as served
+
+    [*] --> draft: hivegen.card.distill_concept writes it
+    draft --> draft: a person edits the prose
+    draft --> approved: a person sets status to approved
+    approved --> served: promote moves the file
+    approved --> held: validate_card found an error
+    held --> approved: the person fixes it
+```
+
+A card is held back when a required frontmatter key is missing, when a `related` id names no card
+the corpus or the draft set knows, or when a card of that name is already promoted; `promote` names
+each reason and leaves the file where it is.
+
+There is no rejected state and no deleted state either. A draft nobody approves simply stays in
+`drafts/`, which is why a promote run reports what it skipped rather than failing.
+
 ## The five types
 
 | `type` | Lives in | Purpose |
@@ -84,6 +113,20 @@ correction alongside, so the agent sees both the original statement and the amen
 **A correction is only applied when `status: approved`.** A draft correction is inert. This is easy
 to trip over: a correction that looks right in the tree but has no `status` line silently does
 nothing, and the corpus continues serving the outdated claim.
+
+That single branch, as `resolver.corrections_by_target` applies it:
+
+```mermaid
+flowchart LR
+    c["A correction card<br/>corrects: widget/calibration-routine"]
+    q{"status: approved?"}
+    y["resolve returns it in the bundle,<br/>beside the card it corrects"]
+    n["Inert. The tree looks right<br/>and nothing happens."]
+
+    c --> q
+    q -->|yes| y
+    q -->|no| n
+```
 
 The original card is never edited. That is the point: you can see what was believed, when it
 changed, and who changed it, which is the audit trail that makes a curated corpus trustworthy.

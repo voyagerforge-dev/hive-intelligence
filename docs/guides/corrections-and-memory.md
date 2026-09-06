@@ -91,11 +91,24 @@ The path between them is deliberate and one-way.
 When something in a personal notebook turns out to matter generally, the MCP `promote` tool
 proposes it as a client memory card.
 
-It does not write the card. It files a submission.
+It does not write the card. It flips the ledger row to `promotion_requested` and hands back a
+submission record, which `hive-author` turns into an issue:
 
-```
-person  ──►  hive-serve  ──►  hive-author  ──►  issue on the corpus repo  ──►  PR  ──►  merge
-             (no creds)       (issues:write)                                 review
+```mermaid
+flowchart TB
+    person["A person, through an agent"]
+    serve["hive-serve · promote<br/>no credentials, writes no card"]
+    author["hive-author · submit_memory_promotion<br/>one token, issues:write, one repository"]
+    issue["Issue on the corpus repository<br/>labelled hive-memory"]
+    pr["Pull request, opened by an Action once<br/>a code owner applies the approval label"]
+    card[("clients/CLIENT/memory/SLUG.md")]
+
+    person -->|promote| serve
+    serve -->|a submission record| person
+    person -->|files it| author
+    author --> issue
+    issue --> pr
+    pr -->|a person merges| card
 ```
 
 `hive-serve` holds no credentials at all. This is the point: it is the component with the widest
