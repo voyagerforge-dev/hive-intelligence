@@ -52,7 +52,7 @@ entry, so sizing it first is the difference between a known cost and a surprise.
 `relink --dry-run` runs the lexical shortlist, which is local and free, and stops there. The
 `shortlisted=` count it reports is exactly the number of rerank calls the real run would buy, so it
 prices a relink; it cannot tell you which links that run would choose, because it never asks the
-model. It needs no gateway credentials for the same reason. See
+model. It issues no request either, so it needs no working gateway credentials. See
 [`run.py`, the modes](../reference/hive-zendesk.md#runpy-the-modes).
 
 ## Two failure modes worth knowing

@@ -156,7 +156,7 @@ the per-ticket fetch and re-distilling each thread.
 `--dry-run` never writes and never calls a model, in any mode, which is how a run is sized and
 costed before any money is spent. `backfill`, `incremental` and `rebuild` fetch and gate and stop
 before the model stage. `relink` runs the lexical shortlist - local, free - and stops before the
-rerank; it builds no gateway client at all under `--dry-run`, so a costing run needs no credentials.
+rerank, so it issues no request and a costing run needs no working gateway credentials.
 
 What a dry `relink` reports is the bill, not the outcome. `shortlisted=` is exactly the number of
 rerank calls the real run would make; `linked=` and `declined=` stay 0 because those are the model's

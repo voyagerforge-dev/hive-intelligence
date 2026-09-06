@@ -150,20 +150,17 @@ def main() -> int:
 
     if args.mode == "relink":
         from .relink import relink_cards
-        # A dry run builds no client at all. Not calling the model is a promise that is
-        # easy to make and easy to break by accident; having nothing to call with is the
-        # version of it that cannot regress, and it means a costing run needs no gateway
-        # credentials. Otherwise linking uses its own model (see config.rerank_model);
-        # `--model` overrides it, which is how an Opus escalation is run without editing
-        # config.
-        llm = None if args.dry_run else BifrostChat(
+        # Linking uses its own model (see config.rerank_model); `--model` overrides it,
+        # which is how an Opus escalation is run without editing config.
+        llm = BifrostChat(
             s.bifrost_base, s.bifrost_api_key, args.model or s.rerank_model,
             s.bifrost_timeout_s, max_tokens=s.distill_max_tokens)
         rep = relink_cards(args.client, args.clients_dir, args.concepts_dir, llm,
                            workers=args.workers or s.reshape_workers,
                            dry_run=args.dry_run)
         # `shortlisted` is the costing number: one rerank call per entry counted there.
-        log.info("scanned=%d shortlisted=%d linked=%d declined=%d no_shortlist=%d cleared=%d",
+        log.info("%sscanned=%d shortlisted=%d linked=%d declined=%d no_shortlist=%d cleared=%d",
+                 "dry-run: " if args.dry_run else "",
                  rep.scanned, rep.shortlisted, rep.linked, rep.declined,
                  rep.no_shortlist, rep.cleared)
         return 0

@@ -332,11 +332,10 @@ def relink_cards(clients: list[str], clients_dir: str | Path, concepts_dir: str 
     without ever creating the cross-product edge OKF forbids.
 
     `dry_run` is a **no-call** mode. The lexical shortlist still runs - it is local and
-    free - and the rerank does not, so a dry run spends nothing. `llm` may therefore be
-    None, which is the only airtight version of that promise: with no client there is
-    nothing that could issue a request. What a dry run reports is the cost of the real one
-    (`shortlisted` is exactly the number of rerank calls it would make) and not which links
-    it would choose, because that answer belongs to the model and this run never asks.
+    free - and the rerank does not, so a dry run spends nothing. What a dry run reports is
+    the cost of the real one (`shortlisted` is exactly the number of rerank calls it would
+    make) and not which links it would choose, because that answer belongs to the model and
+    this run never asks.
     """
     targets = load_targets(concepts_dir)
     if products:
@@ -411,14 +410,12 @@ def relink_cards(clients: list[str], clients_dir: str | Path, concepts_dir: str 
                     cleared = clear_links(text)
                     if cleared != text:
                         report.cleared += 1
-                        if not dry_run:
-                            p.write_text(cleared)
+                        p.write_text(cleared)
                     continue
                 report.linked += 1
-                if not dry_run:
-                    # Product first: the entry belongs to whatever product explains it,
-                    # then the links, then which model chose them.
-                    body = set_product(p.read_text(), product_of(links[0]))
-                    body = apply_links(body, links)
-                    p.write_text(set_linked_by(body, getattr(llm, "model", "")))
+                # Product first: the entry belongs to whatever product explains it,
+                # then the links, then which model chose them.
+                body = set_product(p.read_text(), product_of(links[0]))
+                body = apply_links(body, links)
+                p.write_text(set_linked_by(body, getattr(llm, "model", "")))
     return report

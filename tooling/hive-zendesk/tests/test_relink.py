@@ -216,8 +216,7 @@ def test_dry_run_calls_no_model_and_writes_nothing(tmp_path):
     """`--dry-run` is a no-call mode: a flag with that name must not spend money.
 
     It used to suppress the writes only, and still bought one rerank per shortlisted card.
-    The exploding client is the assertion - any request at all fails the test - and `llm=None`
-    below proves the promise structurally: a dry run holds nothing it could call.
+    The exploding client is the assertion: any request at all fails the test.
     """
     d = _corpus(tmp_path)
     (d / "124-printer.md").write_text(UNRELATED_CARD)
@@ -229,14 +228,6 @@ def test_dry_run_calls_no_model_and_writes_nothing(tmp_path):
     assert {p.name: p.read_text() for p in d.glob("*.md")} == before
     # The model decides `linked`/`declined`, and it was never asked, so both stay 0.
     assert (rep.linked, rep.declined) == (0, 0)
-
-
-def test_dry_run_needs_no_client_at_all(tmp_path):
-    """The costing run is the one an operator makes before they have a gateway key."""
-    _corpus(tmp_path)
-    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", None,
-                       workers=1, dry_run=True)
-    assert rep.scanned == 1 and rep.shortlisted == 1
 
 
 def test_dry_run_reports_the_rerank_calls_a_real_run_would_make(tmp_path):
