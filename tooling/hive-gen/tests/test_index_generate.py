@@ -1,9 +1,4 @@
-import importlib.util
-from pathlib import Path
-
-_spec = importlib.util.spec_from_file_location(
-    "index_generate", Path(__file__).resolve().parents[1] / "scripts" / "index_generate.py")
-mod = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(mod)
+from hivegen.scripts import index_generate as mod
 
 
 def test_index_excludes_corrections(tmp_path):

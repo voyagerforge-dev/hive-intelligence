@@ -1,9 +1,4 @@
-import importlib.util
-from pathlib import Path
-
-_spec = importlib.util.spec_from_file_location(
-    "corrections_lint", Path(__file__).resolve().parents[1] / "scripts" / "corrections_lint.py")
-mod = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(mod)
+from hivegen.scripts import corrections_lint as mod
 
 
 def _w(p, **fm):

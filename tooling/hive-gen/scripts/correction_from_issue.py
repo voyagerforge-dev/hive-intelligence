@@ -1,69 +1,11 @@
-"""Parse a Correction Issue Form body into a record and write a correction card.
-Called by .github/workflows/correction-from-issue.yml.
-Usage: python scripts/correction_from_issue.py <issue_body_file> <concepts_dir>  -> prints card path"""
-import re
-import sys
-from datetime import UTC, datetime
-from pathlib import Path
+"""DEPRECATED, and kept only for callers that still invoke this path.
 
-from hivegen.corrections import record_to_correction
-from hivegen.profile import load_profile
+The implementation is `hivegen.scripts.correction_from_issue`, published as the
+`hivegen-correction-from-issue` console script from vf-hive-gen 0.7.0. A corpus workflow reading
+this file off a hand-seeded engine checkout keeps working until it switches to that
+command, at which point this shim goes.
+"""
+from hivegen.scripts.correction_from_issue import main
 
-# Valid `product:` facet values, from the corpus profile. An empty set means the profile
-# does not declare them, and the check is skipped: a hardcoded list rejects every product
-# that exists in some other corpus, which is a validator that fails closed on valid data.
-ALLOWED_PRODUCTS = set(load_profile().card_products)
-
-
-def _field(body: str, heading: str) -> str:
-    m = re.search(rf"(?ms)^###\s*{re.escape(heading)}\s*\n(.*?)(?=\n###|\Z)", body)
-    val = (m.group(1).strip() if m else "")
-    return "" if val == "_No response_" else val
-
-
-def parse_issue(body: str) -> dict:
-    corrects = _field(body, "Target concept id")
-    product = corrects.split("/", 1)[0] if "/" in corrects else ""
-    cites = [ln.strip() for ln in _field(body, "Citation source files").splitlines() if ln.strip()]
-    sup = [ln.strip() for ln in _field(body, "Supersedes (optional)").splitlines() if ln.strip()]
-    correction = _field(body, "Corrected fact")
-    return {
-        "corrects": corrects, "product": product,
-        "title": correction[:70] or f"Correction to {corrects}",
-        "description": f"Correction to {corrects}.",
-        "correction": correction, "rationale": _field(body, "Rationale"),
-        "citations": cites, "supersedes": sup, "status": "approved",
-        "timestamp": datetime.now(UTC).date().isoformat(),
-    }
-
-
-def _slug(t): return re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")[:60]
-
-
-def validate_record(rec: dict) -> None:
-    """Reject records whose corrects/product could escape concepts/<product>/corrections/.
-    Raises ValueError on any unsafe value."""
-    corrects = rec.get("corrects", "")
-    product = rec.get("product", "")
-    if "/" not in corrects:
-        raise ValueError(f"invalid Target concept id '{corrects}': expected '<product>/<concept>'")
-    if ALLOWED_PRODUCTS and product not in ALLOWED_PRODUCTS:
-        raise ValueError(f"unknown product '{product}': must be one of {sorted(ALLOWED_PRODUCTS)}")
-    # defense in depth: no traversal / absolute segments anywhere in the id
-    if ".." in corrects.split("/") or corrects.startswith("/"):
-        raise ValueError(f"unsafe Target concept id '{corrects}'")
-
-
-if __name__ == "__main__":  # pragma: no cover
-    body = Path(sys.argv[1]).read_text()
-    concepts = sys.argv[2]
-    rec = parse_issue(body)
-    try:
-        validate_record(rec)
-    except ValueError as e:
-        raise SystemExit(str(e))
-    d = Path(concepts) / rec["product"] / "corrections"
-    d.mkdir(parents=True, exist_ok=True)
-    out = d / f"{_slug(rec['title'])}.md"
-    out.write_text(record_to_correction(rec))
-    print(out)
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,99 @@
+"""Orchestration core for the memory-conflict PR gate. Composes the tested memory_lint +
+memory_conflict_score over a checked-out PR tree and turns the verdict into a GitHub
+commit-status payload. The three functions are pure/testable: the LLM and all I/O are
+injected by the caller, which is how the corpus repository's own gate uses them.
+
+`main` is the same composition made runnable for a caller that has no glue of its own; it
+builds the LLM from the environment and prints the payload as JSON.
+Usage: hivegen-pr-conflict-gate --changed-file PATH ... <clients_dir> <concepts_dir>"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+
+from hivegen.scripts import memory_conflict_score, memory_lint
+
+_CONTEXT = "okf/memory-conflict"
+
+
+def pr_touches_memory(changed_files) -> bool:
+    """Whether a PR changes a client memory card, and therefore needs scoring.
+
+    The prefix comes from `memory_lint`, the module that builds card ids from it: import
+    the fact, do not restate it. Restating it as a literal here is what broke this gate
+    before: it hardcoded `knowledge/okf/clients/`, a stale monorepo-era prefix that never
+    matches the `clients/` corpora this tooling runs against, so the gate matched nothing
+    and posted `okf/memory-conflict` success on every memory PR without ever scoring one.
+    """
+    return any(
+        f.startswith(memory_lint.CLIENTS_PREFIX) and "/memory/" in f and f.endswith(".md")
+        for f in changed_files
+    )
+
+
+def score_tree(clients_dir, concepts_dir, llm):
+    """(blocking, review) id-pairs for same-client memory conflicts in a checked-out tree."""
+    _errors, candidates = memory_lint.lint(clients_dir, concepts_dir)
+    if not candidates:
+        return [], []
+    memories = memory_lint._memories(str(clients_dir))
+    return memory_conflict_score.gate(candidates, memories, llm)
+
+
+def _pairs(items) -> str:
+    return ", ".join(f"{a} <> {b}" for a, b in items)
+
+
+def verdict_to_status(blocking, review) -> dict:
+    if blocking:
+        desc = f"conflict: {_pairs(blocking)} - resolve (supersede/reconcile/reject)"
+        return {"context": _CONTEXT, "state": "failure", "description": desc[:140]}
+    if review:
+        desc = f"possible conflict (review): {_pairs(review)} - confirm or supersede"
+        return {"context": _CONTEXT, "state": "failure", "description": desc[:140]}
+    return {"context": _CONTEXT, "state": "success",
+            "description": "no same-client memory conflict"}
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        prog="hivegen-pr-conflict-gate",
+        description="Decide whether a pull request's changed files touch client memory, "
+                    "score the tree if they do, and print the commit-status payload.")
+    ap.add_argument("clients_dir", help="the corpus clients/ tree")
+    ap.add_argument("concepts_dir", help="the corpus concepts/ tree the memories relate to")
+    ap.add_argument("--changed-file", action="append", default=[], metavar="PATH",
+                    help="a path the pull request changed; repeat it, or pipe one per line "
+                         "on stdin")
+    args = ap.parse_args(argv)
+
+    changed = list(args.changed_file)
+    if not changed and not sys.stdin.isatty():
+        changed = [ln.strip() for ln in sys.stdin.read().splitlines() if ln.strip()]
+
+    if not pr_touches_memory(changed):
+        print(json.dumps({"context": _CONTEXT, "state": "success",
+                          "description": "no client memory card changed"}))
+        return 0
+
+    # Refuse rather than fall back to an unconfigured gateway. The scorer fails SAFE - an
+    # unparseable reply scores 1.0 and blocks - so scoring without a gateway would block the
+    # pull request with a verdict nothing measured, which reads exactly like a real conflict.
+    base = os.environ.get("BIFROST_BASE")
+    key = os.environ.get("BIFROST_API_KEY")
+    if not base or not key:
+        raise SystemExit(
+            "BIFROST_BASE and BIFROST_API_KEY must be set to score a memory change. "
+            "Refusing to report a verdict without having scored anything.")
+
+    from hivegen.llm import BifrostChat
+    llm = BifrostChat(base, key, os.environ.get("CONFLICT_MODEL", "minimax/minimax-m3"))
+    status = verdict_to_status(*score_tree(args.clients_dir, args.concepts_dir, llm))
+    print(json.dumps(status))
+    return 0 if status["state"] == "success" else 1
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

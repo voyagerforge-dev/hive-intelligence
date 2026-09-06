@@ -1,11 +1,6 @@
-import importlib.util
-from pathlib import Path
-
 import pytest
 
-_spec = importlib.util.spec_from_file_location(
-    "correction_from_issue", Path(__file__).resolve().parents[1] / "scripts" / "correction_from_issue.py")
-mod = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(mod)
+from hivegen.scripts import correction_from_issue as mod
 
 ISSUE = """### Target concept id
 

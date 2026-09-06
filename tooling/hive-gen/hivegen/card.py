@@ -49,7 +49,7 @@ def distill_concept(concept: Concept, docs: list[Doc], llm: ChatLLM, *,
         "description": data.get("description", ""),
         "tags": data.get("tags", []),
         # `resource` is upgraded to the served-card URI, and `## Related`/`# Citations`
-        # body sections are generated, by scripts/conformance_pass.py after promote+facet.
+        # body sections are generated, by hivegen.scripts.conformance_pass after promote+facet.
         # Empty until then rather than a placeholder that reads like a real value.
         "resource": "",
         "sources": [{"kind": "source-doc", "ref": d.name} for d in docs],

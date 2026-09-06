@@ -1,25 +1,15 @@
-import importlib.util
 from pathlib import Path
 
 import pytest
 
-_S = Path(__file__).resolve().parents[1] / "scripts"
+from hivegen.scripts import memory_lint
+from hivegen.scripts import pr_conflict_gate as pcg
 
 # tests -> hive-gen -> tooling -> repo root. hive-intelligence ships no corpus of its own
 # (the corpus lives with whichever product repository consumes this tooling), but the
 # hive-serve fixtures give us a real, on-disk `clients/` tree to anchor against instead of
 # a path this test would otherwise have to invent.
 _FIXTURE_CORPUS = Path(__file__).resolve().parents[3] / "tooling" / "hive-serve" / "tests" / "fixtures" / "corpus"
-
-
-def _load(name):
-    spec = importlib.util.spec_from_file_location(name, _S / f"{name}.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-
-pcg = _load("pr_conflict_gate")
 
 
 class FakeLLM:
@@ -63,8 +53,7 @@ def test_the_gate_and_the_linter_agree_on_where_memory_lives():
     it. If they ever diverge again, a PR can change a card the linter knows about and the
     gate will wave it through.
     """
-    lint = _load("memory_lint")
-    assert pcg.pr_touches_memory([f"{lint.CLIENTS_PREFIX}acme/memory/a.md"]) is True
+    assert pcg.pr_touches_memory([f"{memory_lint.CLIENTS_PREFIX}acme/memory/a.md"]) is True
 
 
 def test_verdict_to_status():
