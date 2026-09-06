@@ -47,8 +47,10 @@ class Settings(BaseSettings):
     bifrost_api_key: str
     # Provider ids, not gateway aliases: the estate calls OpenRouter directly since
     # 2026-09-06 and OpenRouter has no alias layer, so a bare `minimax-m3` resolves
-    # nowhere. Assignment stays on the April Flash release for the same reason
-    # hive-serve's selector does: the July 31 one does not hold an output schema.
+    # nowhere. Assignment is on the April Flash release because the estate runs one Flash
+    # release across packages, not because this tier was measured: the 16-prompt
+    # comparison of the two releases was hive-serve card selection only, on a different
+    # prompt asking for a different schema. `assign_model` was never run against 0731.
     taxonomy_model: str = "minimax/minimax-m3"
     assign_model: str = "deepseek/deepseek-v4-flash"
     distill_model: str = "minimax/minimax-m3"
