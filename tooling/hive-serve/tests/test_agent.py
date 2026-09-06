@@ -50,6 +50,24 @@ def test_select_ids_retries_then_empty():
     assert select_empty is False
 
 
+@pytest.mark.parametrize("replies", [[None, "no json here"], ["no json here", None]])
+def test_select_ids_counts_a_row_as_empty_only_when_every_attempt_was_blank(replies):
+    """Selection retries once, so the flag is per row, not per reply: if the model spoke on
+    EITHER attempt the row is a retrieval miss `select_hit` measures honestly, not an
+    absent measurement. Order must not matter - a reply is not un-said by a later silence."""
+    class _Scripted:
+        def __init__(self, replies):
+            self.replies = list(replies)
+
+        def complete(self, system, user):
+            return self.replies.pop(0)
+
+    out, select_empty = select_ids(INDEX, "q", _Scripted(replies),
+                                   known_ids={"pre-wave-process"})
+    assert out == []
+    assert select_empty is False
+
+
 def test_select_ids_reports_a_selector_that_returned_nothing():
     """A silent selector measured nothing. Scoring that as a miss is how a run reports
     a retrieval collapse it never observed, so the empty case must be distinguishable."""

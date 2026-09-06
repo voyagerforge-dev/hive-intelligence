@@ -217,9 +217,12 @@ are unchanged; their values can still change when the selector's candidate set c
 
 `unscored` alone does not distinguish an unparseable judge reply from no reply. Rows therefore
 carry `select_empty`, `answer_empty` and `judge_empty`, treating `None`, empty strings and
-whitespace-only replies as empty. The aggregate carries their counts plus `failed`, which is true
-if any of the three roles returned nothing on **any** row. Such a report is incomplete, not a
-valid low-scoring baseline.
+whitespace-only replies as empty. Answer and judge make one call per row, so their flags describe
+that one reply. Selection retries once, so `select_empty` is true only when the selector produced
+nothing on **every** attempt; a row where it replied on either attempt, even unusably, is a genuine
+retrieval miss rather than an absent measurement. The aggregate carries their counts plus `failed`,
+which is true if any of the three roles returned nothing on **any** row. Such a report is
+incomplete, not a valid low-scoring baseline.
 
 After writing the report, the CLI prints one diagnostic per failing role naming its setting,
 configured model and affected row count, then **exits with status 1**. Check `BIFROST_API_KEY`,

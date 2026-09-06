@@ -20,12 +20,14 @@ class Settings(BaseSettings):
     #
     # The id below carries no date suffix, and is provider-qualified already. Observed on
     # OpenRouter 2026-09-06: `deepseek/deepseek-v4-flash` and the `-0731` id were separate
-    # catalogue entries, created 2026-04-24 and 2026-07-31 with different context windows,
+    # catalogue entries with different creation timestamps and different context windows,
     # and the floating alias carried a distinct `-latest` name - so the undated id named
-    # the April release rather than tracking the newest Flash. That catalogue is a third
-    # party's and nothing here can check it: if those entries are ever collapsed or the
-    # undated id repointed, selection moves onto the rejected release with no error, so
-    # re-read the catalogue rather than trusting this note.
+    # the April 0423 release rather than tracking the newest Flash. Its entry is listed
+    # 2026-04-24 03:17 UTC, which is 2026-04-23 US Pacific: a catalogue listing time, not
+    # the release date the 0423 name comes from. That catalogue is a third party's and
+    # nothing here can check it: if those entries are ever collapsed or the undated id
+    # repointed, selection moves onto the rejected release with no error, so re-read the
+    # catalogue rather than trusting this note.
     select_model: str = "deepseek/deepseek-v4-flash"
     answer_model: str = "deepseek/deepseek-v4-pro"
     judge_model: str = "deepseek/deepseek-v4-pro"
