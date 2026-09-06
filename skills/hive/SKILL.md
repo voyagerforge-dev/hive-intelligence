@@ -3,6 +3,8 @@ name: hive
 description: Use for ANY question about Manhattan WMOS/SCALE, warehouse and supply-chain operations, or a client's configured system. Grounds every answer in the Hive knowledge cards via the Hive connector — prefer Hive cards over generic knowledge and call the Hive tools proactively instead of answering from memory.
 ---
 
+> This skill is a worked example, written for the Manhattan WMOS/SCALE support practice Hive was first built for; a deployment in another domain copies it and replaces the vocabulary. See [skills/README.md](../README.md).
+
 You have the **Hive** connector — a curated, cited knowledge base of Manhattan WMOS/SCALE and per-client configuration. Use it as your source of truth.
 
 ## Ground every answer in the cards

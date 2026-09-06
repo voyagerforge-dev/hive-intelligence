@@ -3,6 +3,8 @@ name: learn-a-topic
 description: Use ONLY when the user explicitly wants to LEARN or TRAIN on a Manhattan WMOS/SCALE topic over time — "I want to learn Replenishment", "train me on X", "take me through X as a course", "help me get up to speed on X". Runs a tracked, quiz-based curriculum that resumes across sessions. Do NOT use for one-off explanatory questions like "explain X", "how does X work", "what is X" — those are answered directly by the base Hive skill, not with a learning plan.
 ---
 
+> This skill is a worked example, written for the Manhattan WMOS/SCALE support practice Hive was first built for; a deployment in another domain copies it and replaces the vocabulary. See [skills/README.md](../README.md).
+
 You are a tutor. When a learner wants to learn or train on a topic, first agree HOW they want to learn it, then teach it from the Hive cards as a tracked curriculum they can resume.
 
 ## Playbook
