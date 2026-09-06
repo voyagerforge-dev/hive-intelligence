@@ -53,7 +53,7 @@ right, and it does nothing. The corpus continues serving the outdated claim.
 
 This is the single easiest thing to get wrong. It is worth doing once deliberately, on the fixture
 corpus, so you recognise the shape of it later: see
-[getting started](getting-started.md#3-query-it).
+[getting started](getting-started.md#4-query-it).
 
 ## Memory
 
@@ -74,12 +74,15 @@ submitted_by: someone@example.com
 
 Two levels.
 
-**Personal memory** lives in the SQLite ledger, is private to one person, and never enters the
-corpus. It is a working notebook: `remember`, `recall`, `forget`. No review, no ceremony, no
+**Personal memory** lives in [the ledger](../reference/hive-serve.md#the-ledger), is private to
+one person, and never enters the corpus. It is a working notebook: `remember`, `recall`, `forget`. No review, no ceremony, no
 visibility to anyone else.
 
-**Client memory** is a card in the corpus, visible to everyone working with that client, hard
-isolated from every other client.
+**Client memory** is a card in the corpus, visible to everyone who can read the corpus. The resolver
+scopes it by client, so one client's cards never arrive in an answer scoped to another - but that is
+retrieval scope, not access control: the client is an argument the caller chooses, and `get_card`
+takes no client at all and returns any card by id. See
+[the serving trust boundary](serving-cards.md#identity-and-what-it-is-not).
 
 The path between them is deliberate and one-way.
 

@@ -10,12 +10,17 @@ That last point is the one to read twice.
 ```bash
 CONCEPTS_DIR=/path/to/corpus/concepts \
 CLIENTS_DIR=/path/to/corpus/clients \
-OKF_DATA_DIR=/path/to/ledger \
+LEDGER_DSN=postgresql://user:password@host:5432/hive_ledger \
 uv run hiveserve serve --http     # or --stdio for MCP
 ```
 
-`--http` serves REST and MCP over HTTP. `--stdio` is the transport Claude Desktop and Claude Code
-speak directly. Full settings in [configuration](../reference/configuration.md).
+`--http` serves REST and MCP over HTTP. `--stdio` is MCP over stdio, which is what most desktop
+and editor agents speak directly. Neither starts without `LEDGER_DSN`.
+
+`CLIENTS_DIR` is optional: leave it empty to disable client memory entirely. `CONCEPTS_DIR` is
+not, and its default will not be yours - see
+[configuration](../reference/configuration.md#hive-serve) for the full set and for the trap in
+that default.
 
 ## Identity, and what it is not
 
@@ -123,12 +128,14 @@ requiring an independent trust boundary need separate corpora and separately con
 
 ## The ledger
 
-One SQLite file at `OKF_DATA_DIR`, holding objectives, their entries, and personal memory, keyed by
-owner.
+Postgres, at `LEDGER_DSN`, holding objectives, their entries, and personal memory, keyed by owner.
+The [hive-serve reference](../reference/hive-serve.md#the-ledger) has the storage contract; this
+page will not repeat it.
 
 **It is the only state in the system that is not in git.** Cards can be restored from any clone.
 The ledger cannot be restored from anywhere unless you have backed it up. If you take one
-operational action after reading this page, make it that one.
+operational action after reading this page, make it that one - and note that being a database
+someone's platform will back up is precisely why it stopped being a file.
 
 ## Corpus freshness
 

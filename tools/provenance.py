@@ -5,11 +5,12 @@
         EXPECT_SCHEME=file tools/provenance.py <the --report json pip wrote>
 
 Run against the install that is about to be believed: by tools/clean-install-inside.sh in the
-clean container, and by the release workflow's install job, where `--find-links dist` ADDS to
-PyPI rather than replacing it and could otherwise smoke-test a published copy instead of the
-wheels just built. Checking pip's record beats checking our intent: it is the same question
-everywhere ("did these five come from the local directory, or from PyPI?") and it stays true
-after the names exist on an index, which an "it is on no index" assertion would not.
+clean container, and by the release workflow's install job. Both name the built wheel FILES
+rather than `vf-name==version`, because a requirement pip can also satisfy from the index
+smoke-tests the published copy once that version exists. Checking pip's record beats checking
+our intent: it is the same question everywhere ("did these five come from the local directory,
+or from PyPI?") and it stays true after the names exist on an index, which an "it is on no
+index" assertion would not.
 """
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ from released import distributions
 REFUSAL = (
     "EXPECT_SCHEME is not set. It is where these distributions are supposed to have come "
     "from, and there is no default because the answer differs per run: `file` for an install "
-    "off mounted artefacts or `--find-links`, `https` for one off the index. Run it as: "
+    "off a local wheel file, `https` for one off the index. Run it as: "
     "EXPECT_SCHEME=file <this command>"
 )
 

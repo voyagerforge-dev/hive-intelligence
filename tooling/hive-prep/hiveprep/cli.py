@@ -1,5 +1,7 @@
-"""hiveprep CLI, sovereign WMS doc-prep: inventory → curate (agent) → validate → normalize →
-transform (Docling/Qwen) → stamp → validate-atomic → hivegen. No R2/Dify staging."""
+"""hiveprep CLI: inventory -> curate (agent) -> validate -> normalize -> transform
+(document converter / vision) -> stamp -> validate-atomic, producing the atomic markdown
+that hive-gen distils into cards. Every stage writes files the next one reads, so the
+pipeline is resumable and each intermediate state is inspectable on disk."""
 from __future__ import annotations
 
 from pathlib import Path

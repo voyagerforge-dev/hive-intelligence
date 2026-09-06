@@ -37,17 +37,24 @@ caller-selected context into identity-bound authorization.
 
 ## Working on it
 
-Each package under `tooling/` is its own distribution with its own venv, `.env.example`, tests and
-`config.py` (the authority for its settings). Per package: `uv sync --extra dev && uv run pytest`.
-Tests are colocated in `tests/` beside the package.
+Each package under `tooling/` is its own distribution with its own venv, `pyproject.toml` and tests.
+Where a package has settings, its `config.py` is the authority for them and its `.env.example` is
+what an operator copies. `hive-dbparse` is the exception: no settings, no `config.py`, no
+`.env.example` - it is configured entirely on the command line. Per package:
+`uv sync --extra dev && uv run pytest`. Tests are colocated in `tests/` beside the package.
 
 CI (`.github/workflows/fastapi-svcs.yml`) runs `ruff check .`, opt-in `mypy`, and `pytest` for
 **every** package whenever a PR touches any `.py`, so one package's backlog reddens everyone's PR.
 CI pins `ruff>=0.16,<0.17` while the packages' dev extras say `ruff>=0.7`: the locally resolved ruff
 can disagree with CI in both directions, so check with the pinned range before claiming green.
 
+CI runs `mypy` against the **package directory**, not the package root: `mypy hivegen`, never
+`mypy .`. Running it the second way reports errors in `tests/` and `scripts/` that CI never sees,
+so a local `mypy .` is not evidence of anything.
+
 `hive-serve`'s ledger tests start a real Postgres container (docker or podman) and deliberately fail
-rather than skip when they cannot.
+rather than skip when they cannot. `hiveserve serve` itself also refuses to start without
+`LEDGER_DSN`, on either transport, so any doc or script that runs it needs a database.
 
 ## Releasing it
 
@@ -70,7 +77,9 @@ be pending at a time. A release can therefore legitimately be partial; the workf
 fails the run and names what it could not account for, and the gap is closed by a NEW version,
 never by re-running the tag.
 [docs/architecture/engine-distribution.md](docs/architecture/engine-distribution.md) has all of
-it, including why a release on this private repository was not an option.
+it, including why attaching artefacts to a GitHub release was not an option. That decision was
+taken while this repository was private; it is now public, which does not change the release path
+but does invalidate any statement that the source is not readable.
 
 ## Maintaining this file
 

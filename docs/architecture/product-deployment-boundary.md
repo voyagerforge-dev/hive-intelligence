@@ -11,7 +11,9 @@ anyone who is not us.
 
 A file belongs here if it would mean something on infrastructure we have never seen. A file that names
 a host, an address, a domain, a mount path or a scheduler instance belongs to whoever operates that
-installation, and lives in their infrastructure repository.
+installation, and lives in their infrastructure repository. A public third-party endpoint any
+installation could point at - the model gateway sampled in `.env.example` - is not one of those:
+what belongs to a deployment is the address that identifies *it*, and the credential beside it.
 
 ## What that means in practice
 
@@ -19,7 +21,7 @@ installation, and lives in their infrastructure repository.
 |---|---|
 | `Dockerfile` | `compose.yml` bound to a host |
 | `compose.example.yml` with neutral values | reverse-proxy and edge routing config |
-| `.env.example` with documented keys | `.env` with real addresses |
+| `.env.example` with documented keys | `.env` with a deployment's own addresses and credentials |
 | configuration **schema** and defaults | one installation's values |
 | the packages under `tooling/` | schedulers, timers and cron |
 | synthetic fixture corpus | any real corpus |

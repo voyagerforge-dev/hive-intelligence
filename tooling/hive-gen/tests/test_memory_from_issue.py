@@ -80,3 +80,24 @@ def test_validate_accepts_clean():
 
 def test_slug():
     assert _slug("Second Scan!") == "second-scan"
+
+
+def _reload():
+    """The base URL is read at import, as in conformance_pass, so the environment has to be
+    set before the module is executed."""
+    fresh = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(fresh)
+    return fresh
+
+
+def test_resource_honours_card_base_url(monkeypatch):
+    monkeypatch.setenv("CARD_BASE_URL", "https://cards.example.test/card")
+    assert (_reload().resource_for("alpha", "second-scan")
+            == "https://cards.example.test/card/clients/alpha/memory/second-scan")
+
+
+def test_resource_defaults_to_a_relative_path(monkeypatch):
+    """Unset means a path, not a hostname: a card outlives any one deployment's domain."""
+    monkeypatch.delenv("CARD_BASE_URL", raising=False)
+    assert (_reload().resource_for("alpha", "second-scan")
+            == "/card/clients/alpha/memory/second-scan")

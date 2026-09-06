@@ -17,7 +17,7 @@ def test_tools_registered_and_no_prompts(tmp_path, ledger_dsn):
             "append_entry", "set_status", "record_quiz_result",
             "list_objectives", "get_objective",
             "remember", "recall", "forget", "promote"} <= tool_names
-    assert anyio.run(mcp.list_prompts) == []   # personas moved to the Cowork plugin skills
+    assert anyio.run(mcp.list_prompts) == []   # personas ship as skills, not connector prompts
 
 
 def test_tool_dispatch_increments_metric(tmp_path, ledger_dsn):

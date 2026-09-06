@@ -5,22 +5,22 @@ naming, so the two dashboards read alike.
 
 What is counted is chosen to answer the question this service actually raises,
 which is not "is it up". A write door can be up, healthy, accepting requests and
-filing nothing, because the GitHub token lost its repository grant or the label
-names drifted. Both have happened here. So the counter is keyed on **outcome**,
-not just on calls:
+filing nothing, because the token lost its repository grant or the label names
+drifted. Both have happened. So the counter is keyed on **outcome**, not just on
+calls:
 
-    filed          the issue exists on GitHub, with a number
+    filed          the issue exists on the forge, with a number
     rejected       the submission failed validation before any API call
     github_error   the forge refused it
 
-The `github_error` label value is kept despite the move to Forgejo on 2026-08-12:
-it is consumed by the hive_contribute alert group in Host-B and by the
-hive-contribute dashboard, so renaming it silently breaks alerting for cosmetic
-gain. Rename it in all three places together or not at all.
+The `github_error` label value predates support for a second forge kind and means
+"the forge refused it" whichever forge that is. It is kept because a label value is
+a public interface: any alert rule or dashboard built on it breaks silently when it
+is renamed, for cosmetic gain. Rename it everywhere it is consumed, or not at all.
 
 `rejected` and `github_error` are separated on purpose. The first is a user
 getting it wrong and is not a fault. The second is ours, and is the one worth
-alerting on: a 404 from GitHub means a token that cannot see the repository,
+alerting on: a 404 from the forge means a token that cannot see the repository,
 which reads identically to a wrong URL.
 """
 from __future__ import annotations

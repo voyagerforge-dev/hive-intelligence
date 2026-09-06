@@ -91,10 +91,8 @@ class ForgejoIssueClient:
 class GitHubIssueClient:
     """Creates issues on github.com.
 
-    EXAMPLECO went to GitHub, left for a self-hosted Forgejo on 2026-08-12, and returned to
-    github.com/example-org on 2026-08-15 because Cowork will only install plugins from an
-    allowlisted host. Both clients are kept: the deployment picks one, and neither is a
-    fork of the other.
+    Both clients are kept because a corpus repository legitimately moves between forges, and
+    has: a deployment picks one with FORGE_KIND, and neither client is a fork of the other.
 
     The difference that forces two classes is one field. GitHub's `labels` takes names;
     Forgejo's takes integer IDs and answers a name with 422.

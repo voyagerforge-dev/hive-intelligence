@@ -29,13 +29,14 @@ hivezendesk <mode> --client <key> --customers <path> \
 |---|---|
 | `backfill` | first run, over available history |
 | `incremental` | since the last recorded cursor |
-| `rebuild` | re-distil existing staged cards, for example after a prompt change |
+| `rebuild` | reshape cards already staged on R2, for example after a prompt change |
 | `relink` | recompute `related` links only, no distillation |
 
 Other options: `--force`, `--limit`, `--workers`, `--batch-size`, `--model`.
 
-**`--dry-run` fetches and gates but makes no model calls and writes nothing.** A real backfill is
-one model call per entry. Size it first.
+**`--dry-run` writes nothing, and for every mode but `relink` makes no model calls either.** A real
+backfill is one model call per entry. Size it first. `relink --dry-run` still pays for its rerank;
+see [`run.py`, the modes](#runpy-the-modes).
 
 ## Two models, two jobs
 
@@ -63,6 +64,7 @@ and is measured separately.
 | `model.py` | `Ticket`, `IssueCard`, `RunReport`, `RunError` |
 | `llm.py` | chat client with defensive JSON extraction |
 | `config.py` | typed settings |
+| `profile.py` | the corpus profile's `linking` section: default product, and the words that mark an entry |
 | `run.py` | CLI orchestration |
 
 ## Safety properties
@@ -137,15 +139,25 @@ refuses, because the partial result looks like a complete one and nothing downst
 
 ### `run.py`, the modes
 
-| Mode | Does |
-|---|---|
-| `backfill` | a bounded historical range |
-| `incremental` | since the last run |
-| `rebuild` | re-emit cards from stored records, no model call |
-| `relink` | re-run linking only, against the current corpus |
+| Mode | Does | Model calls |
+|---|---|---|
+| `backfill` | a bounded historical range | distil, then link |
+| `incremental` | since the last run | distil, then link |
+| `rebuild` | reshape cards already staged on R2, without re-fetching or re-distilling each ticket | reshape, batched |
+| `relink` | re-run linking only, against the current corpus | rerank only |
 
-`--dry-run` fetches and gates but **never calls the model and never writes**. That is how a backfill
-is sized and costed before any money is spent.
+**Every mode calls a model.** `rebuild` skips the per-ticket fetch and the distillation, not the
+reshape; `relink` skips the distillation, not the rerank that chooses the links.
+
+`rebuild` is not an offline mode. It still pulls each org's ticket list once, so every entry gets a
+real closed date and subject, and `CONNECTOR_BASE` is refused at startup if unset. What it avoids is
+the per-ticket fetch and re-distilling each thread.
+
+`--dry-run` never writes, in any mode. For `backfill`, `incremental` and `rebuild` it also calls no
+model: it fetches and gates and stops before the model stage, which is how a backfill is sized and
+costed before any money is spent. **`relink --dry-run` is the exception.** It suppresses the writes
+only; the rerank still runs once per card it shortlists and is billed exactly as the real run would
+be, so it is not a way to price a relink.
 
 `--limit` is applied **before** counting, so the verification reflects what was actually requested.
 Applying it afterwards would make every limited run fail its own count check.
@@ -155,8 +167,9 @@ repairable without re-distilling, which is the expensive half.
 
 ## Tests
 
-107 tests. Fakes only: the connector and both model clients are injected, so the suite
-runs with no network and no models.
+Fakes only: the connector and both model clients are injected, so the suite runs with no network
+and no models. Use `uv run pytest --collect-only -q` in `tooling/hive-zendesk/` for the current
+inventory rather than a count written down here.
 
 ## Configuration
 

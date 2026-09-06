@@ -27,7 +27,7 @@ approved. The reasoning happens in the agent. The judgement about what is true h
 and left an audit trail.
 
 ```
-documents  ──►  atomic markdown  ──►  concept cards  ──►  Claude
+documents  ──►  atomic markdown  ──►  concept cards  ──►  an agent
             hive-prep          hive-gen           hive-serve
               gate 1            gates 2 and 3
 ```

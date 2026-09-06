@@ -1,0 +1,7 @@
+# Discussions is not enabled on this repository, so there is deliberately no link to it here:
+# a contact link that lands on a 404 is worse than no contact link.
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: mailto:security@voyagerforge.dev
+    about: Report privately. Never open a public issue for a security problem. See SECURITY.md.

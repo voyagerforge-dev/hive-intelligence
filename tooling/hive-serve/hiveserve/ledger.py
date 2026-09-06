@@ -11,7 +11,7 @@ there". Being a database is what makes it get backed up.
 There is deliberately NO dual-engine support. Keeping both would mean two placeholder styles
 (`?` and `%s`) in one module, chosen at runtime, and the failure mode is a query that is
 syntactically fine against the engine you tested and broken against the one you deployed.
-That is the shape of nearly every silent failure in this estate.
+That is the shape of nearly every silent failure this codebase has had to fix.
 
 The tests run against a real Postgres for the same reason: a suite that passes on a
 different engine than production is a gate that scores nothing.

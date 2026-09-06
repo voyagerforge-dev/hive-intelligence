@@ -5,7 +5,26 @@ description = "Deterministic parser: Oracle and DB2 DDL to OKF database-object c
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
+readme = "README.md"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Documentation",
+]
 dependencies = ["sqlglot>=25", "PyYAML>=6.0"]
+
+[project.urls]
+Homepage = "https://github.com/voyagerforge-dev/hive-intelligence"
+Documentation = "https://github.com/voyagerforge-dev/hive-intelligence/blob/main/docs/reference/hive-dbparse.md"
+Source = "https://github.com/voyagerforge-dev/hive-intelligence"
+Issues = "https://github.com/voyagerforge-dev/hive-intelligence/issues"
+"Release notes" = "https://github.com/voyagerforge-dev/hive-intelligence/releases"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3", "ruff>=0.7"]
@@ -19,7 +38,6 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

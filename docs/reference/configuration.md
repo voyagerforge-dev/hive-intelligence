@@ -1,9 +1,9 @@
 # Configuration
 
-Every package reads settings from the environment, or from a `.env` file beside it. Names below are
-the environment variable names; each package's `config.py` is the authority.
-
-Each package ships a `.env.example` listing the keys it actually needs.
+Packages that have settings read them from the environment, or from a `.env` file beside them, and
+ship a `.env.example` listing the keys they actually need. Names below are the environment variable
+names; the package's `config.py` is the authority. `hive-dbparse` has no settings at all - see
+[below](#hive-dbparse).
 
 ## Names that mention a vendor
 
@@ -24,7 +24,10 @@ variable does not fail loudly, it starts the service with a default instead. Ren
 tracked work and belongs with a major version, not a documentation pass.
 
 The model defaults are likewise recommendations rather than requirements, and name models that must
-exist on *your* gateway. Set them explicitly.
+exist on *your* gateway, under the id that gateway uses: OpenRouter, the address the `.env.example`
+files sample, namespaces ids by provider (`deepseek/deepseek-v4-flash-0731`). Set them explicitly -
+against a reachable gateway a wrong id comes back as an unknown model, so the error names the model
+rather than the setting.
 
 ## A note on `OKF_` prefixes
 
@@ -40,7 +43,7 @@ flagged where they appear.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `CONCEPTS_DIR` | `../../concepts` | **required in practice**. Corpus concept cards; the server refuses to start unless it is a directory. The default assumes a layout that will not be yours |
+| `CONCEPTS_DIR` | `../../concepts` | **required in practice**. Corpus concept cards; the server refuses to start unless it names a directory. The default is relative and will not be yours - read the warning below before relying on the refusal |
 | `CLIENTS_DIR` | `../../clients` | client-scoped cards. Leave empty to disable client memory entirely; never a startup refusal |
 | `EVAL_DIR` | empty | labelled eval sets, **evaluation only**. No default: they ship with a corpus |
 | `LEDGER_DSN` | empty | **required**. Postgres for the objective and memory ledger. **The only state not in git** |
@@ -63,6 +66,29 @@ flagged where they appear.
 For `IDENTITY_HEADER`'s ledger-owner role and the mandatory proxy for wider exposure, see
 [the serving trust boundary](../guides/serving-cards.md#identity-and-what-it-is-not).
 
+### `CONCEPTS_DIR`'s default is relative, and that is a trap
+
+> **Set `CONCEPTS_DIR` explicitly, to an absolute path.** Its default, `../../concepts`, is
+> resolved against the **working directory of the process**, not against where `hive-serve` is
+> installed. Two identically configured deployments started from two different directories
+> therefore serve two different corpora, or one corpus and one refusal, with nothing in the logs
+> to distinguish them.
+
+The startup check is "set, and a directory" - it is not "is this the corpus you meant". It catches
+an unset value and a path that does not exist. It cannot catch `../../concepts` happening to
+resolve onto *something*: a stale corpus, a half-synced clone, another deployment's tree. That
+serves a wrong answer confidently, which is the one failure mode this system exists to avoid, and
+it is worse than the refusal you would have got from an empty setting.
+
+The default is kept because removing it is a breaking change for every deployment that currently
+relies on it, which belongs with a major version rather than a documentation pass. Making it refuse
+outright, the way `LEDGER_DSN` does, is the fix; it is not this document's to make.
+
+The same reasoning applies to `CLIENTS_DIR`'s `../../clients`, with one difference: `CLIENTS_DIR`
+is legitimately optional, so an empty value means *off* rather than *the working directory*, and it
+is never a startup refusal. A wrong-but-existing relative path is the same trap there, and it
+silently serves another deployment's client memory.
+
 ## hive-gen
 
 | Variable | Default | Notes |
@@ -82,7 +108,13 @@ For `IDENTITY_HEADER`'s ledger-owner role and the mandatory proxy for wider expo
 | `DISTILL_MODEL` | `minimax-m3` | gate 3, the card bodies |
 | `MAX_CHARS` | `24000` | source characters per distillation call |
 | `BIFROST_TIMEOUT_S` | `300` | |
-| `CARD_BASE_URL` | `https://hive.example.com/card` | used by `conformance_pass` for the `resource` field |
+| `CORPUS_PROFILE` | empty | path to the corpus profile, the domain vocabulary that ships with a corpus. Empty means look for `corpus-profile.yaml` in the working directory, then beside `ATOMIC_DIR` |
+| `CARD_BASE_URL` | `/card` | the base a card id resolves under, in the `resource` field. Read by both card-writing scripts, `conformance_pass` (concept cards) and `memory_from_issue` (client memory cards). **A path, not a host, and deliberately so** - see below. Read from the environment by the scripts, not through `config.py` |
+
+**`CARD_BASE_URL` defaults to a path because a card outlives a hostname.** One corpus wrote 991
+cards with an absolute URI and had to rewrite every one of them when its deployment moved domains.
+Set it only where a deployment genuinely needs absolute URIs, and expect to rewrite them the next
+time it moves.
 
 The functional-area map (`AREAS`, `SUBAREAS` in `hivegen/load.py`) and the guide-topic vocabulary
 (`hivegen/retopic.py`) are **source code, not configuration**, and describe the corpus Hive was
@@ -93,6 +125,7 @@ first built against. See [known limitations](../concepts/principles.md#known-lim
 | Variable | Default | Notes |
 |---|---|---|
 | `CORPUS_ROOT` | empty | corpus-profile lookup hint only, and read from the environment, so it must be **exported**. The raw tree comes from the curation plan or the command argument. Not hive-gen's `CARD_CORPUS_ROOT` |
+| `CORPUS_PROFILE` | empty | the same profile file [hive-gen reads](#hive-gen), for the folder-name product aliases and the vocabulary `validate-plan` checks a plan against. Read from the environment, so it must be **exported**. Empty means look for `corpus-profile.yaml` in the working directory, then under `CORPUS_ROOT` and beside it |
 | `WORK_DIR` | `./hive-work` | scratch space |
 | `ATOMIC_DIR` | `./hive-work/atomic` | output, and `hive-gen`'s input |
 | `DOCLING_BASE` | empty | document converter endpoint |
@@ -113,26 +146,33 @@ first built against. See [known limitations](../concepts/principles.md#known-lim
 
 | Variable | Default | Notes |
 |---|---|---|
-| `GITHUB_TOKEN` | empty | **required**. Scope it to issue creation on one repository |
-| `GITHUB_REPO` | empty | **required**. No default: a wrong-but-plausible one files issues into someone else's repository |
-| `GITHUB_API` | `https://api.github.com` | change for GitHub Enterprise |
+| `FORGE_KIND` | empty | **required**. `github` or `forgejo`. No default and never inferred from `FORGE_API`: the two APIs disagree on the `labels` field, so guessing wrong fails the submission rather than the startup |
+| `FORGE_API` | empty | **required**. The forge's API base, deployment-specific. No default, deliberately not a public one: a default pointing anywhere reachable lets a misconfigured deployment file submissions somewhere real |
+| `FORGE_REPO` | empty | **required**. The corpus repository submissions are filed against. No default: a wrong-but-plausible one files issues into someone else's repository |
+| `FORGE_TOKEN` | empty | the credential. Scope it to opening issues on that one repository. Set this **or** `FORGE_TOKEN_FILE`, never both |
+| `FORGE_TOKEN_FILE` | empty | a file holding the credential, re-read on every submission. For a token that expires faster than this process lives, such as a GitHub App installation token at one hour |
 | `HOST` | `127.0.0.1` | |
 | `PORT` | `8000` | |
-| `IDENTITY_HEADER` | `cf-access-authenticated-user-email` | same trust model as `hive-serve` |
+| `IDENTITY_HEADER` | `cf-access-authenticated-user-email` | same trust model as `hive-serve`: trusted, not verified |
 | `OKF_DEFAULT_OWNER` | `local-operator` | |
 
-This is the only service that holds a credential. Keep the token narrow: it needs to open issues on
-the corpus repository and nothing else.
+`FORGE_KIND`, `FORGE_API`, `FORGE_REPO` and a credential are all checked at startup, and the
+service refuses to start naming what is missing.
+
+This is the only service that holds a credential. Keep it narrow: it needs to open issues on the
+corpus repository and nothing else. It cannot push, merge, or open a pull request, and that is the
+point of it being a separate service from `hive-serve`.
 
 ## hive-zendesk
 
 | Variable | Default | Notes |
 |---|---|---|
 | `CONNECTOR_BASE` | empty | **required**. Validated at startup rather than on first request |
+| `CORPUS_PROFILE` | empty | the same profile file [hive-gen reads](#hive-gen), for its `linking` section: the default product, the per-product markers, and the extra stopwords. Read from the environment, so it must be **exported**. Empty means look for `corpus-profile.yaml` in the working directory |
 | `CONNECTOR_API_KEY` | empty | |
 | `BIFROST_BASE` | empty | model gateway |
 | `BIFROST_API_KEY` | empty | |
-| `DISTILL_MODEL` | `minimax-m3` | |
+| `DISTILL_MODEL` | empty | **required**, refused at startup unless `--model` is passed. No default on purpose: an environment that fails to load `.env` would otherwise distil a whole run with an unintended model, silently, and the cards carry no record of which one wrote them |
 | `RERANK_MODEL` | `minimax-m3` | linking is measured separately from distilling |
 | `DISTILL_MAX_TOKENS` | `4000` | must cover reasoning **and** the answer for a reasoning model. At 2000 it spends the budget thinking and returns nothing |
 | `BIFROST_TIMEOUT_S` | `300` | |
@@ -147,14 +187,19 @@ the corpus repository and nothing else.
 
 ## hive-dbparse
 
-No environment configuration. Everything is command-line: `--src`, `--out`, `--limit-modules`.
+No environment configuration, and no `config.py` or `.env.example`. Everything is command-line: see
+[the option table](hive-dbparse.md#running).
 
 ## Settings that have no default on purpose
 
-`CONNECTOR_BASE`, `GITHUB_REPO`, `LEDGER_DSN`, `EVAL_DIR`, `CARD_CORPUS_ROOT`, `R2_ENDPOINT`,
-`R2_BUCKET`, `R2_PREFIX` and the gateway addresses are empty by default and validated at startup
-or at the point of use. `CONCEPTS_DIR` carries a default that will not be yours and is validated
-the same way.
+`CONNECTOR_BASE`, `FORGE_API`, `FORGE_REPO`, `FORGE_KIND`, `LEDGER_DSN`, `EVAL_DIR`,
+`CARD_CORPUS_ROOT`, `R2_ENDPOINT`,
+`R2_BUCKET`, `R2_PREFIX`, hive-zendesk's `DISTILL_MODEL` and the gateway addresses are empty by
+default and validated at startup or at the point of use.
+
+`CONCEPTS_DIR` and `CLIENTS_DIR` are the two that did not join that list, and they are the
+weakest link in it: both carry a **relative** default that a working directory can make real. See
+[the warning above](#concepts_dirs-default-is-relative-and-that-is-a-trap).
 
 A default that points somewhere plausible does not save you configuration. It moves the failure from
 startup, where it is obvious, to first use, where it appears as a connection error against a host

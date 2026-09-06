@@ -7,13 +7,14 @@ Narrative version: [database objects](../guides/database-objects.md).
 ## Running
 
 ```bash
-hivedbparse --src <ddl-tree> --out <output-dir> [--limit-modules N]
+hivedbparse --src <ddl-tree> --out <output-dir> [--product NAME] [--limit-modules N]
 ```
 
 | Option | Does |
 |---|---|
 | `--src` | root of the DDL tree |
 | `--out` | where cards and the manifest go |
+| `--product` | card id prefix and `product` facet, default `db`. Set it - see [naming the product](#naming-the-product) |
 | `--limit-modules` | cap files per dialect and kind, for a smoke run |
 
 ## The flow
@@ -152,8 +153,9 @@ safe YAML.
 
 ## Tests
 
-103 tests. Fakes and DDL fixtures only. No database is needed, because the parser reads
-SQL text.
+Fakes and DDL fixtures only. No database is needed, because the parser reads SQL text. Use
+`uv run pytest --collect-only -q` in `tooling/hive-dbparse/` for the current inventory rather
+than a count written down here.
 
 ## Output
 

@@ -118,14 +118,23 @@ splitting the corpus into separate stores.
 | `platform` | which platform or environment it applies to |
 | `regime` | which operating regime it assumes |
 | `version` | which release it describes |
-| `client` | which client it belongs to (memory and issues only) |
+| `client` | which client it belongs to (memory and issues only). **Derived from the card's path, not read from frontmatter** - a card cannot declare itself into another client's scope |
 
 `product` is the load-bearing one. Cards in different products are lexically distinct and carry no
 edges between them, so a query scoped to one product cannot drift into another. This is a soft
 filter by design: the isolation comes from the corpus having no cross-product links to follow, not
 from a guard that has to be remembered.
 
-`client` is different. It is a **hard** boundary, enforced in the resolver.
+`client` is different, and it is worth being precise about how. The resolver derives it from the
+card's path and applies it to every listing, search and bundle traversal, so one client's memory and
+issue cards never arrive in an answer scoped to another. That is a **retrieval** boundary and it is
+enforced consistently.
+
+It is **not** an access control. The client is chosen by the caller, not derived from who the caller
+is, and every card sits in one repository that anyone with read access can read in full. A
+deployment that needs clients to be unable to reach each other's material needs separate corpora
+with separately controlled access. See
+[the serving trust boundary](../guides/serving-cards.md#identity-and-what-it-is-not).
 
 ## Links and citations
 

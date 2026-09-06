@@ -5,11 +5,31 @@ description = "Serve + test OKF concept cards as agent context (no RAG)"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
+readme = "README.md"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: FastAPI",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Topic :: Software Development :: Documentation",
+]
 # vf-hive-gen is pinned exactly, not floored: the five packages are released as one
 # engine at one version (tools/set-release-version.sh writes it), and an unconstrained
 # dependency would let a consumer pinning this version resolve a different hive-gen
 # behind it.
 dependencies = ["vf-hive-gen==0.6.0", "pydantic>=2.9", "pydantic-settings>=2.5", "PyYAML>=6.0", "mcp==1.28.1", "fastapi>=0.135", "uvicorn>=0.30", "prometheus_client>=0.20", "psycopg[binary]>=3.2"]
+
+[project.urls]
+Homepage = "https://github.com/voyagerforge-dev/hive-intelligence"
+Documentation = "https://github.com/voyagerforge-dev/hive-intelligence/blob/main/docs/reference/hive-serve.md"
+Source = "https://github.com/voyagerforge-dev/hive-intelligence"
+Issues = "https://github.com/voyagerforge-dev/hive-intelligence/issues"
+"Release notes" = "https://github.com/voyagerforge-dev/hive-intelligence/releases"
 
 [project.scripts]
 hiveserve = "hiveserve.server:main"
@@ -24,7 +44,6 @@ dev = ["pytest>=8.3", "ruff>=0.7", "httpx>=0.27"]
 # and it reads the built wheel's own metadata rather than either file.
 [tool.uv.sources]
 vf-hive-gen = { path = "../hive-gen", editable = true }
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -8,9 +8,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     forge_token: str = ""
-    # An alternative to forge_token, and the one the EXAMPLECO deployment uses since 2026-08-15.
-    # A GitHub App installation token lasts an hour, so it cannot be an env var: this
-    # process outlives it. A timer mints one and writes it here; the client re-reads the
+    # An alternative to forge_token, for a credential that expires faster than this process
+    # lives. A GitHub App installation token lasts an hour, so it cannot be an env var read
+    # once at startup. Something else mints one and writes it here; the client re-reads the
     # file on every submission. Set one or the other, not both.
     forge_token_file: str = ""
     # Which forge this deployment files against: "forgejo" or "github". No default, and
@@ -21,9 +21,9 @@ class Settings(BaseSettings):
     # against, which is deployment-specific, and a wrong-but-plausible default files
     # issues into someone else's repository.
     forge_repo: str = ""
-    # No default either, and deliberately not a public URL. The forge is LAN-only, so a
-    # default pointing anywhere reachable would let a misconfigured deployment file
-    # submissions somewhere real. Empty fails loudly at startup instead.
+    # No default either, and deliberately not a public URL: a default pointing anywhere
+    # reachable would let a misconfigured deployment file submissions into a real repository
+    # that is not the intended one. Empty fails loudly at startup instead.
     forge_api: str = ""
     host: str = "127.0.0.1"
     port: int = 8000

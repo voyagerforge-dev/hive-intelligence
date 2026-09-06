@@ -38,19 +38,19 @@ cd tooling/hive-prep
 uv sync --extra dev
 ```
 
-The commands run in sequence:
+The commands run in sequence. `hiveprep <command> --help` has the arguments.
 
 | Step | Does |
 |---|---|
-| `scan` | inventory the source tree, hash contents, group duplicates |
-| `dups` | report content-identical files across the tree |
+| `scan` | walk the source tree and write a file inventory CSV with folder-derived hints |
+| `dups` | report byte-identical duplicate sets |
 | `validate-plan` | check the curation plan is well formed **(gate 1)** |
-| `dedup` | drop the duplicates the plan marks |
-| `normalize` | clean up whitespace, encodings, structure |
-| `route` | decide converter per file, based on format |
-| `transform` | convert to markdown and strip boilerplate |
-| `stamp` | write metadata frontmatter |
-| `validate-atomic` | check every output is well formed |
+| `dedup-formats` | collapse same-document format variants, such as `X.doc` beside `X.docx`, so each document has one slug |
+| `normalize` | convert the plan's includes to PDF intermediates, through LibreOffice |
+| `route` | report how many files land in each conversion tier, without using a GPU |
+| `transform` | convert to atomic markdown and strip boilerplate |
+| `stamp` | write plan metadata into the frontmatter |
+| `validate-atomic` | check every output is well formed: unique slugs, enums, relations |
 
 ### Gate 1: the curation plan
 
@@ -66,6 +66,16 @@ after two model stages have run over them.
 The design principle underneath: put the intelligence up front in one reviewable artifact, then let
 deterministic code do the rest. Everything after gate 1 is ordinary software operating on an
 approved decision, which means it is reproducible and explainable.
+
+### The tier tally, before `transform`
+
+`route` is a precheck. It reports how many files will go through each conversion tier - text,
+vision, passthrough - and uses no GPU and no model doing it.
+
+**Look at the vision count before running `transform`.** That is the one that costs money, and
+`route` exists so the bill is a number you approved rather than one you discovered. A tally far
+larger than you expected usually means the plan is including scanned material you did not mean to
+keep, which is cheaper to fix in the plan than after conversion.
 
 ### Boilerplate stripping
 
@@ -100,6 +110,10 @@ CARD_CORPUS_ROOT=/path/to/your/corpus SLICE_AREA=<area> uv run python -m hivegen
 `CARD_CORPUS_ROOT` is your card corpus working tree, and is required: the taxonomy is written there,
 not beside the engine. It is a different tree from `hive-prep`'s `CORPUS_ROOT` - that one names the
 raw documents going in, this one is the cards coming out.
+
+`hive-gen` numbers its own two gates package-locally, so the terminal disagrees with this page by
+one: the run prints `GATE 1` when it proposes the taxonomy, which is gate 2 here, and `GATE 2` when
+it writes the drafts, which is gate 3.
 
 Review the draft, edit it, save it as `taxonomy.<area>.yaml`.
 
@@ -159,7 +173,7 @@ single `corpus-profile.yaml`: the functional areas, the sub-slices, the guide-to
 product folder aliases, and the facet values the validators gate on.
 
 It ships with the corpus, not with Hive, and is found via `CORPUS_PROFILE`, the working directory,
-or beside `ATOMIC_DIR`. `corpus-profile.example.yaml` in the product repository documents every
+or beside `ATOMIC_DIR`. `corpus-profile.example.yaml` at the root of this repository documents every
 section and, more usefully, how to get each one wrong.
 
 A missing profile is not an error. It becomes one only when something asks for a vocabulary that

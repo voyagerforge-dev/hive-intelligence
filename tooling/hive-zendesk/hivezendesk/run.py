@@ -5,8 +5,10 @@ id it produces is a guess (measured: 4% resolved). Cards are therefore emitted w
 `related: []` and linked afterwards by `relink`, against the real card ids, with the model
 judging each candidate and free to decline.
 
-`--dry-run` fetches and gates but never calls the LLM and never writes. That is how a
-backfill is sized and costed before any money is spent.
+`--dry-run` never writes. For backfill, incremental and rebuild it calls no LLM either,
+which is how a backfill is sized and costed before any money is spent. `relink --dry-run`
+is the exception: it suppresses the writes only, and the rerank still runs and is billed
+once per card it shortlists.
 """
 from __future__ import annotations
 

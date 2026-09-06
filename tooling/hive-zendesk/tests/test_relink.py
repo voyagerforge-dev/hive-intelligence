@@ -204,6 +204,35 @@ def test_relink_cards_dry_run_writes_nothing(tmp_path):
     assert (d / "123-fc-wave.md").read_text() == before
 
 
+UNRELATED_CARD = (CARD
+                  .replace("title: FC Wave failed to release", "title: Label printer jammed")
+                  .replace("description: A wave allocation did not release.",
+                           "description: The label printer jammed while packing.")
+                  .replace("module: wave", "module: packing")
+                  .replace("- wave\n", "- printer\n")
+                  .replace("ref: '123'", "ref: '124'"))
+
+
+def test_dry_run_still_bills_the_rerank_once_per_shortlisted_card(tmp_path):
+    """`--dry-run` suppresses the writes, not the spend.
+
+    The docs quote this cost, so pin the unit: the model runs once for each card the
+    lexical pass shortlists, and not at all for a card it shortlists nothing for. Getting
+    that unit wrong is only discovered on an invoice.
+    """
+    d = _corpus(tmp_path)
+    (d / "124-printer.md").write_text(UNRELATED_CARD)
+    before = {p.name: p.read_text() for p in d.glob("*.md")}
+    llm = FakeLLM(json.dumps({"picks": ["widgets/wave-allocation-process"]}))
+
+    rep = relink_cards(["alpha"], tmp_path / "clients", tmp_path / "concepts", llm,
+                       workers=1, dry_run=True)
+
+    assert (rep.scanned, rep.no_shortlist, rep.linked) == (2, 1, 1)
+    assert llm.calls == 1
+    assert {p.name: p.read_text() for p in d.glob("*.md")} == before
+
+
 def test_relink_cards_leaves_declined_entries_untouched(tmp_path):
     d = _corpus(tmp_path)
     before = (d / "123-fc-wave.md").read_text()

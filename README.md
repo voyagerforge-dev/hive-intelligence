@@ -1,11 +1,17 @@
 # Hive Intelligence
 
+[![Licence: Apache 2.0](https://img.shields.io/badge/licence-Apache--2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://pypi.org/project/vf-hive-serve/)
+[![vf-hive-serve](https://img.shields.io/pypi/v/vf-hive-serve.svg?label=vf-hive-serve)](https://pypi.org/project/vf-hive-serve/)
+[![vf-hive-gen](https://img.shields.io/pypi/v/vf-hive-gen.svg?label=vf-hive-gen)](https://pypi.org/project/vf-hive-gen/)
+[![vf-hive-prep](https://img.shields.io/pypi/v/vf-hive-prep.svg?label=vf-hive-prep)](https://pypi.org/project/vf-hive-prep/)
+
 Curated knowledge, served to an AI agent as cards rather than retrieved as chunks.
 
 Hive turns a body of documentation into a reviewed, cross-linked set of small markdown files in
-git, then serves those files to Claude over REST and MCP. There is no vector index, no embedding
-model, and no model call at serving time. The agent is the reasoning loop; Hive decides what it is
-allowed to reason over.
+git, then serves those files to any MCP or REST client over those two doors. There is no vector
+index, no embedding model, and no model call at serving time. The agent is the reasoning loop; Hive
+decides what it is allowed to reason over.
 
 **OKF is the format. Hive is the system.** Cards on disk carry `okf_version: "0.1"`; the tooling
 that produces and serves them is Hive.
@@ -32,22 +38,45 @@ that is measurable before you change anything. See
 
 ## What is here
 
-Six Python packages under `tooling/`. Three form the pipeline; three extend it.
+Six Python packages under `tooling/`. Three form the pipeline; three extend it. Five are published
+to PyPI as one engine at one version.
 
-| Package | Distribution | Does |
+| Package | Install | Does |
 |---|---|---|
-| `hive-prep` | `vf-hive-prep` | raw documents to clean atomic markdown |
-| `hive-gen` | `vf-hive-gen` | atomic markdown to reviewed concept cards, and the card model |
-| `hive-serve` | `vf-hive-serve` | serves cards over REST and MCP, with a per-person work ledger |
-| `hive-author` | `vf-hive-author` | a write-only door for filing corrections and memory, so `hive-serve` holds no credentials |
-| `hive-dbparse` | `vf-hive-dbparse` | database schema to cards, deterministically, with no model involved |
-| `hive-zendesk` | `vf-hive-zendesk` | closed support tickets to client-scoped issue cards |
+| `hive-prep` | `pip install vf-hive-prep` | raw documents to clean atomic markdown |
+| `hive-gen` | `pip install vf-hive-gen` | atomic markdown to reviewed concept cards, and the card model |
+| `hive-serve` | `pip install vf-hive-serve` | serves cards over REST and MCP, with a per-person work ledger |
+| `hive-dbparse` | `pip install vf-hive-dbparse` | database schema to cards, deterministically, with no model involved |
+| `hive-zendesk` | `pip install vf-hive-zendesk` | closed support tickets to client-scoped issue cards |
+| `hive-author` | from source, `tooling/hive-author` | a write-only door for filing corrections and memory, so `hive-serve` holds no credentials |
+
+`hive-author` is **not published to PyPI**. It is versioned separately from the other five and is
+deployed as a service rather than installed as a library; see
+[distributing the engine](docs/architecture/engine-distribution.md).
+
+`vf-hive-serve` pins `vf-hive-gen` exactly, so installing it brings the matching card model.
 
 ## Start here
 
+You need **Python 3.12 or later** and [uv](https://docs.astral.sh/uv/). No credentials of your own
+and no corpus of your own.
+
+```bash
+git clone https://github.com/voyagerforge-dev/hive-intelligence.git
+cd hive-intelligence/tooling/hive-serve
+uv sync --extra dev
+```
+
+**[Getting started](docs/guides/getting-started.md)** takes it from there and has `hive-serve`
+answering questions from the bundled fixture corpus in about five minutes. It needs docker or
+podman for one throwaway Postgres, because the work ledger is a database and `hive-serve` refuses to
+start without one.
+
+Then:
+
 - **[Documentation](docs/README.md)** is the map.
-- **[Getting started](docs/guides/getting-started.md)** has `hive-serve` answering questions from
-  the bundled fixture corpus in about five minutes.
+- **[Overview](docs/concepts/overview.md)** is the problem this solves and who it suits, with no
+  prior context assumed.
 - **[Architecture](docs/concepts/architecture.md)** is the conceptual reference, and
   **[the pipeline end to end](docs/concepts/pipeline.md)** is the long form with diagrams.
 
@@ -78,6 +107,40 @@ uv sync --extra dev && uv run pytest -q
 Assertions that depend on a live corpus, on its evaluation datasets, or on the GitHub
 card-submission surface skip with a stated reason when their subject is absent. In this
 repository they are expected to skip. In a deployment that has a corpus, they run.
+
+`hive-serve`'s ledger tests are the exception: they start a real Postgres container and fail rather
+than skip when they cannot, because a skipped ledger test reports green.
+
+## Releases
+
+The five published distributions ship as **one engine at one version**. Publication happens only
+from a pushed `v*` tag, to PyPI, wheels only, over Trusted Publishing with no token stored anywhere.
+
+There is no changelog file in this repository, deliberately. The release workflow is the record, so
+what changed in a version lives where that version was actually cut:
+
+- **[Releases](https://github.com/voyagerforge-dev/hive-intelligence/releases)** and
+  **[tags](https://github.com/voyagerforge-dev/hive-intelligence/tags)** on GitHub. Every version is
+  an annotated tag, and its message says what changed and what it breaks. `git show v0.6.0` reads
+  the same thing offline.
+- **PyPI** for what is installable: [vf-hive-prep](https://pypi.org/project/vf-hive-prep/),
+  [vf-hive-gen](https://pypi.org/project/vf-hive-gen/),
+  [vf-hive-serve](https://pypi.org/project/vf-hive-serve/),
+  [vf-hive-dbparse](https://pypi.org/project/vf-hive-dbparse/),
+  [vf-hive-zendesk](https://pypi.org/project/vf-hive-zendesk/). All five carry the same version.
+- **[Distributing the engine](docs/architecture/engine-distribution.md)** is how a version is cut
+  and what a consumer pins.
+
+## Contributing
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) - how to get set up, what CI does to your pull request, and
+  what a good one looks like here.
+- [AGENTS.md](AGENTS.md) - the short, authoritative note on how this repository is built, tested
+  and released, and on the sharp edges. Written for whoever is next in the code, human or
+  otherwise.
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Contributor Covenant 2.1.
+- [SECURITY.md](SECURITY.md) - the private route for a vulnerability. Please do not use a public
+  issue.
 
 ## Licence
 

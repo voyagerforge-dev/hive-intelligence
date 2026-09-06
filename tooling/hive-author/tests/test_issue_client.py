@@ -89,8 +89,8 @@ def test_no_labels_skips_lookup_entirely(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# GitHub. EXAMPLECO returned to github.com/example-org on 2026-08-15, so the same server
-# has to file issues on either forge depending on the deployment.
+# GitHub. A corpus repository can live on either forge, so the same server has to file
+# issues against whichever one a deployment names.
 # ---------------------------------------------------------------------------
 
 def test_github_sends_label_names_not_ids(monkeypatch):
