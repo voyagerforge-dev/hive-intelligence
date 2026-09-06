@@ -101,8 +101,8 @@ vocabulary, which is exactly what makes them a fair check that the machinery is 
 examples written for the Manhattan WMOS/SCALE support practice Hive was first built for, and four
 of the five say so in their `description:` line. What each one describes - how to ground an answer
 in cards, work a diagnosis, plan a piece of work, teach a topic, file a correction - is general;
-the nouns are not. They ship to be adapted to your own domain. Nothing in the engine, the card
-model or the fixtures requires those nouns; [skills/README.md](skills/README.md) has the detail,
+the nouns are not. They ship to be adapted to your own domain. Nothing in the card model or the
+fixtures requires those nouns; [skills/README.md](skills/README.md) has the detail,
 and [known limitations](docs/concepts/principles.md#known-limitations) lists the vocabulary still
 baked into the tooling.
 

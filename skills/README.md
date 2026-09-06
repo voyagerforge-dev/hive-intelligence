@@ -30,8 +30,8 @@ products, `hive/` names one product's configuration regimes (OPS versus Traditio
 `contribute/` names them in its body and enumerates one corpus's facet values. The retrieval
 procedure they describe is general; the nouns are not. A deployment in another domain replaces the
 vocabulary in its own fork of this directory rather than copying the bodies out; nothing in the
-engine, the card model or the test fixtures requires these nouns. Generalising the skills upstream
-so that step is unnecessary is still open work. See
+card model or the test fixtures requires these nouns. Generalising the skills upstream so that step
+is unnecessary is still open work. See
 [known limitations](../docs/concepts/principles.md#known-limitations).
 
 A deployment fork inherits this directory the same way it inherits `tooling/` and `docs/`:
