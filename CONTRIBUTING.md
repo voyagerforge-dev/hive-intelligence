@@ -61,9 +61,17 @@ Install ruff from that range rather than from the package's `dev` extra, which f
 A newer minor of ruff turns on new default rules, so a version outside the pinned range can
 disagree with CI in either direction and you will not find out until the pull request is open.
 
+```
+pip install "mypy>=1.10"         # the floor CI uses; it is not pinned
+mypy hivegen                     # the PACKAGE directory, not `.`
+```
+
 Type checking is opt-in per package: CI runs `mypy` for a package that mentions it in its own
-`pyproject.toml`, and skips the rest. Each package supplies its own ruff and mypy configuration
-there too.
+`pyproject.toml`, and warns loudly for one that does not. Every package under `tooling/` declares
+`[tool.mypy]` today, so your change is type-checked whichever package it lands in. Point mypy at
+the package directory (`mypy hivegen`), the way CI does: `mypy .` additionally reports errors in
+`tests/` and `scripts/` that CI never sees. Each package supplies its own ruff and mypy
+configuration in its `pyproject.toml`.
 
 ## What CI does to your pull request
 
