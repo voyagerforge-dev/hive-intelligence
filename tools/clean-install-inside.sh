@@ -52,10 +52,10 @@ python /proof/index_probe.py
   echo "error: RELEASED_PACKAGES is not set; the harness must pass the released set in" >&2
   exit 1; }
 read -ra released <<<"$RELEASED_PACKAGES"
-PKGS=""
-for pkg in "${released[@]}"; do PKGS="${PKGS:+$PKGS }vf-$pkg==${ENGINE_VERSION}"; done
 
 if [ "${INSTALL_SOURCE:-artefacts}" = "pypi" ]; then
+  PKGS=""
+  for pkg in "${released[@]}"; do PKGS="${PKGS:+$PKGS }vf-$pkg==${ENGINE_VERSION}"; done
   say "3. install them FROM PYPI, the way a consumer would"
   echo "  nothing is mounted at /artefacts: this container holds no local copy of them"
   echo "\$ pip install $PKGS"
@@ -63,13 +63,23 @@ if [ "${INSTALL_SOURCE:-artefacts}" = "pypi" ]; then
   pip install --quiet --report /tmp/report.json $PKGS
   expect_scheme="https"
 else
+  # The mounted wheel FILES, not `vf-name==version` requirements: a name and a version are
+  # also what the index answers, and once that version is published pip prefers the index
+  # copy even with the mount on `--find-links`, which would prove the published wheel rather
+  # than the built one. A file path has one candidate. The filenames are the ones
+  # tools/build-release.sh verifies it wrote, so a mount holding some other version fails
+  # here rather than being installed. Third-party dependencies still come from PyPI.
+  PKGS=""
+  for pkg in "${released[@]}"; do
+    PKGS="${PKGS:+$PKGS }/artefacts/vf_${pkg//-/_}-${ENGINE_VERSION}-py3-none-any.whl"
+  done
   say "3. install them, from the mounted artefacts"
   echo "\$ ls /artefacts"
   ls /artefacts
   echo
-  echo "\$ pip install --find-links /artefacts $PKGS"
+  echo "\$ pip install $PKGS"
   # shellcheck disable=SC2086
-  pip install --quiet --report /tmp/report.json --find-links /artefacts $PKGS
+  pip install --quiet --report /tmp/report.json $PKGS
   expect_scheme="file"
 fi
 pip list 2>/dev/null | grep -E '^vf-hive'

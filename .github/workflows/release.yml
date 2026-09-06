@@ -104,23 +104,30 @@ jobs:
       # The set comes from tools/released-packages.sh, the one place it is stated, and is
       # exported for the two steps below, which check the same set rather than a copy of it.
       # A distribution added there is installed and proved here, or the job fails.
+      # The five are named as the WHEEL FILES `build` produced, not as `vf-name==version`
+      # requirements. A name and a version are also what the index answers, and pip is free to
+      # prefer the published copy: with `--find-links dist` it did exactly that once 0.6.0 was
+      # on PyPI, and this job proved PyPI's wheels instead of the ones `build` had just made.
+      # A file path has one candidate and cannot resolve elsewhere. The filenames are the ones
+      # tools/build-release.sh verifies it wrote, so a set that built some other version fails
+      # here rather than being installed. Third-party dependencies still come from PyPI.
       - name: Install the released set from the built artefacts only, into a fresh venv
         env:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           . tools/released-packages.sh
           echo "RELEASED_PACKAGES=${RELEASED_PACKAGES[*]}" >> "$GITHUB_ENV"
-          specs=()
-          for pkg in "${RELEASED_PACKAGES[@]}"; do specs+=("vf-$pkg==$VERSION"); done
+          wheels=()
+          for pkg in "${RELEASED_PACKAGES[@]}"; do
+            wheels+=("dist/vf_${pkg//-/_}-$VERSION-py3-none-any.whl")
+          done
           python -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install --quiet --report "$RUNNER_TEMP/report.json" \
-            --find-links dist "${specs[@]}"
+            "${wheels[@]}"
           "$RUNNER_TEMP/venv/bin/pip" list | grep -E '^vf-'
-      # `--find-links` ADDS to PyPI rather than replacing it, so once a version exists on the
-      # index a re-run of this tag could resolve them from there and smoke-test the
-      # published copy instead of what `build` just made - which would make this job, the
-      # evidence `publish` depends on, prove nothing. pip's own report says where each one
-      # came from. Not `--no-index`: the third-party dependencies do come from PyPI.
+      # Where they came from is read from pip's own record rather than assumed from the
+      # command above, because this job is the evidence `publish` depends on: an install that
+      # resolved a published copy would make it prove nothing.
       - name: Prove the released set came from dist/, not from an index
         env:
           EXPECT_SCHEME: file
