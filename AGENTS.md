@@ -73,9 +73,12 @@ what mirrors took - so audit what is inside the wheels before tagging, not after
 the names are still free immediately before. A new distribution name additionally needs a pending
 publisher registered on PyPI first, in **its own GitHub environment**: a trusted publisher is
 (owner, repository, workflow, environment), so distributions cannot share one, and only three may
-be pending at a time. A release can therefore legitimately be partial; the workflow's `report` job
-fails the run and names what it could not account for, and the gap is closed by a NEW version,
-never by re-running the tag.
+be pending at a time. Whether PyPI still matches those four fields is answerable without
+publishing anything - `gh workflow run release.yml --ref <branch> -f trusted_publisher_check=true`
+exchanges one OIDC token per environment and reports the status - and that check has to stay in
+`release.yml`, because the workflow file name is one of the four. A release can therefore
+legitimately be partial; the workflow's `report` job fails the run and names what it could not
+account for, and the gap is closed by a NEW version, never by re-running the tag.
 [docs/architecture/engine-distribution.md](docs/architecture/engine-distribution.md) has all of
 it, including why attaching artefacts to a GitHub release was not an option. That decision was
 taken while this repository was private; it is now public, which does not change the release path
