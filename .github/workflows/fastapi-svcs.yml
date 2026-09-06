@@ -108,11 +108,16 @@ jobs:
         run: ruff check .
       # Type-checking is OPT-IN: this runs for a service that mentions mypy in its own
       # pyproject.toml (a [tool.mypy] section and/or a mypy dev dep) and is skipped for one
-      # that does not, so a service that never declares mypy is never type-checked and never
-      # fails on missing config. The `grep -qi mypy` below is the authority on who opts in;
-      # for orientation only, at the time of writing hive-zendesk and hive-dbparse did not.
-      - name: Type check (mypy — opt-in)
+      # that does not, so a service added tomorrow is not failed on config it never wrote.
+      # All six services under tooling/ declare `[tool.mypy]`, so this step type-checks
+      # every one of them; `grep -qi mypy` below stays the authority on who opts in.
+      # The skip is a `::warning::`, not a bare `echo`: hive-zendesk and hive-dbparse
+      # declared no mypy and went unchecked precisely because a skip line buried in a
+      # green step's log reads like nothing happened.
+      - name: Type check (mypy - opt-in)
         working-directory: ${{ matrix.svc }}
+        env:
+          SVC: ${{ matrix.svc }}
         run: |
           if grep -qi 'mypy' pyproject.toml; then
             if [ -d src ]; then tgt=src
@@ -121,7 +126,7 @@ jobs:
             [ -z "$tgt" ] && tgt=.
             echo "mypy $tgt"; mypy "$tgt"
           else
-            echo "mypy not declared in pyproject.toml — skipping type check for this service."
+            echo "::warning::$SVC declares no mypy config - NOT type-checked."
           fi
       - name: Tests (pytest)
         working-directory: ${{ matrix.svc }}

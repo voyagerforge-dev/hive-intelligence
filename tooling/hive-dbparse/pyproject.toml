@@ -36,6 +36,13 @@ hivedbparse = "hivedbparse.run:main"
 line-length = 100
 target-version = "py312"
 
+# Type-checking is opt-in per package in CI; this section is how hive-dbparse opts in.
+# `ignore_missing_imports` covers PyYAML, which ships neither stubs nor a py.typed
+# marker; the alternative is pinning a types-* package that adds nothing here.
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 [build-system]

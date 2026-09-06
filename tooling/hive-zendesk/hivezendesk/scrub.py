@@ -6,6 +6,7 @@ verification gate runs against every emitted card.
 from __future__ import annotations
 
 import re
+from typing import Protocol
 
 from .model import Ticket
 
@@ -44,11 +45,22 @@ def is_sa_id(digits: str) -> bool:
     return _luhn_ok(digits)
 
 
+class _Searchable(Protocol):
+    """All `leaks` asks of a pattern: `.search(text)` answering with a match or None.
+
+    `_PATTERNS` deliberately mixes compiled `re.Pattern` objects with `_SAIdPattern`. Without
+    a shared type mypy joins the two to `object`, which has no `.search`; naming the one
+    capability keeps the mix honest instead of widening the dict to something unusable.
+    """
+
+    def search(self, text: str, /) -> re.Match[str] | None: ...
+
+
 class _SAIdPattern:
     """Duck-types the re interface used by _PATTERNS/scrub, adding structural validation."""
 
     @staticmethod
-    def search(text: str):
+    def search(text: str) -> re.Match[str] | None:
         for m in _THIRTEEN.finditer(text or ""):
             if is_sa_id(m.group()):
                 return m
@@ -61,7 +73,7 @@ class _SAIdPattern:
 
 _SA_ID = _SAIdPattern()
 
-_PATTERNS = {"email": _EMAIL, "phone": _PHONE, "sa_id": _SA_ID}
+_PATTERNS: dict[str, _Searchable] = {"email": _EMAIL, "phone": _PHONE, "sa_id": _SA_ID}
 
 MIN_NAME_LEN = 3
 

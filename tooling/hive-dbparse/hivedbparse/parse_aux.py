@@ -92,7 +92,7 @@ def _is_aux_statement(stmt_text: str) -> bool:
     return True
 
 
-def _parse_aux_statement(stmt_text: str, sqlglot_dialect: str | None) -> exp.Expression | None:
+def _parse_aux_statement(stmt_text: str, sqlglot_dialect: str | None) -> exp.Expr | None:
     """Parse one aux statement, trimming a physical-storage tail if needed.
 
     Real Oracle DDL trails `CREATE INDEX x ON t (cols)` with storage clauses
@@ -288,7 +288,7 @@ def attach_sequences(tables: dict[str, Table], sql: str) -> None:
         _attach_sequence(tables, seq_name)
 
 
-def _apply_node(tables: dict[str, Table], node: exp.Expression) -> None:
+def _apply_node(tables: dict[str, Table], node: exp.Expr) -> None:
     if isinstance(node, exp.Comment):
         _apply_comment(tables, node)
     elif isinstance(node, exp.Alter):

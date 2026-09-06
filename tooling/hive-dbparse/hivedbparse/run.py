@@ -509,8 +509,8 @@ def run(src_root: Path, out_dir: Path, *, limit_modules: int | None = None,
         report.counts["plsql"]["emitted"] += 1
 
     with (out_dir / "manifest.jsonl").open("w") as fh:
-        for line in manifest_lines:
-            fh.write(json.dumps(line) + "\n")
+        for record in manifest_lines:
+            fh.write(json.dumps(record) + "\n")
 
     # Deduped same-dialect same-name duplicates are visible but non-fatal:
     # record them in conflicts.log (written whenever any exist) so nothing is
