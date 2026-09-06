@@ -66,7 +66,7 @@ flagged where they appear.
 For `IDENTITY_HEADER`'s ledger-owner role and the mandatory proxy for wider exposure, see
 [the serving trust boundary](../guides/serving-cards.md#identity-and-what-it-is-not).
 
-### `CONCEPTS_DIR` has no default, since 0.7.0
+### `CONCEPTS_DIR` has no default
 
 > **Breaking in 0.7.0.** `CONCEPTS_DIR` and `CLIENTS_DIR` used to default to `../../concepts` and
 > `../../clients`. A deployment that relied on either must now set it explicitly, preferably to an
@@ -204,7 +204,7 @@ default and validated at startup or at the point of use.
 
 `CONCEPTS_DIR` and `CLIENTS_DIR` joined that list in 0.7.0, and were its weakest link until then:
 both carried a **relative** default that a working directory could make real. See
-[`CONCEPTS_DIR` has no default](#concepts_dir-has-no-default-since-070).
+[`CONCEPTS_DIR` has no default](#concepts_dir-has-no-default).
 
 A default that points somewhere plausible does not save you configuration. It moves the failure from
 startup, where it is obvious, to first use, where it appears as a connection error against a host

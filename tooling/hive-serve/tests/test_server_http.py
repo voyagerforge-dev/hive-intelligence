@@ -29,13 +29,14 @@ def test_metrics_endpoint_not_shadowed_by_mcp_mount(card_client):
 # --------------------------------------------------------------------------
 # What a first visitor sees when a required setting is missing.
 #
-# `docs/guides/getting-started.md` shows both refusals as a single line naming
-# the setting, and prefaces the whole guide with "every output below was run
-# against this repository". They were not: `main()` let the exception escape,
-# so the operator got fifteen frames of click/uvicorn/psycopg internals with
-# the sentence that explains the problem on the last one. The frames say
-# nothing a reader can act on - the message already does - and burying it is
-# how a one-setting mistake reads as a crash.
+# `docs/guides/getting-started.md` shows the LEDGER_DSN refusal as a single line
+# naming the setting and says CONCEPTS_DIR refuses the same way, and prefaces the
+# whole guide with "every output below was run against this repository". The
+# LEDGER_DSN one did not: `_conn_factory` raised an ordinary exception, so the
+# operator got fifteen frames of click/uvicorn/psycopg internals with the
+# sentence that explains the problem on the last one. The frames say nothing a
+# reader can act on - the message already does - and burying it is how a
+# one-setting mistake reads as a crash.
 #
 # These run the installed console script rather than calling `main()`, because
 # the traceback is printed by the interpreter after `main()` returns control,
@@ -76,7 +77,7 @@ def test_an_unset_ledger_dsn_refuses_in_one_line_and_not_a_traceback(tmp_path):
     assert "LEDGER_DSN" in r.stderr, r.stderr
 
 
-def test_an_unset_concepts_dir_refuses_in_one_line_and_not_a_traceback(tmp_path):
+def test_an_unset_concepts_dir_refuses_naming_the_setting_and_not_a_traceback(tmp_path):
     r = _hiveserve(tmp_path,
                    {"LEDGER_DSN": "postgresql://nobody@127.0.0.1:1/none", "CLIENTS_DIR": ""},
                    {"CONCEPTS_DIR"})

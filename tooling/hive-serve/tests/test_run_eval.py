@@ -320,12 +320,10 @@ def test_eval_refuses_a_client_tree_whose_cards_the_index_does_not_load(client_m
     assert client_memory["ran"] is False
 
 
-def test_an_unconfigured_clients_dir_default_is_not_reported_as_a_dead_path(corpus,
-                                                                           monkeypatch,
-                                                                           capsys):
+def test_an_absent_clients_dir_is_not_reported_as_a_dead_path(corpus, monkeypatch, capsys):
     """An absent CLIENTS_DIR is a deployment with no client memory, not a misconfiguration.
 
-    It has no default to be dead since 0.7.0, so there is nothing to name; warning anyway
+    It has no default to be dead since 0.7.0, so there is no path to name; warning anyway
     would fire on every run of such a deployment - noise that trains people to ignore the
     real one. What must still refuse is a set that needs client memory, below."""
     monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
@@ -341,9 +339,9 @@ def test_an_unconfigured_clients_dir_default_is_not_reported_as_a_dead_path(corp
     assert corpus["kwargs"]["clients_dir"] is None
 
 
-def test_an_unconfigured_clients_dir_default_still_refuses_a_set_that_needs_client_memory(
+def test_an_absent_clients_dir_still_refuses_a_set_that_needs_client_memory(
         client_memory, monkeypatch):
-    """Staying quiet about the default must not extend to the case that actually matters:
+    """Staying quiet about an absent setting must not extend to the case that matters:
     a set with client rows and nowhere to load them from is the wrong-aggregate bug."""
     monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
     monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
@@ -362,10 +360,9 @@ def test_an_explicitly_empty_clients_dir_is_deliberate_off_and_not_reported_as_d
     """`CLIENTS_DIR=` is what `.env.example` ships, so it is what most operators send.
 
     It is indistinguishable in effect from unset and must read the same: client memory
-    off, no warning. This is the half of the provenance rule that the value cannot show -
-    a dead path the operator did write down is still reported, which is the test above -
-    and it is why empty is checked at `clients_base` rather than by asking whether the
-    setting was supplied.
+    off, no warning. What still gets reported is a non-empty path that is dead, which is
+    `test_eval_says_out_loud_that_a_dead_clients_dir_disabled_client_memory` above, and
+    the difference between the two is decided once at `clients_base`.
     """
     monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
     monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))

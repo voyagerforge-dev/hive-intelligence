@@ -19,7 +19,7 @@ and editor agents speak directly. Neither starts without `LEDGER_DSN`.
 
 `CLIENTS_DIR` is optional: leave it empty to disable client memory entirely. `CONCEPTS_DIR` is
 required and has no default - see
-[configuration](../reference/configuration.md#concepts_dir-has-no-default-since-070) for why it
+[configuration](../reference/configuration.md#concepts_dir-has-no-default) for why it
 lost the one it had, and [the table](../reference/configuration.md#hive-serve) for the full set.
 
 ## Identity, and what it is not

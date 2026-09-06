@@ -144,15 +144,14 @@ def test_stamp_refuses_a_product_less_include_without_a_traceback(tmp_path, monk
 
 
 # --------------------------------------------------------------------------
-# `--version` is the one command whose whole job is to answer from installed
-# distribution metadata, so it is the one command a unit test cannot vouch for.
-# `click.version_option()` with no `package_name` looks the metadata up under
-# the *module* name, `hiveprep`, and this distribution is `vf-hive-prep`, so it
-# raised `RuntimeError: 'hiveprep' is not installed` for anyone who ran it -
-# in an editable checkout and, identically, from the published wheel, because
-# the distribution name is the same in both. Invoking the console entry point
-# in a subprocess is what makes that reachable: `CliRunner` exercises the same
-# lookup, but a green unit test over a broken installed command is exactly the
+# `--version`'s whole job is to answer from installed distribution metadata.
+# `click.version_option()` with no `package_name` looks that up under the
+# *module* name, `hiveprep`, and this distribution is `vf-hive-prep`, so in an
+# editable install - where nothing maps the module back to a distribution - it
+# raised `RuntimeError: 'hiveprep' is not installed` for anyone who ran it.
+# `CliRunner` exercises the same lookup; what it cannot vouch for is the
+# console entry point, which is the command that ships, so this runs it in a
+# subprocess - a green unit test over a broken installed command is exactly the
 # false positive this guards.
 # --------------------------------------------------------------------------
 
