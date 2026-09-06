@@ -636,7 +636,7 @@ def live_corpus(tmp_path, monkeypatch):
 
     monkeypatch.chdir(tmp_path)
     for key in ("CONCEPTS_DIR", "CLIENTS_DIR", "EVAL_DIR", "OKF_DATA_DIR",
-                "ANSWER_MODEL", "JUDGE_MODEL"):
+                "SELECT_MODEL", "ANSWER_MODEL", "JUDGE_MODEL"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("CONCEPTS_DIR", str(concepts))
     monkeypatch.setenv("EVAL_DIR", str(evals))
@@ -673,9 +673,9 @@ def test_eval_exits_nonzero_and_names_the_role_when_a_model_returns_nothing(
 
 def test_eval_exits_nonzero_when_only_the_selector_returns_nothing(
         live_corpus, monkeypatch, capsys):
-    """A silent SELECTOR used to score as a retrieval miss and exit 0. On a real eight-set
-    run that reported 17 misses which were all empty responses - a retrieval collapse the
-    harness had never observed."""
+    """A silent SELECTOR used to score as a retrieval miss and exit 0. A candidate selection
+    default returned nothing on 7 of 16 real selection prompts, and the harness reported
+    those as part of a retrieval collapse it had never observed."""
     class _SilentSelector:
         """Answers and judges normally; only the selection call returns nothing."""
         def complete(self, system, user):

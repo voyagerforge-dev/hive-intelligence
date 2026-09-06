@@ -231,10 +231,13 @@ run. The same holds for the selector: a reply this cannot parse, or one naming o
 is a genuine retrieval miss measured by `select_hit` and `bundle_hit`.
 
 **`select_empty` joined them on 2026-09-06.** The selector was excluded until then, on the
-reasoning that a selector returning nothing is just a retrieval miss. An eight-set run on a newly
-defaulted selection model produced 17 misses of which every one was an empty response rather than
-a wrong choice, and the harness reported a retrieval collapse it had never observed - the same
-shape of false zero the answer and judge guards already existed to prevent.
+reasoning that a selector returning nothing is just a retrieval miss. DeepSeek V4 Flash 0731,
+measured as a candidate selection default, produced no usable `card_ids` list on 16 of 16 real
+selection prompts: 7 empty responses and 9 replies in a different JSON schema. The 7 are what this
+guard catches - the harness scored them as retrieval misses and reported a collapse it had never
+observed, the same shape of false zero the answer and judge guards already existed to prevent. The
+other 9 are not covered and are not meant to be: a wrong-schema reply is an unparseable selection
+naming no card ids, which stays a genuine retrieval miss by the rule above.
 
 ## Internals
 

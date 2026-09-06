@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+
 from hivezendesk.config import Settings
 
 
@@ -32,3 +35,31 @@ def test_r2_bucket_has_no_default(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)  # no .env of the developer's own
     monkeypatch.delenv("R2_BUCKET", raising=False)
     assert _s().r2_bucket == ""
+
+
+# --------------------------------------------------------------------------
+# `.env.example` is the file a new operator copies to `.env` as their first step, so a
+# value in it that disagrees with `config.py` is a silent override of the shipped
+# default rather than a mismatch anyone notices.
+# --------------------------------------------------------------------------
+
+ENV_EXAMPLE = Path(__file__).resolve().parents[1] / ".env.example"
+
+
+def _settings_from_env_example(tmp_path, monkeypatch):
+    """Build Settings the way an operator's first run does: .env.example copied to .env."""
+    monkeypatch.chdir(tmp_path)
+    for key in list(os.environ):
+        if key.lower() in Settings.model_fields:
+            monkeypatch.delenv(key, raising=False)
+    (tmp_path / ".env").write_text(ENV_EXAMPLE.read_text())
+    return Settings()
+
+
+def test_env_example_matches_the_shipped_model_defaults(tmp_path, monkeypatch):
+    """OpenRouter has no alias layer, so a bare `minimax-m3` copied out of this file
+    reaches a live endpoint and comes back as an unknown model - every linking call fails
+    while `config.py` and the docs say the default is provider-qualified."""
+    s = _settings_from_env_example(tmp_path, monkeypatch)
+    for field in ("distill_model", "rerank_model"):
+        assert getattr(s, field) == Settings.model_fields[field].default

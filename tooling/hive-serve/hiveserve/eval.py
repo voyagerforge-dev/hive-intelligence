@@ -92,10 +92,11 @@ def judge_answer(question, answer, reference_text, llm) -> dict:
 
 # Every role whose silence invalidates the run. `select` was excluded until 2026-09-06,
 # on the reasoning that a selector returning nothing is a retrieval miss the select_hit
-# column already measures. That was wrong: an eight-set run on a newly defaulted selector
-# scored 17 misses, every one of them an empty response rather than a wrong choice, and
-# reported a retrieval collapse it had never observed. A model that says nothing measures
-# nothing, whichever role it holds.
+# column already measures. That was wrong: a candidate selection default produced no usable
+# card_ids on 16 of 16 real selection prompts, 7 of them empty responses, and those 7 were
+# reported as a retrieval collapse the harness had never observed. A model that says
+# nothing measures nothing, whichever role it holds. The other 9 replies used a different
+# JSON schema; an unparseable selection names no cards and stays a genuine miss.
 _EMPTY_MODEL_ROLES = ("select", "answer", "judge")
 
 
