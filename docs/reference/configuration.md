@@ -71,6 +71,11 @@ For `IDENTITY_HEADER`'s ledger-owner role and the mandatory proxy for wider expo
 > **Breaking in 0.7.0.** `CONCEPTS_DIR` and `CLIENTS_DIR` used to default to `../../concepts` and
 > `../../clients`. A deployment that relied on either must now set it explicitly, preferably to an
 > absolute path. `hiveserve serve` refuses to start without `CONCEPTS_DIR` and names it.
+>
+> `CLIENTS_DIR` does not refuse, by design, so an upgrade is silent there: a deployment whose
+> `../../clients` happened to resolve onto a real tree now has client memory **off**, answers
+> client questions from shared cards alone, and logs nothing about it. **Set `CLIENTS_DIR`
+> explicitly to keep client memory.**
 
 Those defaults were resolved against the **working directory of the process**, not against where
 `hive-serve` is installed. Two identically configured deployments started from two different

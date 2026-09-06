@@ -163,14 +163,15 @@ def test_version_answers_through_the_installed_console_entry_point():
     from importlib.metadata import version
     from pathlib import Path
 
-    # The interpreter's own bin directory first, so a venv is not shadowed by a
-    # hiveprep installed elsewhere on PATH; PATH second, for a layout that separates them.
+    # The interpreter's own bin directory, and only there: the binary under test and the
+    # metadata it is asserted against must come from one environment.
     bindir = str(Path(sys.executable).parent)
-    exe = shutil.which("hiveprep", path=bindir) or shutil.which("hiveprep")
+    exe = shutil.which("hiveprep", path=bindir)
     assert exe, "hiveprep console script is not installed in this environment"
     # check=False: the exit code is the assertion, and raising here would hide the
-    # stderr that says which lookup failed.
-    r = subprocess.run([exe, "--version"], capture_output=True, text=True, check=False)
+    # stderr that says which lookup failed. timeout: a regression must fail, not hang.
+    r = subprocess.run([exe, "--version"], capture_output=True, text=True, check=False,
+                       timeout=60)
 
     assert r.returncode == 0, f"hiveprep --version exited {r.returncode}: {r.stderr}"
     assert "Traceback" not in r.stderr, r.stderr

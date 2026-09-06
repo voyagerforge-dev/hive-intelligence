@@ -61,8 +61,8 @@ LEDGER_DSN is not set. The ledger is Postgres since 2026-08-19; there is no file
 because falling back is how an empty ledger gets served as if it were the real one.
 ```
 
-One line and exit 1, not a traceback. The same is true of `CONCEPTS_DIR`, which has no default
-either - see [configuration](../reference/configuration.md#where-the-corpus-is).
+One line and exit 1, not a traceback. `CONCEPTS_DIR` refuses the same way, naming the setting: it
+has no default either - see [configuration](../reference/configuration.md#where-the-corpus-is).
 
 ## 4. Query it
 

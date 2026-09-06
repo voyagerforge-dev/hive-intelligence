@@ -61,10 +61,10 @@ so a local `mypy .` is not evidence of anything.
 
 Every distribution is named `vf-hive-*` while the package it installs is `hive*`, so anything that
 reads its own installed metadata must be told the **distribution** name: `hiveprep --version`
-raised `PackageNotFoundError` in the published wheel for exactly this reason, because
-`click.version_option()` looks the name up under the module. A CLI's `--version` is also the one
-command a `CliRunner` test cannot vouch for - it resolves metadata that only an install has - so
-test it by running the console script.
+raised `RuntimeError: 'hiveprep' is not installed. Try passing 'package_name' instead.` for exactly
+this reason - in a checkout and in the published wheel alike - because `click.version_option()`
+looks the name up under the module. A `CliRunner` test exercises that same lookup; what it cannot
+vouch for is the installed console script, which is what ships, so test `--version` by running it.
 
 `hive-serve`'s ledger tests start a real Postgres container (docker or podman) and deliberately fail
 rather than skip when they cannot. `hiveserve serve` itself also refuses to start without

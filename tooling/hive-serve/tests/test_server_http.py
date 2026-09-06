@@ -49,18 +49,22 @@ def _hiveserve(cwd, env_overrides, missing):
     import sys
     from pathlib import Path
 
-    # The interpreter's own bin directory first, so a venv is not shadowed by a
-    # hiveserve installed elsewhere on PATH; PATH second, for a layout that separates them.
+    # The interpreter's own bin directory, and only there: the refusal under test must
+    # come from the same environment the rest of the suite imports.
     bindir = str(Path(sys.executable).parent)
-    exe = shutil.which("hiveserve", path=bindir) or shutil.which("hiveserve")
+    exe = shutil.which("hiveserve", path=bindir)
     assert exe, "hiveserve console script is not installed in this environment"
     env = {k: v for k, v in os.environ.items() if k not in missing}
+    # A regressed refusal reaches `uvicorn.run`, so it must not be able to take a port
+    # anything else is using: port 1 is unbindable unprivileged, and the timeout below
+    # is what fails the test red where it is bindable.
+    env.update({"HOST": "127.0.0.1", "PORT": "1"})
     env.update(env_overrides)
     # From `cwd`, not the package root: `env_file=".env"` is resolved against the working
     # directory, and a developer's own `.env` would supply what the test removed.
     # check=False: a non-zero exit is what these tests assert on.
     return subprocess.run([exe, "serve", "--http"], capture_output=True, text=True,
-                          env=env, cwd=str(cwd), check=False)
+                          env=env, cwd=str(cwd), check=False, timeout=60)
 
 
 def test_an_unset_ledger_dsn_refuses_in_one_line_and_not_a_traceback(tmp_path):
