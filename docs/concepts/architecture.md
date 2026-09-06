@@ -94,6 +94,7 @@ flowchart LR
     agent --> rest
     agent --> mcp
     rest --> tools
+    rest --> resolver
     mcp --> tools
     mcp --> dbo
     mcp --> ledgerm
@@ -183,7 +184,7 @@ The chain of custody, and the one credential in it:
 ```mermaid
 flowchart TB
     agent["An agent, or the person using one"]
-    serve["hive-serve<br/><b>holds no credential</b><br/>proposes, writes nothing"]
+    serve["hive-serve<br/><b>holds no credential</b><br/>proposes, writes no card"]
     author["hive-author<br/>one token: issues:write, one repository<br/>cannot push, merge or open a pull request"]
     issue["Issue on the corpus repository<br/>labelled hive-correction or hive-memory"]
     pr["Pull request, opened by an Action<br/>once a code owner applies the approval label"]
