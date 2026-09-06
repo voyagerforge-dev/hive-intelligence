@@ -18,11 +18,14 @@ class Settings(BaseSettings):
     # selection prompts 0731 produced a usable `card_ids` list 0 times against this
     # one's 16, emitting a different JSON schema (`doc_id`, `score`) or nothing at all.
     #
-    # The id below carries no date suffix, which is how OpenRouter names that April
-    # release; it is provider-qualified already, and does not float. On OpenRouter
-    # `deepseek/deepseek-v4-flash` is a pinned entry created 2026-04-24 and
-    # `deepseek/deepseek-v4-flash-0731` a separate one created 2026-07-31 with a different
-    # context window; the floating alias is named separately, with a `-latest` suffix.
+    # The id below carries no date suffix, and is provider-qualified already. Observed on
+    # OpenRouter 2026-09-06: `deepseek/deepseek-v4-flash` and the `-0731` id were separate
+    # catalogue entries, created 2026-04-24 and 2026-07-31 with different context windows,
+    # and the floating alias carried a distinct `-latest` name - so the undated id named
+    # the April release rather than tracking the newest Flash. That catalogue is a third
+    # party's and nothing here can check it: if those entries are ever collapsed or the
+    # undated id repointed, selection moves onto the rejected release with no error, so
+    # re-read the catalogue rather than trusting this note.
     select_model: str = "deepseek/deepseek-v4-flash"
     answer_model: str = "deepseek/deepseek-v4-pro"
     judge_model: str = "deepseek/deepseek-v4-pro"
