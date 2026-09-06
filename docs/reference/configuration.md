@@ -248,8 +248,8 @@ an empty answer is never allowed to become a wrong one.
 supported deployment. It is never a startup refusal. Empty is coerced to "off" once, in
 `hiveserve/resolver.py`, so every door agrees; `run_eval` refuses only when the eval set it was
 handed actually has rows that exercise client memory, and otherwise reports a dead path rather than
-degrading quietly - but only when some source actually set `CLIENTS_DIR`, since naming a default
-nobody chose would warn on every run of a deployment that has no client memory. See
+degrading quietly - whenever `CLIENTS_DIR` names a path at all. Empty or unset has no path to name,
+so it is client memory off and is never reported. See
 [hive-serve](hive-serve.md#the-evaluation-harness) for what the eval does with it.
 
 An emptiness check counts what the consumer counts. `run_eval` asks `load_index` rather than

@@ -39,7 +39,7 @@ def test_settings_reads_env(monkeypatch):
 
 
 def test_settings_have_serving_defaults():
-    s = Settings()
+    s = Settings(_env_file=None)
     assert s.okf_data_dir
     assert s.host == "127.0.0.1"
     assert s.port == 8000
@@ -57,7 +57,7 @@ def test_the_corpus_settings_have_no_default_to_resolve():
     CONCEPTS_DIR and what `clients_base` reads as off for CLIENTS_DIR; a non-empty default
     reinstates the trap whatever it points at.
     """
-    s = Settings()
+    s = Settings(_env_file=None)
     assert s.concepts_dir == ""
     assert s.clients_dir == ""
 

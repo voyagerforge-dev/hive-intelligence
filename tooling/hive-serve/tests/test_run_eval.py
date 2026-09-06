@@ -320,15 +320,26 @@ def test_eval_refuses_a_client_tree_whose_cards_the_index_does_not_load(client_m
     assert client_memory["ran"] is False
 
 
-def test_an_absent_clients_dir_is_not_reported_as_a_dead_path(corpus, monkeypatch, capsys):
-    """An absent CLIENTS_DIR is a deployment with no client memory, not a misconfiguration.
+@pytest.mark.parametrize("value", [None, ""], ids=["absent", "explicitly-empty"])
+def test_an_empty_or_absent_clients_dir_is_off_and_is_not_reported_as_a_dead_path(
+        value, corpus, monkeypatch, capsys):
+    """Either way it is a deployment with no client memory, not a misconfiguration.
 
-    It has no default to be dead since 0.7.0, so there is no path to name; warning anyway
-    would fire on every run of such a deployment - noise that trains people to ignore the
-    real one. What must still refuse is a set that needs client memory, below."""
+    Neither has a path to name - there has been no default to be dead since 0.7.0 - so
+    warning would fire on every run of such a deployment, noise that trains people to
+    ignore the real one. `CLIENTS_DIR=` is what `.env.example` ships, so it is what most
+    operators send, and it must read exactly like unset. What still gets reported is a
+    non-empty path that is dead, which is
+    `test_eval_says_out_loud_that_a_dead_clients_dir_disabled_client_memory` above; the
+    difference between the two is decided once at `clients_base`, not by asking whether
+    some source supplied the setting. What must still refuse is a set that needs client
+    memory, below."""
     monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
     monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
-    monkeypatch.delenv("CLIENTS_DIR", raising=False)
+    if value is None:
+        monkeypatch.delenv("CLIENTS_DIR", raising=False)
+    else:
+        monkeypatch.setenv("CLIENTS_DIR", value)
     get_settings.cache_clear()
     _argv(monkeypatch, "progressive", "wave-replen")
 
@@ -353,28 +364,6 @@ def test_an_absent_clients_dir_still_refuses_a_set_that_needs_client_memory(
         run_eval_module.main()
     assert "CLIENTS_DIR" in str(exc.value)
     assert client_memory["ran"] is False
-
-
-def test_an_explicitly_empty_clients_dir_is_deliberate_off_and_not_reported_as_dead(
-        corpus, monkeypatch, capsys):
-    """`CLIENTS_DIR=` is what `.env.example` ships, so it is what most operators send.
-
-    It is indistinguishable in effect from unset and must read the same: client memory
-    off, no warning. What still gets reported is a non-empty path that is dead, which is
-    `test_eval_says_out_loud_that_a_dead_clients_dir_disabled_client_memory` above, and
-    the difference between the two is decided once at `clients_base`.
-    """
-    monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
-    monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
-    monkeypatch.setenv("CLIENTS_DIR", "")
-    get_settings.cache_clear()
-    _argv(monkeypatch, "progressive", "wave-replen")
-
-    run_eval_module.main()
-
-    assert "CLIENTS_DIR" not in capsys.readouterr().out
-    assert corpus["ran"] is True
-    assert corpus["kwargs"]["clients_dir"] is None
 
 
 def test_an_isolation_control_row_runs_though_its_client_has_no_cards(client_memory,
