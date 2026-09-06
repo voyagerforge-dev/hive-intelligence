@@ -42,7 +42,6 @@ vocabulary on purpose: it is a fair test that the machinery is domain-neutral.
 CONCEPTS_DIR=tests/fixtures/corpus/concepts \
 CLIENTS_DIR=tests/fixtures/corpus/clients \
 LEDGER_DSN=postgresql://hive:hive@127.0.0.1:5433/hive \
-OKF_DATA_DIR=/tmp/hive-demo \
 HOST=127.0.0.1 PORT=8099 \
 uv run hiveserve serve --http
 ```
@@ -54,9 +53,6 @@ StreamableHTTP session manager started
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8099 (Press CTRL+C to quit)
 ```
-
-`LEDGER_DSN` is the ledger. `OKF_DATA_DIR` is unrelated scratch space, and despite the name holds
-no ledger; it is created on first use.
 
 Leave `LEDGER_DSN` out and the server refuses to start, by design:
 
@@ -229,7 +225,6 @@ Stop the HTTP server and run the MCP door instead:
 CONCEPTS_DIR=tests/fixtures/corpus/concepts \
 CLIENTS_DIR=tests/fixtures/corpus/clients \
 LEDGER_DSN=postgresql://hive:hive@127.0.0.1:5433/hive \
-OKF_DATA_DIR=/tmp/hive-demo \
 uv run hiveserve serve --stdio
 ```
 
@@ -282,7 +277,6 @@ before exposing this to anyone.
 
 ```bash
 podman rm -f hive-demo-pg
-rm -rf /tmp/hive-demo
 ```
 
 ## Next

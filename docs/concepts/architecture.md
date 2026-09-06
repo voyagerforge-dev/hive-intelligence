@@ -25,7 +25,7 @@ and the diagrams, read [the pipeline end to end](pipeline.md).
    └──────────────┘
         │                        ▲
         ▼                        │
-   an agent  ───────────────────┘
+   an agent  ────────────────────┘
         │
         ▼
    ┌──────────────┐

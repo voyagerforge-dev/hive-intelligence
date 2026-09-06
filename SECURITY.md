@@ -8,16 +8,19 @@ would still very much like to hear about it.
 
 **Do not open a public issue for a security problem.**
 
-Use GitHub's private vulnerability reporting: the **Security** tab of this repository, then
-**Report a vulnerability**. It opens a private thread visible only to you and the maintainers,
-and it is the preferred route because it keeps the discussion attached to the code.
+Email **security@voyagerforge.dev**. That route always works and is the one to use if you are
+unsure.
 
-If that is unavailable to you, email **security@voyagerforge.dev**.
+Once private vulnerability reporting is enabled on this repository, the preferred route is
+GitHub's own: the **Security** tab, then **Report a vulnerability**. It opens a private thread
+visible only to you and the maintainers, and it keeps the discussion attached to the code. If that
+tab offers you no such button, the feature is not on yet - use the email address above.
 
 A report is most useful when it says which package it concerns (`vf-hive-prep`, `vf-hive-gen`,
-`vf-hive-serve`, `vf-hive-author`, `vf-hive-dbparse`, `vf-hive-zendesk`), which version, what an
-attacker can do with it, and the shortest sequence of steps that shows it. A proof of concept is
-welcome; a working exploit is not required.
+`vf-hive-serve`, `vf-hive-dbparse`, `vf-hive-zendesk`, or `hive-author`, which is not published to
+PyPI and is reported against its source in `tooling/hive-author`), which version, what an attacker
+can do with it, and the shortest sequence of steps that shows it. A proof of concept is welcome; a
+working exploit is not required.
 
 Please do not include real customer data, credentials, or a corpus in a report. If reproducing
 the issue needs one, describe its shape instead and we will work out a synthetic case.
