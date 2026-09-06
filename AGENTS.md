@@ -46,8 +46,13 @@ CI (`.github/workflows/fastapi-svcs.yml`) runs `ruff check .`, opt-in `mypy`, an
 CI pins `ruff>=0.16,<0.17` while the packages' dev extras say `ruff>=0.7`: the locally resolved ruff
 can disagree with CI in both directions, so check with the pinned range before claiming green.
 
+CI runs `mypy` against the **package directory**, not the package root: `mypy hivegen`, never
+`mypy .`. Running it the second way reports errors in `tests/` and `scripts/` that CI never sees,
+so a local `mypy .` is not evidence of anything.
+
 `hive-serve`'s ledger tests start a real Postgres container (docker or podman) and deliberately fail
-rather than skip when they cannot.
+rather than skip when they cannot. `hiveserve serve` itself also refuses to start without
+`LEDGER_DSN`, on either transport, so any doc or script that runs it needs a database.
 
 ## Releasing it
 
