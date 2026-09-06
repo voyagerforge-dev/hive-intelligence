@@ -46,22 +46,18 @@ def entry_product(entry: dict) -> str:
     for. That is a wrong answer rather than a safe one: the product is the leading segment
     of every slug, so a mis-defaulted entry writes its atomic doc, its R2 key and its
     stamped frontmatter under a product the corpus may not even contain, and nothing
-    downstream can tell that apart from a deliberate choice. Refusing names the entry and
-    the vocabulary the corpus profile declares, which is a problem an operator can fix.
+    downstream can tell that apart from a deliberate choice. Refusing names the entry, which
+    is a problem an operator can fix; `hiveprep validate-plan` is the gate that lists this
+    corpus's known products and reports every offending entry at once.
     """
     product = str(entry.get("product") or "").strip()
     if product:
         return product
-    # Imported here rather than at module scope: this package's slug identity does not
-    # otherwise depend on the corpus profile, and only the failure path needs to read it.
-    from hiveprep.profile import load_curation_vocabulary
-    known = sorted(load_curation_vocabulary().get("products") or [])
-    vocabulary = (", ".join(known) if known else
-                  "none - the corpus profile declares no `curation.products`")
     raise ValueError(
         f"curation plan include {entry.get('path') or '<no path>'!r} has no `product`. "
         "It has no default: the product is the first segment of the slug every later "
-        f"stage keys on. Known products: {vocabulary}."
+        "stage keys on. Run `hiveprep validate-plan` for this corpus's known products and "
+        "every entry that is missing one."
     )
 
 

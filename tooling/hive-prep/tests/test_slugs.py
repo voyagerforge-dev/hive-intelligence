@@ -37,29 +37,10 @@ def test_assign_slugs_de_collides_separator_variants():
 # product is the first segment of every slug, so that default silently filed a document
 # under a product the corpus may not even have.
 
-def test_a_product_less_include_is_refused_by_name(monkeypatch):
-    monkeypatch.setattr("hiveprep.profile.load_curation_vocabulary",
-                        lambda *a, **k: {"products": ["WIDGETS"], "platforms": []})
+def test_a_product_less_include_is_refused_by_name():
     with pytest.raises(ValueError) as e:
         entry_product({"path": "w/Work Order.pdf"})
     assert "w/Work Order.pdf" in str(e.value) and "product" in str(e.value)
-    assert "WMS" not in str(e.value)     # the old default, gone rather than quietly used
-
-
-def test_the_refusal_names_the_products_the_profile_declares(monkeypatch):
-    """An operator can only fix this if they are told what the corpus accepts."""
-    monkeypatch.setattr("hiveprep.profile.load_curation_vocabulary",
-                        lambda *a, **k: {"products": ["GADGETS", "WIDGETS"], "platforms": []})
-    with pytest.raises(ValueError, match="GADGETS, WIDGETS"):
-        entry_product({"path": "w/Work Order.pdf"})
-
-
-def test_the_refusal_says_so_when_the_profile_declares_none(monkeypatch):
-    """Silence about the vocabulary would read as "there are none you may use"."""
-    monkeypatch.setattr("hiveprep.profile.load_curation_vocabulary",
-                        lambda *a, **k: {"products": [], "platforms": []})
-    with pytest.raises(ValueError, match="declares no `curation.products`"):
-        entry_product({"path": "w/Work Order.pdf"})
 
 
 def test_an_empty_product_is_refused_like_a_missing_one():

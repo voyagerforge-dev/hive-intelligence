@@ -34,8 +34,9 @@ plan is well formed. It cannot check that it is *right*, and nothing downstream 
 you meant to exclude a directory.
 
 `product` is required on every include and has no default. It leads every slug, so a missing one
-cannot be guessed; `validate-plan` reports it, and `slugs.entry_product` refuses one that reaches
-the slug layer anyway. Both name the products declared in the profile's `curation.products`. The
+cannot be guessed; `validate-plan` reports every offending entry and lists the products declared in
+the profile's `curation.products`, and `slugs.entry_product` refuses one that reaches the slug layer
+anyway, naming the entry and pointing back at `validate-plan` for the vocabulary. The
 platform and product vocabularies are otherwise checked only when the profile declares them - an
 empty vocabulary means "not configured", not "reject everything".
 
