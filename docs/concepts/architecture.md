@@ -76,13 +76,11 @@ flowchart LR
     agent["An agent client"]
 
     subgraph doors["Two doors"]
-        direction TB
         rest["REST · app.py<br/>shared knowledge only"]
         mcp["MCP · mcp_app.py<br/>15 tools, client context, ledger"]
     end
 
     subgraph core["One core"]
-        direction TB
         tools["tools.py<br/>transport-agnostic wrappers"]
         resolver["resolver.py<br/>load_index · get_card · resolve"]
         ranking["ranking.py<br/>keyword scorer, no embeddings"]

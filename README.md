@@ -17,20 +17,20 @@ decides what it is allowed to reason over.
 **OKF is the format. Hive is the system.** Cards on disk carry `okf_version: "0.1"`; the tooling
 that produces and serves them is Hive.
 
-Six packages, one corpus repository and one ledger. Everything to the left of the corpus writes
-cards; everything to the right of it only reads them, and makes no model call at serving time:
+Six packages, one corpus repository and one ledger. The production packages on the left write the
+cards; `hive-serve` on the right only reads them, and makes no model call at serving time.
+`hive-author` is the one write door on the serving side, and what it writes is a reviewable issue,
+never a card:
 
 ```mermaid
 flowchart LR
     subgraph inputs["Inputs"]
-        direction TB
         raw["Raw documents<br/>PDF · DOCX · PPTX · XLSX"]
         ddl["Schema DDL"]
         tickets["Closed support tickets"]
     end
 
     subgraph produce["Card production"]
-        direction TB
         prep["hive-prep"]
         gen["hive-gen"]
         dbp["hive-dbparse<br/><i>no model</i>"]

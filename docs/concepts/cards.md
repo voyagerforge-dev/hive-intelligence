@@ -50,9 +50,10 @@ under `concepts/`; clients are top-level folders under `clients/`.
 
 ## The lifecycle of a card
 
-A card carries exactly one lifecycle field, `status`, and the code recognises exactly two values in
-it. `hivegen.promote.promote` is the only thing that moves a file out of `drafts/`, and it moves
-nothing that is not already `approved`:
+A card carries one lifecycle field, `status`, and each package recognises the values its own job
+needs. The concept-card path uses two of them: `hivegen.card` writes `draft`, and
+`hivegen.promote.promote`, the only thing that moves a file out of `drafts/`, moves nothing that is
+not already `approved`:
 
 ```mermaid
 stateDiagram-v2
@@ -76,6 +77,19 @@ each reason and leaves the file where it is.
 
 There is no rejected state and no deleted state either. A draft nobody approves simply stays in
 `drafts/`, which is why a promote run reports what it skipped rather than failing.
+
+Two more values are expected elsewhere, and a card carrying either is not malformed.
+`hive-zendesk` stamps every issue card it emits with `status: distilled`, and re-emits that card on
+a later run unless a person has flipped it to `approved`, which it preserves. A correction or
+memory card displaced by a newer one is flipped to `status: superseded` and kept in git for
+history, which is what `corrections_lint` and `memory_lint` check the `supersedes` graph against;
+see [supersede, do not delete](pipeline.md#corrections-fixing-a-card-without-editing-it).
+
+The one value that changes what is served is `approved` on a correction:
+`hiveserve.resolver.corrections_by_target` attaches only corrections carrying it, so a correction
+in any other state is inert. Memory and issue cards are indexed whatever their `status` says, which
+is why a superseded memory left marked `approved` is caught by `memory_lint` rather than by the
+resolver.
 
 ## The five types
 

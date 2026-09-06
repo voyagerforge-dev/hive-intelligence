@@ -24,20 +24,33 @@ that default.
 
 ## What a deployment looks like
 
-A deployment is a fork of this repository plus a corpus. It pins the published engine rather than
-tracking a branch, copies the neutral example files and edits them, and points at a corpus it owns:
+A deployment is a fork of this repository plus a corpus. It copies the neutral example files, edits
+them, and points at a corpus it owns. Where the engine itself comes from is then one choice, and
+the examples as shipped make it for you:
 
 ```mermaid
 flowchart LR
-    pypi[("PyPI · one engine at one version<br/>vf-hive-serve==0.6.0, pinning vf-hive-gen==0.6.0")]
-    engine[("This repository<br/>Dockerfile · compose.example.yml · .env.example")]
+    engine[("This repository<br/>deploy/Dockerfile · compose.example.yml · .env.example")]
     corpus[("Corpus repository<br/>concepts/ · clients/<br/>owned by whoever curated it")]
-    fork["A deployment<br/>its own repository: the pinned versions,<br/>its own compose.yml and hive-serve.env"]
+    fork["A deployment<br/>its own repository: compose.yml,<br/>hive-serve.env, and one of these two images"]
+    src["Built from the checkout<br/>the shipped Dockerfile, context ../../..<br/>pip install ./hive-gen ./hive-serve"]
+    pin["Built from PyPI<br/>a Dockerfile the deployment writes<br/>pip install vf-hive-serve==0.6.0"]
 
-    pypi -->|pinned dependencies| fork
     engine -->|copied, then edited| fork
     corpus -->|mounted at runtime| fork
+    fork -->|as shipped| src
+    fork -->|to run a released engine instead| pin
 ```
+
+**As shipped, the example builds from source.** `compose.example.yml` sets `context: ../../..` and
+`deploy/Dockerfile` runs `pip install ./hive-gen ./hive-serve` against that checkout, so a fork
+that copies both files unchanged runs whatever its own tree currently holds. That suits a fork that
+tracks the engine and expects to change it.
+
+**To pin a published engine instead,** a deployment supplies its own Dockerfile - one that installs
+`vf-hive-serve==0.6.0`, which pins `vf-hive-gen` to the same version - and points the service at
+that rather than at this repository's build context. Nothing else in the compose file changes, and
+`pip show vf-hive-serve` then answers which engine is running.
 
 What that deployment then runs. Only the corpus mount and the ledger hold anything; the service
 itself is stateless, and the proxy is what makes the identity header mean something:
