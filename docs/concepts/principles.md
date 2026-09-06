@@ -112,12 +112,12 @@ eval harness's card-selection prompt in `hiveserve/agent.py`, telling the model 
 mutually exclusive by site configuration. The facet itself is neutral: the resolver, the index and
 the metrics only ever compare one card's `regime` against another's, never against a known label.
 It is the hardcoded `ops` and `traditional` literals that are domain-bound, so a deployment in
-another domain cannot use `regime` for its own within-product either-or without editing engine
-source. Editing only the classifier and the prompts fails silently: the documented
-classify/apply pair writes every card back with no `regime` facet and still reports
-`stamped N cards. cross-regime related edges remaining: 0`. Grep the tree for those literals
-rather than trust the list above. Making all of it corpus configuration rather than code is open
-work. Related: the `hive-prep` product fallback above.
+another domain cannot use the optional classify/apply pair to produce its own either-or without
+editing engine source; stamping its own `regime` values by another route works unchanged. Editing
+only the classifier and the prompts fails silently: that pair writes every card back with no
+`regime` facet and still reports `stamped N cards. cross-regime related edges remaining: 0`. Grep
+the tree for those literals rather than trust the list above. Making all of it corpus
+configuration rather than code is open work. Related: the `hive-prep` product fallback above.
 
 **The skills carry the same vocabulary, and are the first thing an outside reader meets.** The
 `description:` lines in four of the five skills name one vendor's products, and `contribute/` names

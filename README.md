@@ -95,7 +95,7 @@ enforced rather than encouraged.
 The only cards here are the synthetic fixtures under
 `tooling/hive-serve/tests/fixtures/corpus`: every card type, a curated link graph, two isolated
 clients, and a wired corrections override. They deliberately carry no real-world domain
-vocabulary, which is exactly what makes them a fair check that the machinery is domain-neutral.
+vocabulary, which is exactly what makes them a fair check that the card model is domain-neutral.
 
 **The skills under `skills/` do name a domain, deliberately.** The five agent skills are worked
 examples written for the Manhattan WMOS/SCALE support practice Hive was first built for, and four
