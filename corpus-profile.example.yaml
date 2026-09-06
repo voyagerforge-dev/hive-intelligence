@@ -141,7 +141,9 @@ facets:
 # ---------------------------------------------------------------------------
 # curation  (hive-prep plan validation)
 # ---------------------------------------------------------------------------
-# Values a curation plan may assign. Same rule: omit to skip the check.
+# Values a curation plan may assign. Same rule: omit to skip the check - the vocabulary
+# check, that is. Every include needs a `product` whether or not this section exists: it is
+# the first segment of the slug, so there is nothing to fall back to when it is absent.
 
 curation:
   products: [Widgets, Gadgets, Sprockets]

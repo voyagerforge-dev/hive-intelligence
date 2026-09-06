@@ -34,11 +34,12 @@ plan is well formed. It cannot check that it is *right*, and nothing downstream 
 you meant to exclude a directory.
 
 `product` is required on every include and has no default. It leads every slug, so a missing one
-cannot be guessed; `validate-plan` reports every offending entry and lists the products declared in
-the profile's `curation.products`, and `slugs.entry_product` refuses one that reaches the slug layer
-anyway, naming the entry and pointing back at `validate-plan` for the vocabulary. The
-platform and product vocabularies are otherwise checked only when the profile declares them - an
-empty vocabulary means "not configured", not "reject everything".
+cannot be guessed; `validate-plan` reports every offending entry here and lists the products
+declared in the profile's `curation.products`. A plan that reaches `route`, `transform` or `stamp`
+with a product-less include is refused there too, before any work: each exits with the message
+alone, naming the offending entry and pointing back at `validate-plan` for the vocabulary, rather
+than with a traceback. The platform and product vocabularies are otherwise checked only when the
+profile declares them - an empty vocabulary means "not configured", not "reject everything".
 
 **Gate 2, after `route`.** `route` is a GPU-free precheck reporting how many files will go through
 each conversion tier. Approving it before `transform` is what stops a surprise vision-model bill.
