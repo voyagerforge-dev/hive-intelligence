@@ -662,7 +662,7 @@ def test_eval_exits_nonzero_and_names_the_role_when_a_model_returns_nothing(
     out = capsys.readouterr().out
     assert "FAILED" in out
     assert "answer model (ANSWER_MODEL=" in out and "judge model (JUDGE_MODEL=" in out
-    assert "'deepseek-v4'" in out          # the role's configured model, named
+    assert "'deepseek-v4-pro'" in out      # the role's configured model, named
 
     # and the marker is in the written report, not only on the terminal
     agg = _report(live_corpus)["aggregate"]

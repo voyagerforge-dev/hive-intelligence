@@ -58,9 +58,9 @@ flagged where they appear.
 | `RESOLVE_DEPTH` | `1` | how far to follow `related` |
 | `BIFROST_BASE` | empty | model gateway, **evaluation only**. Serving makes no model calls |
 | `BIFROST_API_KEY` | empty | as above |
-| `SELECT_MODEL` | `deepseek-v4-flash` | evaluation harness only |
-| `ANSWER_MODEL` | `deepseek-v4` | evaluation harness only |
-| `JUDGE_MODEL` | `deepseek-v4` | evaluation harness only |
+| `SELECT_MODEL` | `deepseek-v4-flash-0731` | evaluation harness only. Gateway consumer name, not an upstream id |
+| `ANSWER_MODEL` | `deepseek-v4-pro` | evaluation harness only |
+| `JUDGE_MODEL` | `deepseek-v4-pro` | evaluation harness only |
 | `BIFROST_TIMEOUT_S` | `300` | |
 
 For `IDENTITY_HEADER`'s ledger-owner role and the mandatory proxy for wider exposure, see
