@@ -1,7 +1,7 @@
 # Hive Intelligence
 
 [![Licence: Apache 2.0](https://img.shields.io/badge/licence-Apache--2.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/pypi/pyversions/vf-hive-serve.svg)](https://pypi.org/project/vf-hive-serve/)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://pypi.org/project/vf-hive-serve/)
 [![vf-hive-serve](https://img.shields.io/pypi/v/vf-hive-serve.svg?label=vf-hive-serve)](https://pypi.org/project/vf-hive-serve/)
 [![vf-hive-gen](https://img.shields.io/pypi/v/vf-hive-gen.svg?label=vf-hive-gen)](https://pypi.org/project/vf-hive-gen/)
 [![vf-hive-prep](https://img.shields.io/pypi/v/vf-hive-prep.svg?label=vf-hive-prep)](https://pypi.org/project/vf-hive-prep/)
