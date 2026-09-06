@@ -11,13 +11,15 @@ class Settings(BaseSettings):
     bifrost_api_key: str = ""
     # Evaluation harness only; serving makes no model calls. Provider ids, not gateway
     # aliases: the estate calls OpenRouter directly since 2026-09-06 and OpenRouter has
-    # no alias layer, so a bare `deepseek-v4-flash` resolves nowhere.
+    # no alias layer, so an id missing that prefix - `deepseek-v4-flash` rather than
+    # `deepseek/deepseek-v4-flash` - resolves nowhere.
     #
     # Selection stays on the April release, not the dated July 31 one that was asked for: on 16 real
     # selection prompts 0731 produced a usable `card_ids` list 0 times against this
     # one's 16, emitting a different JSON schema (`doc_id`, `score`) or nothing at all.
     #
-    # The unqualified id below is that April release and does not float. On OpenRouter
+    # The id below carries no date suffix, which is how OpenRouter names that April
+    # release; it is provider-qualified already, and does not float. On OpenRouter
     # `deepseek/deepseek-v4-flash` is a pinned entry created 2026-04-24 and
     # `deepseek/deepseek-v4-flash-0731` a separate one created 2026-07-31 with a different
     # context window; the floating alias is named separately, with a `-latest` suffix.
