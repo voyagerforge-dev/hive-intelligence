@@ -27,6 +27,12 @@ name: Release artefacts
 
 on:
   workflow_dispatch:
+    inputs:
+      trusted_publisher_check:
+        description: >-
+          Ask PyPI whether it still trusts this repository, and build and publish nothing.
+        type: boolean
+        default: false
   push:
     tags: ['v*']
   # Path-filtered, unlike fastapi-svcs.yml, and safely so: that workflow feeds the REQUIRED
@@ -63,6 +69,11 @@ permissions:
 
 jobs:
   build:
+    # Skipped only by a dispatch that asked for the trusted-publisher check and nothing else,
+    # which takes `install` (needs it), `publish` (needs both) and `report` (publish skipped)
+    # with it. The first half of the test short-circuits on every other trigger, so a tag push
+    # never reads `inputs` at all and the release path is the same one it always was.
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.trusted_publisher_check }}
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.build.outputs.version }}
@@ -156,7 +167,8 @@ jobs:
   # dist/ gets four rejections after the first has already gone out and cannot be recalled.
   #
   # The environment names below are what is registered on PyPI, not a convention to re-derive.
-  # A mismatch in any field is not an error message, it is a refused upload.
+  # A mismatch in any field is not an error message, it is a refused upload. `trusted-publisher-check`
+  # at the foot of this file is how that is found out before a tag rather than during one.
   #
   # All five are here now, and the order they arrived in was PyPI's doing: at most three
   # publishers may be PENDING at once ("You can't register more than 3 pending trusted
@@ -308,3 +320,147 @@ jobs:
             exit 1
           fi
           echo "::notice title=Released::every released distribution published at $VERSION"
+
+  # A CHECK, NOT A RELEASE. This job uploads nothing and cannot: it downloads no artefact,
+  # checks nothing out, and never runs pypa/gh-action-pypi-publish. What it does is the first
+  # half of what that action does - mint this repository's OIDC token and offer it to PyPI -
+  # and then stop and report the HTTP status.
+  #
+  # It exists because a trusted publisher is the tuple (owner, repository, workflow file,
+  # environment) and PyPI additionally pins the numeric OWNER id, so the question "does PyPI
+  # still trust us?" has a real answer that reading either side's settings cannot give. The
+  # question got sharp on 2026-09-05, when `voyagerforge-dev/hive-intelligence` was deleted and
+  # re-created under the same name to clear pre-rewrite pull-request refs: the repository's
+  # numeric id changed, every one of the four matched fields did not, and the five GitHub
+  # environments were re-created with the same names. That should still match. "Should" is not
+  # a thing to learn from a release, because the only cheaper moment to learn it is before one:
+  # a refused upload is discovered halfway through an irreversible publish, with some wheels
+  # already permanent on the index and the version number spent.
+  #
+  # THIS JOB MUST STAY IN release.yml. The workflow FILE NAME is one of the four fields PyPI
+  # matches, carried in the OIDC token's `job_workflow_ref` claim, so the same steps in a
+  # sibling workflow would be refused for the wrong reason - and a check that fails when
+  # everything is fine is worse than no check.
+  #
+  # Run it from the Actions tab, or:
+  #   gh workflow run release.yml --ref <branch> -f trusted_publisher_check=true
+  #
+  # HTTP 200 from every one of the five is the proof. A refusal is a `needs-decision`, not
+  # something to fix here: re-registering a publisher happens on PyPI, by a human, and the
+  # failing job prints the exact four fields to re-register it with.
+  trusted-publisher-check:
+    name: trusted publisher check ${{ matrix.package }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.trusted_publisher_check }}
+    runs-on: ubuntu-latest
+    strategy:
+      # One environment refusing must not hide the state of the other four: knowing whether
+      # this is one stale publisher or all five is the whole difference between a small fix
+      # and a blocked release.
+      fail-fast: false
+      # Kept deliberately identical to `publish`'s matrix, because a check against a set that
+      # has drifted from the set that publishes is a check that proves the wrong thing. A sixth
+      # distribution is added to both or neither.
+      matrix:
+        include:
+          - package: vf-hive-gen
+            environment: pypi-vf-hive-gen
+          - package: vf-hive-prep
+            environment: pypi-vf-hive-prep
+          - package: vf-hive-serve
+            environment: pypi-vf-hive-serve
+          - package: vf-hive-dbparse
+            environment: pypi-vf-hive-dbparse
+          - package: vf-hive-zendesk
+            environment: pypi-vf-hive-zendesk
+    # The environment name is a matched field, so the check has to run in the environment it is
+    # asking about - and running here means a required reviewer, if one is ever added, gates
+    # this exactly as it gates the publish.
+    environment: ${{ matrix.environment }}
+    permissions:
+      id-token: write   # mint the OIDC token PyPI verifies. No secret, and none is read.
+    steps:
+      - name: Ask PyPI whether it still trusts this repository for this distribution
+        env:
+          PACKAGE: ${{ matrix.package }}
+          ENVIRONMENT: ${{ matrix.environment }}
+          OWNER_ID: ${{ github.repository_owner_id }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # TWO CREDENTIALS PASS THROUGH THIS STEP AND NEITHER IS EVER PRINTED: the OIDC token
+          # GitHub mints below, and - on success - a real, if short-lived, PyPI upload token
+          # for this project. Both are masked the moment they exist, the request body is
+          # written to a file rather than a command line, and what is printed is the HTTP
+          # status and, on refusal, PyPI's own message. Nothing here echoes a response body.
+          umask 077
+
+          # Asked of PyPI rather than hardcoded, exactly as pypa/gh-action-pypi-publish does:
+          # a check that assumed the audience would go on quietly passing after PyPI changed it.
+          audience=$(curl --silent --show-error --fail \
+                       https://pypi.org/_/oidc/audience | jq -r '.audience')
+          [ -n "$audience" ] && [ "$audience" != "null" ] \
+            || { echo "::error title=$PACKAGE::PyPI did not name an OIDC audience"; exit 1; }
+
+          # The claims PyPI matches a publisher on ride in this token: the repository, the
+          # owner's numeric id, the workflow file this job is defined in, and this job's
+          # environment.
+          oidc=$(curl --silent --show-error --fail \
+                   --header "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+                   "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${audience}" | jq -r '.value')
+          [ -n "$oidc" ] && [ "$oidc" != "null" ] \
+            || { echo "::error title=$PACKAGE::GitHub minted no OIDC token"; exit 1; }
+          echo "::add-mask::$oidc"
+
+          # The exchange itself, and the last step this job takes towards PyPI. Uploading would
+          # be a further, separate request that nothing here makes.
+          jq -cn --arg token "$oidc" '{token: $token}' > "$RUNNER_TEMP/request.json"
+          status=$(curl --silent --show-error \
+                     --output "$RUNNER_TEMP/response.json" --write-out '%{http_code}' \
+                     --header 'Content-Type: application/json' \
+                     --data @"$RUNNER_TEMP/request.json" \
+                     https://pypi.org/_/oidc/mint-token)
+          rm -f "$RUNNER_TEMP/request.json"
+
+          # Read with `|| true` throughout: a proxy error or a maintenance page is not JSON,
+          # and this step's job is to report that status, not to die parsing the body.
+          minted=$(jq -r '.token // empty' "$RUNNER_TEMP/response.json" 2>/dev/null || true)
+          [ -z "$minted" ] || echo "::add-mask::$minted"
+          message=$(jq -r '.message // empty' "$RUNNER_TEMP/response.json" 2>/dev/null || true)
+          detail=$(jq -r '[.errors[]?.description] | join("; ")' \
+                     "$RUNNER_TEMP/response.json" 2>/dev/null || true)
+          # The minted token is scoped to this one project and expires on its own in minutes.
+          # It is wanted for nothing, so it does not outlive the check.
+          rm -f "$RUNNER_TEMP/response.json"
+
+          {
+            echo "| distribution | environment | status | trusted publisher |"
+            echo "|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$status" = "200" ] && [ -n "$minted" ]; then
+            echo "| \`$PACKAGE\` | \`$ENVIRONMENT\` | HTTP 200 | matches |" >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=$PACKAGE::PyPI accepted this repository's OIDC token (HTTP 200). The trusted publisher still matches. Nothing was uploaded."
+            exit 0
+          fi
+
+          echo "| \`$PACKAGE\` | \`$ENVIRONMENT\` | HTTP $status | **REFUSED** - ${message:-no message} ${detail} |" \
+            >> "$GITHUB_STEP_SUMMARY"
+          # Printed on the failing job because it is what a human has to retype into PyPI, and
+          # looking it up under pressure is how one of the four fields gets a typo.
+          {
+            echo
+            echo "Re-register this publisher at <https://pypi.org/manage/account/publishing/>"
+            echo "with exactly these four fields, then re-run this check:"
+            echo
+            echo "- PyPI project name: \`$PACKAGE\`"
+            echo "- Owner: \`${REPOSITORY%%/*}\` (numeric id \`$OWNER_ID\`)"
+            echo "- Repository: \`${REPOSITORY#*/}\`"
+            echo "- Workflow: \`release.yml\`"
+            echo "- Environment: \`$ENVIRONMENT\`"
+            echo
+            echo "Do not add a PyPI API token instead. That is a different design and it was"
+            echo "rejected for a reason - see docs/architecture/engine-distribution.md."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=$PACKAGE::PyPI refused this repository's OIDC token: HTTP $status - ${message:-no message} ${detail}"
+          exit 1

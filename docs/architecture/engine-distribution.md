@@ -176,6 +176,34 @@ Publication is **irreversible**: PyPI does not allow re-uploading a version, and
 not un-copy what mirrors and caches already took. Audit what is inside the wheels before tagging,
 not after.
 
+### Checking the publishers still match, without publishing
+
+Neither side's settings page can answer whether PyPI will accept this repository: PyPI matches four
+fields *and* the owner's numeric id against claims in a token that only a real run can mint. So
+`release.yml` carries a dispatch-only `trusted-publisher-check` job that does the first half of
+what `pypa/gh-action-pypi-publish` does - mints the OIDC token in each of the five environments and
+exchanges it at `https://pypi.org/_/oidc/mint-token` - and then stops and reports the HTTP status.
+It downloads no artefact, checks nothing out, and never runs the publish action. `200` from all
+five is the proof; a refusal prints the exact fields to re-register.
+
+```
+gh workflow run release.yml --ref <branch> -f trusted_publisher_check=true
+```
+
+That flag also skips `build`, and with it `install`, `publish` and `report`, so the run is the
+check and nothing else. The job **must stay in `release.yml`**: the workflow file name is one of
+the matched fields, carried in the token's `job_workflow_ref` claim, so the same steps in a sibling
+workflow would be refused for the wrong reason.
+
+Run it after anything that could have moved a matched field, and before a release that depends on
+the answer. **Re-creating this repository is such a change**, and the first real use of the check:
+`voyagerforge-dev/hive-intelligence` was deleted and re-created under the same name on 2026-09-05
+to clear pre-rewrite pull-request refs, which changed the repository's numeric id while leaving all
+four matched fields and the five environment names as they were. PyPI accepted all five afterwards
+- it pins the **owner** id, not the repository id - so a same-named re-creation does not invalidate
+a publisher. Renaming the repository, moving it to another owner, renaming `release.yml` or
+renaming an environment each would.
+
 ## Cutting a version
 
 ```
