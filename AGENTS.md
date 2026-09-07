@@ -76,11 +76,11 @@ elsewhere is the failure this path exists to end.
 
 **What ships is the package directory and nothing beside it.** Each wheel is built from
 `[tool.hatch.build.targets.wheel] packages = [...]`, so a file outside those directories reaches
-no consumer at any version. hive-gen's eight card wrappers sat in `tooling/hive-gen/scripts/`
-that way for six releases - installable nowhere, while every test covering them passed, because
-every test read the source tree. Code a consumer is meant to RUN belongs in the package, exposed
-through `[project.scripts]`; `tooling/hive-gen/tests/test_console_scripts.py` is how to prove it,
-and why it asserts against a built wheel rather than the checkout.
+no consumer at any version. hive-gen's eight card wrappers were outside them until 0.7.0, which
+[docs/reference/hive-gen.md](docs/reference/hive-gen.md) records. Code a consumer is meant to RUN
+belongs in the package, exposed through `[project.scripts]`;
+`tooling/hive-gen/tests/test_console_scripts.py` is how to prove it, and why it asserts against a
+built wheel rather than the checkout.
 
 Publication is **PyPI, wheels only, Trusted Publishing, no token anywhere**, and it happens ONLY
 from a pushed `v*` tag. It is irreversible - PyPI refuses a re-upload and a yank does not un-copy
