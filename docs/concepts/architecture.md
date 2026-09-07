@@ -3,34 +3,31 @@
 Three stages produce a corpus. One service serves it. Two stores keep knowledge and work state
 apart.
 
-This is the shape of the system in one page. For the long form, with every gate, the layers on top
-and the diagrams, read [the pipeline end to end](pipeline.md).
+This is the shape of the system in one page. For the long form, with every gate and the layers on
+top, read [the pipeline end to end](pipeline.md).
 
-```
-   raw documents
-        │
-        ▼
-   ┌──────────────┐
-   │  hive-prep   │  convert, clean, split          gate 1: the curation plan
-   └──────────────┘
-        │  atomic markdown
-        ▼
-   ┌──────────────┐
-   │  hive-gen    │  taxonomy, then distillation    gates 2 and 3: taxonomy, then drafts
-   └──────────────┘
-        │  concept cards, in git
-        ▼
-   ┌──────────────┐
-   │  hive-serve  │  REST door · MCP door
-   └──────────────┘
-        │                        ▲
-        ▼                        │
-   an agent  ────────────────────┘
-        │
-        ▼
-   ┌──────────────┐
-   │ hive-author  │  files corrections and memory as reviewable issues
-   └──────────────┘
+Three stages and three gates a person has to pass, all of them in stages 1 and 2, and a write
+path that comes back round through review rather than writing to the corpus directly:
+
+```mermaid
+flowchart TB
+    raw["Raw documents"]
+    prep["hive-prep<br/>convert, clean, split"]
+    atomic[("Atomic markdown")]
+    gen["hive-gen<br/>taxonomy, then distillation"]
+    cards[("Concept cards, in git")]
+    serve["hive-serve<br/>REST door · MCP door"]
+    agent["An agent"]
+    author["hive-author<br/>files corrections and memory<br/>as reviewable issues"]
+
+    raw --> prep
+    prep -->|gate 1: the curation plan| atomic
+    atomic --> gen
+    gen -->|gates 2 and 3: taxonomy, then drafts| cards
+    cards --> serve
+    serve <--> agent
+    agent --> author
+    author -.->|through review and a merge| cards
 ```
 
 ## Stage 1: preparation
@@ -70,6 +67,43 @@ run applies facets, checks conformance, and regenerates the index.
 ## Stage 3: serving
 
 **`hive-serve`** is one core with two doors and two stores.
+
+The read path, module by module. Both doors call the same transport-agnostic wrappers; only the MCP
+door reaches the ledger and the database-object tier:
+
+```mermaid
+flowchart LR
+    agent["An agent client"]
+
+    subgraph doors["Two doors"]
+        rest["REST · app.py<br/>shared knowledge only"]
+        mcp["MCP · mcp_app.py<br/>15 tools, client context, ledger"]
+    end
+
+    subgraph core["One core"]
+        tools["tools.py<br/>transport-agnostic wrappers"]
+        resolver["resolver.py<br/>load_index · get_card · resolve"]
+        ranking["ranking.py<br/>keyword scorer, no embeddings"]
+        dbo["dbobjects.py<br/>db/manifest.jsonl search"]
+        ledgerm["ledger.py<br/>owner-scoped rows"]
+    end
+
+    cards[("concepts/ · clients/<br/>markdown in git, read-only")]
+    db[("Postgres<br/>objective · entry · memory")]
+
+    agent --> rest
+    agent --> mcp
+    rest --> tools
+    rest --> resolver
+    mcp --> tools
+    mcp --> dbo
+    mcp --> ledgerm
+    tools --> resolver
+    tools --> ranking
+    resolver --> cards
+    dbo --> cards
+    ledgerm --> db
+```
 
 ### One core
 
@@ -144,6 +178,24 @@ When someone wants to correct a card or promote a memory, **`hive-author`** file
 against the corpus repository. It is a separate service with a token scoped to issue creation and
 nothing else. Review happens in the ordinary pull request flow, and the corpus changes only when a
 person merges.
+
+The chain of custody, and the one credential in it:
+
+```mermaid
+flowchart TB
+    agent["An agent, or the person using one"]
+    serve["hive-serve<br/><b>holds no credential</b><br/>proposes, writes no card"]
+    author["hive-author<br/>one token: issues:write, one repository<br/>cannot push, merge or open a pull request"]
+    issue["Issue on the corpus repository<br/>labelled hive-correction or hive-memory"]
+    pr["Pull request, opened by an Action<br/>once a code owner applies the approval label"]
+    corpus[("concepts/ · clients/<br/>the corpus changes here, and only here")]
+
+    agent --> serve
+    serve -.->|promote prepares a submission,<br/>the agent files it| author
+    agent -->|submit_correction<br/>submit_memory_promotion| author
+    author --> issue --> pr
+    pr -->|a person merges| corpus
+```
 
 ## Extensions
 
