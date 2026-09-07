@@ -174,6 +174,51 @@ def test_main_still_clears_a_non_memory_change_in_a_corpus_below_the_root(tmp_pa
     assert json.loads(r.stdout)["state"] == "success"
 
 
+def test_main_refuses_a_clients_dir_that_is_not_the_tree_the_changed_card_lives_in(tmp_path):
+    """One level too high is a tree holding no memory card, and that scores zero conflicts.
+
+    `require_dir` accepts it because it is a directory, and `changed_path_prefix` accepts it
+    because it is neither outside the working directory nor equal to it, so the derived
+    prefix matches the changed card and the gate proceeds to score. `memory_lint` then finds
+    nothing under it, because the ids it builds need a client directory directly above
+    `memory/`, and zero cards read as zero conflicts. The gateway is configured so that
+    green is reachable at all: without it the gate stops at the gateway refusal first and
+    the green stays hidden. `test_main_sees_a_memory_change_in_a_corpus_below_the_repository
+    _root` is the same layout named at the right level, and still reaches real scoring.
+    """
+    _tree(tmp_path / "corpus")
+    r = _run_gate("corpus", "corpus/concepts",
+                  "--changed-file", "corpus/clients/alpha/memory/m1.md",
+                  cwd=tmp_path, gateway=True)
+    assert "success" not in r.stdout, f"the gate answered over a tree with no card in it: {r.stdout!r}"
+    assert r.returncode != 0
+    assert "clients_dir=corpus holds no client memory card" in r.stderr
+
+
+def test_main_clears_a_memory_change_whose_cards_share_no_subject(tmp_path):
+    """Zero candidate PAIRS is the healthy outcome and must not be read as zero cards.
+
+    This is where most memory pull requests land: the tree holds cards, none of them
+    overlap, and the gate publishes a green it is entitled to. The refusal above triggers
+    on an empty TREE; triggering it on an empty scoring result instead would block nearly
+    every legitimate memory change. Nothing is sent to the gateway, because a single card
+    pairs with nothing and the scorer is never reached.
+    """
+    concepts = tmp_path / "concepts" / "widgets"
+    concepts.mkdir(parents=True)
+    (concepts / "alloc.md").write_text("---\ntitle: A\ntype: concept\n---\n\nbody\n")
+    md = tmp_path / "clients" / "alpha" / "memory"
+    md.mkdir(parents=True)
+    (md / "m1.md").write_text(
+        "---\ntype: memory\nclient: alpha\nproduct: widgets\nstatus: approved\n"
+        "related: [widgets/alloc]\n---\n\n## Memory\n\nthe only card\n")
+    r = _run_gate("clients", "concepts",
+                  "--changed-file", "clients/alpha/memory/m1.md",
+                  cwd=tmp_path, gateway=True)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout)["state"] == "success"
+
+
 def test_main_refuses_a_clients_dir_outside_the_directory_it_runs_from(tmp_path):
     """Nothing relative to the working directory can name a card in there, so no verdict."""
     _tree(tmp_path / "corpus")

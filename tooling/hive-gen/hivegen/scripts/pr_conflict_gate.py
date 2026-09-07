@@ -97,7 +97,12 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="hivegen-pr-conflict-gate",
         description="Decide whether a pull request's changed files touch client memory, "
-                    "score the tree if they do, and print the commit-status payload.")
+                    "score the tree if they do, and print the commit-status payload.",
+        epilog="A changeset that names a memory card while clients_dir holds none is "
+               "refused rather than answered: the two disagree about where memory lives, "
+               "and a verdict would be about nothing. A pull request whose only memory "
+               "change deletes the corpus's last memory card lands there too, and is "
+               "refused for the same reason; re-run once the deletion has landed.")
     ap.add_argument("clients_dir",
                     help="the corpus clients/ tree, as a path under the directory this is "
                          "run from; it must name that tree itself, not the directory this "
@@ -123,6 +128,19 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"context": _CONTEXT, "state": "success",
                           "description": "no client memory card changed"}))
         return 0
+
+    # The changeset says a memory card changed and the tree holds no memory card at all.
+    # Those cannot both be true of the same corpus, so the gate has caught itself being
+    # pointed at the wrong tree - a clients_dir one level too high reads as a corpus with
+    # nothing in it, and every such tree scores zero conflicts. Refuse on the contradiction
+    # rather than on a guess about what a corpus looks like.
+    if not memory_lint._memories(str(clients)):
+        raise SystemExit(
+            f"clients_dir={args.clients_dir} holds no client memory card, but the "
+            "changeset names one, so nothing a verdict could be about was found. Pass "
+            "the clients tree the changed paths name, not a directory above or beside "
+            "it. A pull request that deletes the corpus's last memory card is refused "
+            "here too; re-run once the deletion has landed.")
 
     # Refuse rather than fall back to an unconfigured gateway. The scorer fails SAFE - an
     # unparseable reply scores 1.0 and blocks - so scoring without a gateway would block the
