@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import httpx
 
+from . import USER_AGENT
 from .model import Comment, RunError, Ticket
 
 
@@ -16,7 +17,7 @@ class ConnectorClient:
                  cap_warn_ratio: float = 0.95, timeout_s: int = 60) -> None:
         self._base = base.rstrip("/")
         self._headers = {"Authorization": f"Bearer {api_key}",
-                         "User-Agent": "hivezendesk/0.1"}
+                         "User-Agent": USER_AGENT}
         self._page_cap = page_cap
         self._cap_threshold = int(page_cap * cap_warn_ratio)
         self._timeout = timeout_s
