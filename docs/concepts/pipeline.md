@@ -82,9 +82,13 @@ single-topic file per source, labelled with metadata, that stage 2 can distil.
 
 The pipeline, short form:
 
-```
-scan → dups → curate → validate-plan → ⟨GATE 1⟩ → dedup-formats → normalize
-     → route → ⟨GATE 2⟩ → transform → stamp → validate-atomic
+```mermaid
+flowchart TD
+    scan["scan"] --> dups["dups"] --> curate["curate"] --> vplan["validate-plan"]
+    vplan --> gate1{{"GATE 1"}}
+    gate1 --> dedup["dedup-formats"] --> normalize["normalize"] --> route["route"]
+    route --> gate2{{"GATE 2"}}
+    gate2 --> transform["transform"] --> stamp["stamp"] --> vatomic["validate-atomic"]
 ```
 
 ### The flow
@@ -328,8 +332,11 @@ only credential, scoped to **issue creation only**. It can file an issue; it can
 or open a pull request. A human approval label fires the workflow that builds the card and opens
 the PR.
 
-```
-agent → hive-author → issue → human approval label → workflow → PR → merge → next corpus sync
+```mermaid
+flowchart TD
+    agent["Agent"] --> author["hive-author"] --> issue["Issue"]
+    issue -->|human approval label| workflow["Workflow"] --> pr["Pull request"]
+    pr -->|a person merges| sync["Next corpus sync"]
 ```
 
 Two hard-separated tools that structurally cannot cross: `submit_memory_promotion` (requires a
@@ -357,9 +364,10 @@ flowchart TD
     pt --> aux["parse_aux<br/><i>COMMENT ON · FK · INDEX · SEQUENCE</i>"]
     aux --> pl["parse_plsql<br/><i>package/proc/func/trigger/view<br/>signature + verbatim body</i>"]
     pl --> rec["reconcile<br/><i>dialect ⇄ dialect by name; type deltas;<br/>merge package spec+body</i>"]
-    rec --> gate{{"HARD GATE<br/>cards == parsed objects<br/>unparsed → fail · dupes → dedup+log"}}
-    gate --> emit["emit<br/><i>one card per object</i>"]
-    emit --> out[("concepts/&lt;product&gt;/db/{tables,plsql}/*.md<br/>+ manifest.jsonl + conflicts.log")]
+    rec --> emit["emit<br/><i>one card per object, plus manifest and logs</i>"]
+    emit --> gate{{"HARD GATE<br/>unparsed → fail<br/>cards == parsed objects"}}
+    gate -->|pass| out[("concepts/&lt;product&gt;/db/{tables,plsql}/*.md<br/>+ manifest.jsonl + conflicts.log")]
+    gate -->|fail| failed["nonzero exit<br/><i>generated files remain</i>"]
 ```
 
 - **`parse_tables`** turns each `CREATE TABLE` into columns, primary key and inline constraints,
@@ -372,10 +380,8 @@ flowchart TD
 - **`reconcile`** matches definitions of the same object across dialects, records per-column and
   per-body deltas, and merges a package spec with its body.
 
-**The hard verification gate is the point.** The run refuses to emit a partial corpus: card count
-must equal parsed-object count, and **any unparsed construct fails the run**. That is what surfaces
-real-corpus DDL quirks instead of silently dropping objects. Same-name collisions are deduped when
-structurally identical and otherwise **logged, never silently overwritten**.
+For gate requirements, failed-output handling and duplicate rules, see the
+[hive-dbparse reference](../reference/hive-dbparse.md#the-verification-gate).
 
 **Served on demand, kept out of the concept index.** This tier can be many times the size of the
 concept corpus and is schema-level rather than narrative, so putting it in `list_concepts` would

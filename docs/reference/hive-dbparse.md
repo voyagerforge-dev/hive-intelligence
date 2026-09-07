@@ -19,12 +19,18 @@ hivedbparse --src <ddl-tree> --out <output-dir> [--product NAME] [--limit-module
 
 ## The flow
 
-```
-parse (per dialect)  ──►  reconcile  ──►  gate  ──►  emit
+```mermaid
+flowchart TD
+    parse["parse<br/><i>Oracle and DB2 independently</i>"]
+    parse --> reconcile["reconcile<br/><i>union by object name</i>"]
+    reconcile --> emit["emit<br/><i>cards, manifest and logs</i>"]
+    emit --> gate{{"verification gate<br/>unparsed → fail · counts must match"}}
+    gate -->|pass| done["successful run"]
+    gate -->|fail| failed["nonzero exit<br/><i>generated files remain</i>"]
 ```
 
 Oracle and DB2 are parsed independently, then unioned into one dialect-tagged model per object.
-The gate runs before anything is written.
+For failure handling, see [the verification gate](#the-verification-gate).
 
 Handles `CREATE TABLE`, `COMMENT ON`, `ALTER`, `CREATE INDEX`, `CREATE SEQUENCE`, and
 `CREATE [OR REPLACE]` routine units.
@@ -41,7 +47,9 @@ wrong, and a schema card that is subtly wrong is worse than no card, because it 
 ## The verification gate
 
 **No unparsed construct may be silently dropped.** If the parser meets something it does not
-understand, the run fails and writes nothing.
+understand, the run fails. The gate is evaluated after generated files are written, so a failed
+run exits nonzero but leaves those files in place. Consume output only after a successful exit;
+discard a failed run's output before trying again.
 
 This is inconvenient by design. A partial schema corpus answers "does this table have a status
 column" with a confident "no" when the truth is that the parser choked on that file. A missing
@@ -60,7 +68,7 @@ An unparsed construct is a parser bug to fix, not a file to exclude.
 | `parse_plsql.py` | slice routine units by tokenizer boundary detection; bodies captured verbatim |
 | `reconcile.py` | union the two dialect runs into one dialect-tagged model per object |
 | `emit.py` | render cards and manifest lines |
-| `run.py` | walk, parse, reconcile, gate, write |
+| `run.py` | walk, parse, reconcile, write, gate |
 
 ## Internals
 

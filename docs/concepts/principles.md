@@ -45,8 +45,8 @@ setting. That friction is the feature.
 
 The system prefers stopping to continuing partially.
 
-`hive-dbparse` fails the entire run on one unparsed construct rather than emitting a corpus that is
-quietly missing objects. `hive-zendesk` warns when a source truncates its result set instead of
+`hive-dbparse` enforces a [verification gate](../reference/hive-dbparse.md#the-verification-gate).
+`hive-zendesk` warns when a source truncates its result set instead of
 treating a short page as the end. Configuration that names an address has no default, because a
 plausible-looking default fails later and against the wrong host.
 

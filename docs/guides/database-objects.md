@@ -22,17 +22,10 @@ The consequence matters more than the reasoning. **A schema card is either exact
 run failed.** There is no middle state where a column is subtly misdescribed, because nothing ever
 paraphrased anything.
 
-## The run fails rather than emitting a partial corpus
+## The verification gate
 
-If the parser meets a construct it does not understand, the whole run fails. It does not skip the
-file, log a warning and carry on.
-
-This is worth defending, because it is inconvenient. A partial schema corpus is actively dangerous:
-an agent asked "does this table have a status column" answers "no" with complete confidence when
-the truth is that the parser choked on that file. A missing corpus produces an error, which someone
-fixes. A corpus with holes produces wrong answers, which someone believes.
-
-So an unparsed construct is a bug to fix in the parser, not a file to exclude.
+See [the verification gate](../reference/hive-dbparse.md#the-verification-gate) for failure
+conditions, why they matter, and safe handling of generated output.
 
 ## The on-demand tier
 

@@ -199,9 +199,9 @@ flowchart TB
 
 ## Extensions
 
-**`hive-dbparse`** turns schema DDL into `dbobject` cards deterministically, with no model. It fails
-the whole run on any construct it cannot parse, rather than emitting a partial corpus, because a
-schema card that quietly omits a column is worse than no card.
+**`hive-dbparse`** turns schema DDL into `dbobject` cards deterministically, with no model. See
+[the verification gate](../reference/hive-dbparse.md#the-verification-gate) for failure conditions
+and output handling.
 
 **`hive-zendesk`** distils closed support tickets into client-scoped `issue` cards, so recurring
 problems are recognised rather than rediscovered.
