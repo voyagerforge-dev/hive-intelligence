@@ -10,16 +10,13 @@ Narrative version: [building a corpus](../guides/building-a-corpus.md).
 
 ## The flow
 
-```
-load area  ──►  taxonomy  ──►  ⟨gate: edit and save the taxonomy⟩
-                                      │
-                                      ▼
-                            assign  ──►  distill  ──►  drafts/
-                                                          │
-                                      ⟨gate: flip status to approved⟩
-                                                          │
-                                                          ▼
-                                                     promote()  ──►  concepts/<product>/
+```mermaid
+flowchart TD
+    load["load area"] --> taxonomy["taxonomy"]
+    taxonomy --> gate1{{"GATE 1<br/>edit and save the taxonomy"}}
+    gate1 --> assign["assign"] --> distill["distill"] --> drafts[("drafts/")]
+    drafts --> gate2{{"GATE 2<br/>flip status to approved"}}
+    gate2 --> promote["promote()"] --> concepts[("concepts/&lt;product&gt;/")]
 ```
 
 ```bash

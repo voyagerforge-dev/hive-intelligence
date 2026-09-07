@@ -92,13 +92,22 @@ If nobody will do that, this will not help you.
 
 Hive replaces your ingestion, not your retrieval.
 
-```
-before   documents ──► chunker ──► embedder ──► vector index ──► your app
+```mermaid
+flowchart TB
+    subgraph before["Before · existing RAG ingestion"]
+        direction TB
+        before_docs["Documents"] --> chunker["Chunker"] --> before_embed["Embedder"]
+        before_embed --> before_index[("Vector index")] --> before_app["Your app"]
+    end
 
-after    documents ──► hive-prep ──► hive-gen ──► cards (git)
-                                                    │
-                                                    ├──► embedder ──► vector index ──► your app
-                                                    └──► hive-serve ──► agent, by id
+    subgraph after["After · Hive replaces ingestion"]
+        direction TB
+        after_docs["Documents"] --> prep["hive-prep"] --> gen["hive-gen"] --> cards[("Cards · git")]
+        cards --> after_embed["Embedder"] --> after_index[("Vector index")] --> after_app["Your app"]
+        cards --> serve["hive-serve"] --> agent["Agent · by id"]
+    end
+
+    before_app ~~~ after_docs
 ```
 
 Cards are plain markdown with YAML frontmatter, so any pipeline that reads a directory of markdown
