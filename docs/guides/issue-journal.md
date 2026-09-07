@@ -61,10 +61,8 @@ model. It issues no request either, so it needs no working gateway credentials. 
 tickets on a delay, recent problems are invisible until they close, and that lag can be weeks. An
 empty result does not mean nothing happened.
 
-**Source truncation is silent.** Ticket APIs cap results, and a capped response looks exactly like
-a complete one. `hive-zendesk` warns when a pull approaches the configured cap
-(`CONNECTOR_PAGE_CAP`, warning at `CAP_WARN_RATIO`), because a short page is not proof there is no
-more data. Treat the warning as "this run is incomplete", not as noise.
+For source truncation and how to handle the connector's refusal, see
+[the reference's known limits](../reference/hive-zendesk.md#known-limits).
 
 ## What comes out
 

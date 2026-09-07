@@ -1,3 +1,5 @@
+from importlib import metadata
+
 import httpx
 import pytest
 import respx
@@ -17,6 +19,9 @@ def test_list_closed_sends_bearer_and_params():
     assert out == [{"id": 1}]
     req = route.calls[0].request
     assert req.headers["Authorization"] == "Bearer k"
+    assert req.headers["User-Agent"] == (
+        f"hivezendesk/{metadata.version('vf-hive-zendesk')}"
+    )
     assert "org_id=42" in str(req.url) and "since=2026-01-01" in str(req.url)
 
 

@@ -11,6 +11,8 @@ from typing import Protocol
 
 import httpx
 
+from . import USER_AGENT
+
 
 class ChatLLM(Protocol):
     def complete(self, system: str, user: str) -> str | None: ...
@@ -59,7 +61,7 @@ class BifrostChat:
                  retries: int = 4, backoff_s: float = 2.0, max_tokens: int = 4000) -> None:
         self._url = base.rstrip("/") + "/chat/completions"
         self._headers = {"Authorization": f"Bearer {api_key}",
-                         "User-Agent": "hivezendesk/0.1"}
+                         "User-Agent": USER_AGENT}
         self._model = model
         self._timeout = timeout_s
         self._retries = max(1, retries)
