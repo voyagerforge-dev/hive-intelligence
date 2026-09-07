@@ -8,7 +8,7 @@ documents `CONFLICT_MODEL` as setting.
 import pytest
 
 from hivegen import llm as llm_mod
-from hivegen.scripts import gateway_llm
+from hivegen.scripts._gateway import gateway_llm
 
 _DEFAULT_MODEL = "minimax/minimax-m3"
 

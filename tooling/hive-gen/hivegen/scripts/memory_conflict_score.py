@@ -9,7 +9,8 @@ import argparse
 
 from hivegen.corpus import require_dir
 from hivegen.llm import extract_json
-from hivegen.scripts import gateway_llm, memory_lint
+from hivegen.scripts import memory_lint
+from hivegen.scripts._gateway import gateway_llm
 
 _SYS = (
     "You judge whether two client-memory notes about the SAME client CONFLICT, i.e. make "

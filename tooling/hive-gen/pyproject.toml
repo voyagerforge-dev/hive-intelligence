@@ -35,7 +35,8 @@ Issues = "https://github.com/voyagerforge-dev/hive-intelligence/issues"
 # importing the pinned `hivegen` underneath. Names are `hivegen-` prefixed because a console
 # script lands on a shared PATH and `index-generate` is not a name this project may claim.
 # `tests/test_console_scripts.py` builds the wheel and fails on one declared here that does
-# not resolve, or a module under `hivegen/scripts/` with no name here.
+# not resolve, or a PUBLIC module under `hivegen/scripts/` with no name here; a module whose
+# name starts with an underscore is a private helper and is expected to have no command.
 [project.scripts]
 hivegen-conformance-pass = "hivegen.scripts.conformance_pass:main"
 hivegen-correction-from-issue = "hivegen.scripts.correction_from_issue:main"

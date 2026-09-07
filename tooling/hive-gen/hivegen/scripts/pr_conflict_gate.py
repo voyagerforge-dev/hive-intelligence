@@ -15,7 +15,8 @@ import json
 import os
 
 from hivegen.corpus import require_dir
-from hivegen.scripts import gateway_llm, memory_conflict_score, memory_lint
+from hivegen.scripts import memory_conflict_score, memory_lint
+from hivegen.scripts._gateway import gateway_llm
 
 _CONTEXT = "okf/memory-conflict"
 
