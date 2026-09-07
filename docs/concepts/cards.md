@@ -48,6 +48,50 @@ breaks loudly rather than resolving to something stale.
 The corollary is that **the folder layout is part of the contract**. Products are top-level folders
 under `concepts/`; clients are top-level folders under `clients/`.
 
+## The lifecycle of a card
+
+A card carries one lifecycle field, `status`, and each package recognises the values its own job
+needs. The concept-card path uses two of them: `hivegen.card` writes `draft`, and
+`hivegen.promote.promote`, the only thing that moves a file out of `drafts/`, moves nothing that is
+not already `approved`:
+
+```mermaid
+stateDiagram-v2
+    direction TB
+    state "in drafts/, status draft" as draft
+    state "in drafts/, status approved" as approved
+    state "in drafts/, held back" as held
+    state "in concepts/PRODUCT/, served" as served
+
+    [*] --> draft: hivegen.card.distill_concept writes it
+    draft --> draft: a person edits the prose
+    draft --> approved: a person sets status to approved
+    approved --> served: promote moves the file
+    approved --> held: validate_card found an error
+    held --> approved: the person fixes it
+```
+
+A card is held back when a required frontmatter key is missing, when a `related` id names no card
+the corpus or the draft set knows, or when a card of that name is already promoted; `promote` names
+each reason and leaves the file where it is.
+
+There is no rejected state and no deleted state either. A draft nobody approves simply stays in
+`drafts/`: `promote` passes over it, naming it neither among the cards it promoted nor among the
+ones it held back, rather than failing the run.
+
+Two more values are expected elsewhere, and a card carrying either is not malformed.
+`hive-zendesk` stamps every issue card it emits with `status: distilled`, and re-emits that card on
+a later run unless a person has flipped it to `approved`, which it preserves. A correction or
+memory card displaced by a newer one is flipped to `status: superseded` and kept in git for
+history, which is what `corrections_lint` and `memory_lint` check the `supersedes` graph against;
+see [supersede, do not delete](pipeline.md#corrections-fixing-a-card-without-editing-it).
+
+The one value that changes what is served is `approved` on a correction:
+`hiveserve.resolver.corrections_by_target` attaches only corrections carrying it, so a correction
+in any other state is inert. Memory and issue cards are indexed whatever their `status` says, which
+is why a superseded memory left marked `approved` is caught by `memory_lint` rather than by the
+resolver.
+
 ## The five types
 
 | `type` | Lives in | Purpose |
@@ -84,6 +128,20 @@ correction alongside, so the agent sees both the original statement and the amen
 **A correction is only applied when `status: approved`.** A draft correction is inert. This is easy
 to trip over: a correction that looks right in the tree but has no `status` line silently does
 nothing, and the corpus continues serving the outdated claim.
+
+That single branch, as `resolver.corrections_by_target` applies it:
+
+```mermaid
+flowchart LR
+    c["A correction card<br/>corrects: widget/calibration-routine"]
+    q{"status: approved?"}
+    y["resolve returns it in the bundle,<br/>beside the card it corrects"]
+    n["Inert. The tree looks right<br/>and nothing happens."]
+
+    c --> q
+    q -->|yes| y
+    q -->|no| n
+```
 
 The original card is never edited. That is the point: you can see what was believed, when it
 changed, and who changed it, which is the audit trail that makes a curated corpus trustworthy.

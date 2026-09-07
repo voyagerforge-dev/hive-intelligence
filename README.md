@@ -17,6 +17,48 @@ decides what it is allowed to reason over.
 **OKF is the format. Hive is the system.** Cards on disk carry `okf_version: "0.1"`; the tooling
 that produces and serves them is Hive.
 
+Six packages, one corpus repository and one ledger. The production packages on the left write the
+cards; `hive-serve` on the right only reads them, and makes no model call at serving time.
+`hive-author` is the one write door on the serving side, and what it writes is a reviewable issue,
+never a card:
+
+```mermaid
+flowchart LR
+    subgraph inputs["Inputs"]
+        raw["Raw documents<br/>PDF · DOCX · PPTX · XLSX"]
+        ddl["Schema DDL"]
+        tickets["Closed support tickets"]
+    end
+
+    subgraph produce["Card production"]
+        prep["hive-prep"]
+        gen["hive-gen"]
+        dbp["hive-dbparse<br/><i>no model</i>"]
+        zen["hive-zendesk"]
+    end
+
+    corpus[("Corpus repository<br/>concepts/ · clients/<br/>markdown in git")]
+
+    subgraph serve["hive-serve · no model call, no credential"]
+        direction TB
+        rest["REST door<br/>app.py"]
+        mcp["MCP door<br/>mcp_app.py"]
+    end
+
+    agent["An agent client"]
+    author["hive-author<br/>issues:write only"]
+    ledger[("Postgres ledger<br/>LEDGER_DSN")]
+
+    raw --> prep --> gen --> corpus
+    ddl --> dbp --> corpus
+    tickets --> zen --> corpus
+    corpus -->|read-only| serve
+    serve <-->|work state| ledger
+    serve -->|card bundles| agent
+    agent -->|corrections · memory| author
+    author -->|a reviewable issue| corpus
+```
+
 ## Why cards instead of chunks
 
 **Retrieval-augmented generation (RAG)** answers "which chunks look similar to this question". That
