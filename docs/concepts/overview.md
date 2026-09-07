@@ -26,10 +26,18 @@ by id, or searches a lean index of titles and descriptions, and gets back exactl
 approved. The reasoning happens in the agent. The judgement about what is true happened earlier,
 and left an audit trail.
 
-```
-documents  ──►  atomic markdown  ──►  concept cards  ──►  an agent
-            hive-prep          hive-gen           hive-serve
-              gate 1            gates 2 and 3
+Three stages, three human gates, all of them before serving:
+
+```mermaid
+flowchart LR
+    docs["Documents"]
+    atomic[("Atomic markdown")]
+    cards[("Concept cards")]
+    agent["An agent"]
+
+    docs -->|hive-prep · gate 1| atomic
+    atomic -->|hive-gen · gates 2 and 3| cards
+    cards -->|hive-serve| agent
 ```
 
 Three things follow from this that are worth stating plainly.

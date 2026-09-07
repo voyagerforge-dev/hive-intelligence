@@ -36,7 +36,7 @@ stop it; nothing here is a pattern for a real deployment, which is in
 
 The fixture corpus lives in the test tree. It holds eight cards across two synthetic products
 (`widget`, `gadget`) and two isolated clients (`alpha`, `beta`), and carries no real-world domain
-vocabulary on purpose: it is a fair test that the machinery is domain-neutral.
+vocabulary on purpose: it is a fair test that the card model is domain-neutral.
 
 ```bash
 CONCEPTS_DIR=tests/fixtures/corpus/concepts \
@@ -57,9 +57,12 @@ INFO:     Uvicorn running on http://127.0.0.1:8099 (Press CTRL+C to quit)
 Leave `LEDGER_DSN` out and the server refuses to start, by design:
 
 ```
-RuntimeError: LEDGER_DSN is not set. The ledger is Postgres since 2026-08-19; there is no file
-fallback, because falling back is how an empty ledger gets served as if it were the real one.
+LEDGER_DSN is not set. The ledger is Postgres since 2026-08-19; there is no file fallback,
+because falling back is how an empty ledger gets served as if it were the real one.
 ```
+
+One line and exit 1, not a traceback. `CONCEPTS_DIR` refuses the same way, naming the setting: it
+has no default either - see [configuration](../reference/configuration.md#where-the-corpus-is).
 
 ## 4. Query it
 

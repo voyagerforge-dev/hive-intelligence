@@ -141,3 +141,37 @@ def test_stamp_refuses_a_product_less_include_without_a_traceback(tmp_path, monk
 
     get_settings.cache_clear()
     _assert_clean_refusal(r)
+
+
+# --------------------------------------------------------------------------
+# `--version`'s whole job is to answer from installed distribution metadata.
+# `click.version_option()` with no `package_name` looks that up under the
+# *module* name, `hiveprep`, and this distribution is `vf-hive-prep`, so in an
+# editable install - where nothing maps the module back to a distribution - it
+# raised `RuntimeError: 'hiveprep' is not installed` for anyone who ran it.
+# `CliRunner` exercises the same lookup; what it cannot vouch for is the
+# console entry point, which is the command that ships, so this runs it in a
+# subprocess - a green unit test over a broken installed command is exactly the
+# false positive this guards.
+# --------------------------------------------------------------------------
+
+def test_version_answers_through_the_installed_console_entry_point():
+    import shutil
+    import subprocess
+    import sys
+    from importlib.metadata import version
+    from pathlib import Path
+
+    # The interpreter's own bin directory, and only there: the binary under test and the
+    # metadata it is asserted against must come from one environment.
+    bindir = str(Path(sys.executable).parent)
+    exe = shutil.which("hiveprep", path=bindir)
+    assert exe, "hiveprep console script is not installed in this environment"
+    # check=False: the exit code is the assertion, and raising here would hide the
+    # stderr that says which lookup failed. timeout: a regression must fail, not hang.
+    r = subprocess.run([exe, "--version"], capture_output=True, text=True, check=False,
+                       timeout=60)
+
+    assert r.returncode == 0, f"hiveprep --version exited {r.returncode}: {r.stderr}"
+    assert "Traceback" not in r.stderr, r.stderr
+    assert version("vf-hive-prep") in r.stdout, r.stdout

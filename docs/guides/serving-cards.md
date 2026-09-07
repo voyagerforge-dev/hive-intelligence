@@ -18,9 +18,59 @@ uv run hiveserve serve --http     # or --stdio for MCP
 and editor agents speak directly. Neither starts without `LEDGER_DSN`.
 
 `CLIENTS_DIR` is optional: leave it empty to disable client memory entirely. `CONCEPTS_DIR` is
-not, and its default will not be yours - see
-[configuration](../reference/configuration.md#hive-serve) for the full set and for the trap in
-that default.
+required and has no default - see
+[configuration](../reference/configuration.md#concepts_dir-has-no-default) for why it
+lost the one it had, and [the table](../reference/configuration.md#hive-serve) for the full set.
+
+## What a deployment looks like
+
+A deployment is a fork of this repository plus a corpus. It copies the neutral example files, edits
+them, and points at a corpus it owns. Where the engine itself comes from is then one choice, and
+the examples as shipped make it for you:
+
+```mermaid
+flowchart LR
+    engine[("This repository<br/>deploy/Dockerfile · compose.example.yml · .env.example")]
+    corpus[("Corpus repository<br/>concepts/ · clients/<br/>owned by whoever curated it")]
+    fork["A deployment<br/>its own repository: compose.yml,<br/>hive-serve.env, and one of these two images"]
+    src["Built from the checkout<br/>the shipped Dockerfile, context ../../..<br/>pip install ./hive-gen ./hive-serve"]
+    pin["Built from PyPI<br/>a Dockerfile the deployment writes<br/>pip install vf-hive-serve==0.6.0"]
+
+    engine -->|copied, then edited| fork
+    corpus -->|mounted at runtime| fork
+    fork -->|as shipped| src
+    fork -->|to run a released engine instead| pin
+```
+
+**As shipped, the example builds from source.** `compose.example.yml` sets `context: ../../..` and
+`deploy/Dockerfile` runs `pip install ./hive-gen ./hive-serve` against that checkout, so a fork
+that copies both files unchanged runs whatever its own tree currently holds. That suits a fork that
+tracks the engine and expects to change it.
+
+**To pin a published engine instead,** a deployment supplies its own Dockerfile - one that installs
+`vf-hive-serve==0.6.0`, which pins `vf-hive-gen` to the same version - and points the service at
+that rather than at this repository's build context. Nothing else in the compose file changes, and
+`pip show vf-hive-serve` then answers which engine is running.
+
+What that deployment then runs. Only the corpus mount and the ledger hold anything; the service
+itself is stateless, and the proxy is what makes the identity header mean something:
+
+```mermaid
+flowchart LR
+    agents["Agent clients<br/>MCP or HTTP"]
+    proxy["An authenticating proxy<br/>sets IDENTITY_HEADER,<br/>strips it inbound"]
+    svc["hive-serve :8000<br/>loopback unless something<br/>in front terminates TLS"]
+    corpus[("/data/concepts · /data/clients<br/>the corpus, mounted read-only")]
+    db[("Postgres<br/>LEDGER_DSN, on its own volume")]
+
+    agents --> proxy --> svc
+    corpus --> svc
+    svc <-->|objectives · entries · memory| db
+```
+
+The engine ships no corpus and no deployment, deliberately; see
+[the product and deployment boundary](../architecture/product-deployment-boundary.md) for the rule,
+and [distributing the engine](../architecture/engine-distribution.md) for what a consumer pins.
 
 ## Identity, and what it is not
 
@@ -113,7 +163,7 @@ Fifteen tools in three groups.
 | `forget` | delete one |
 | `promote` | propose a private note become shared knowledge |
 
-`promote` does not write to the corpus. It files a submission for review; see
+`promote` does not write to the corpus. It prepares a submission for the agent to file; see
 [corrections and memory](corrections-and-memory.md).
 
 ## Client context

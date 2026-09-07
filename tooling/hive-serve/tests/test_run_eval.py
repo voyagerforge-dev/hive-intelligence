@@ -320,15 +320,26 @@ def test_eval_refuses_a_client_tree_whose_cards_the_index_does_not_load(client_m
     assert client_memory["ran"] is False
 
 
-def test_an_unconfigured_clients_dir_default_is_not_reported_as_a_dead_path(corpus,
-                                                                           monkeypatch,
-                                                                           capsys):
-    """CLIENTS_DIR's class default is a relative guess that is a directory almost nowhere.
-    Warning about it names a path the operator never set, on every run of a deployment
-    that simply has no client memory - noise that trains people to ignore the real one."""
+@pytest.mark.parametrize("value", [None, ""], ids=["absent", "explicitly-empty"])
+def test_an_empty_or_absent_clients_dir_is_off_and_is_not_reported_as_a_dead_path(
+        value, corpus, monkeypatch, capsys):
+    """Either way it is a deployment with no client memory, not a misconfiguration.
+
+    Neither has a path to name - there has been no default to be dead since 0.7.0 - so
+    warning would fire on every run of such a deployment, noise that trains people to
+    ignore the real one. `CLIENTS_DIR=` is what `.env.example` ships, so it is what most
+    operators send, and it must read exactly like unset. What still gets reported is a
+    non-empty path that is dead, which is
+    `test_eval_says_out_loud_that_a_dead_clients_dir_disabled_client_memory` above; the
+    difference between the two is decided once at `clients_base`, not by asking whether
+    some source supplied the setting. What must still refuse is a set that needs client
+    memory, below."""
     monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
     monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
-    monkeypatch.delenv("CLIENTS_DIR", raising=False)
+    if value is None:
+        monkeypatch.delenv("CLIENTS_DIR", raising=False)
+    else:
+        monkeypatch.setenv("CLIENTS_DIR", value)
     get_settings.cache_clear()
     _argv(monkeypatch, "progressive", "wave-replen")
 
@@ -339,9 +350,9 @@ def test_an_unconfigured_clients_dir_default_is_not_reported_as_a_dead_path(corp
     assert corpus["kwargs"]["clients_dir"] is None
 
 
-def test_an_unconfigured_clients_dir_default_still_refuses_a_set_that_needs_client_memory(
+def test_an_absent_clients_dir_still_refuses_a_set_that_needs_client_memory(
         client_memory, monkeypatch):
-    """Staying quiet about the default must not extend to the case that actually matters:
+    """Staying quiet about an absent setting must not extend to the case that matters:
     a set with client rows and nowhere to load them from is the wrong-aggregate bug."""
     monkeypatch.setenv("CONCEPTS_DIR", str(client_memory["concepts"]))
     monkeypatch.setenv("EVAL_DIR", str(client_memory["evals"]))
@@ -353,28 +364,6 @@ def test_an_unconfigured_clients_dir_default_still_refuses_a_set_that_needs_clie
         run_eval_module.main()
     assert "CLIENTS_DIR" in str(exc.value)
     assert client_memory["ran"] is False
-
-
-def test_a_clients_dir_explicitly_set_to_the_default_value_is_still_reported_when_dead(
-        corpus, monkeypatch, capsys):
-    """Whether it was configured is provenance, not a guess from the value. The default is
-    the value docs publish, so it is a plausible thing to write down - an operator who did
-    write it down and whose corpus then moved must still be told the path is dead."""
-    from hiveserve.config import Settings
-
-    default = Settings.model_fields["clients_dir"].default
-    monkeypatch.setenv("CONCEPTS_DIR", str(corpus["concepts"]))
-    monkeypatch.setenv("EVAL_DIR", str(corpus["evals"]))
-    monkeypatch.setenv("CLIENTS_DIR", default)
-    get_settings.cache_clear()
-    _argv(monkeypatch, "progressive", "wave-replen")
-
-    run_eval_module.main()
-
-    out = capsys.readouterr().out
-    assert "CLIENTS_DIR" in out and default in out
-    assert corpus["ran"] is True
-    assert corpus["kwargs"]["clients_dir"] is None
 
 
 def test_an_isolation_control_row_runs_though_its_client_has_no_cards(client_memory,

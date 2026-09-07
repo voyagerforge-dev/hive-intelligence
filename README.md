@@ -17,6 +17,48 @@ decides what it is allowed to reason over.
 **OKF is the format. Hive is the system.** Cards on disk carry `okf_version: "0.1"`; the tooling
 that produces and serves them is Hive.
 
+Six packages, one corpus repository and one ledger. The production packages on the left write the
+cards; `hive-serve` on the right only reads them, and makes no model call at serving time.
+`hive-author` is the one write door on the serving side, and what it writes is a reviewable issue,
+never a card:
+
+```mermaid
+flowchart LR
+    subgraph inputs["Inputs"]
+        raw["Raw documents<br/>PDF · DOCX · PPTX · XLSX"]
+        ddl["Schema DDL"]
+        tickets["Closed support tickets"]
+    end
+
+    subgraph produce["Card production"]
+        prep["hive-prep"]
+        gen["hive-gen"]
+        dbp["hive-dbparse<br/><i>no model</i>"]
+        zen["hive-zendesk"]
+    end
+
+    corpus[("Corpus repository<br/>concepts/ · clients/<br/>markdown in git")]
+
+    subgraph serve["hive-serve · no model call, no credential"]
+        direction TB
+        rest["REST door<br/>app.py"]
+        mcp["MCP door<br/>mcp_app.py"]
+    end
+
+    agent["An agent client"]
+    author["hive-author<br/>issues:write only"]
+    ledger[("Postgres ledger<br/>LEDGER_DSN")]
+
+    raw --> prep --> gen --> corpus
+    ddl --> dbp --> corpus
+    tickets --> zen --> corpus
+    corpus -->|read-only| serve
+    serve <-->|work state| ledger
+    serve -->|card bundles| agent
+    agent -->|corrections · memory| author
+    author -->|a reviewable issue| corpus
+```
+
 ## Why cards instead of chunks
 
 **Retrieval-augmented generation (RAG)** answers "which chunks look similar to this question". That
@@ -95,7 +137,16 @@ enforced rather than encouraged.
 The only cards here are the synthetic fixtures under
 `tooling/hive-serve/tests/fixtures/corpus`: every card type, a curated link graph, two isolated
 clients, and a wired corrections override. They deliberately carry no real-world domain
-vocabulary, which is exactly what makes them a fair check that the machinery is domain-neutral.
+vocabulary, which is exactly what makes them a fair check that the card model is domain-neutral.
+
+**The skills under `skills/` do name a domain, deliberately.** The five agent skills are worked
+examples written for the Manhattan WMOS/SCALE support practice Hive was first built for, and four
+of the five say so in their `description:` line. What each one describes - how to ground an answer
+in cards, work a diagnosis, plan a piece of work, teach a topic, file a correction - is general;
+the nouns are not. They ship to be adapted to your own domain. Nothing in the card model or the
+fixtures requires those nouns; [skills/README.md](skills/README.md) has the detail,
+and [known limitations](docs/concepts/principles.md#known-limitations) lists the vocabulary still
+baked into the tooling.
 
 ## Tests
 

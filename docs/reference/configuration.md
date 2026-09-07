@@ -43,8 +43,8 @@ flagged where they appear.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `CONCEPTS_DIR` | `../../concepts` | **required in practice**. Corpus concept cards; the server refuses to start unless it names a directory. The default is relative and will not be yours - read the warning below before relying on the refusal |
-| `CLIENTS_DIR` | `../../clients` | client-scoped cards. Leave empty to disable client memory entirely; never a startup refusal |
+| `CONCEPTS_DIR` | empty | **required**. Corpus concept cards; the server refuses to start unless it names a directory. No default since 0.7.0 - see below |
+| `CLIENTS_DIR` | empty | client-scoped cards. Leave empty to disable client memory entirely; never a startup refusal |
 | `EVAL_DIR` | empty | labelled eval sets, **evaluation only**. No default: they ship with a corpus |
 | `LEDGER_DSN` | empty | **required**. Postgres for the objective and memory ledger. **The only state not in git** |
 | `OKF_DATA_DIR` | `./.data` | non-ledger scratch, including `run_eval` reports |
@@ -66,28 +66,33 @@ flagged where they appear.
 For `IDENTITY_HEADER`'s ledger-owner role and the mandatory proxy for wider exposure, see
 [the serving trust boundary](../guides/serving-cards.md#identity-and-what-it-is-not).
 
-### `CONCEPTS_DIR`'s default is relative, and that is a trap
+### `CONCEPTS_DIR` has no default
 
-> **Set `CONCEPTS_DIR` explicitly, to an absolute path.** Its default, `../../concepts`, is
-> resolved against the **working directory of the process**, not against where `hive-serve` is
-> installed. Two identically configured deployments started from two different directories
-> therefore serve two different corpora, or one corpus and one refusal, with nothing in the logs
-> to distinguish them.
+> **Breaking in 0.7.0.** `CONCEPTS_DIR` and `CLIENTS_DIR` used to default to `../../concepts` and
+> `../../clients`. A deployment that relied on either must now set it explicitly, preferably to an
+> absolute path. `hiveserve serve` refuses to start without `CONCEPTS_DIR` and names it.
+>
+> `CLIENTS_DIR` does not refuse, by design, so an upgrade is silent there: a deployment whose
+> `../../clients` happened to resolve onto a real tree now has client memory **off**, answers
+> client questions from shared cards alone, and logs nothing about it. **Set `CLIENTS_DIR`
+> explicitly to keep client memory.**
 
-The startup check is "set, and a directory" - it is not "is this the corpus you meant". It catches
-an unset value and a path that does not exist. It cannot catch `../../concepts` happening to
-resolve onto *something*: a stale corpus, a half-synced clone, another deployment's tree. That
-serves a wrong answer confidently, which is the one failure mode this system exists to avoid, and
-it is worse than the refusal you would have got from an empty setting.
+Those defaults were resolved against the **working directory of the process**, not against where
+`hive-serve` is installed. Two identically configured deployments started from two different
+directories therefore served two different corpora, or one corpus and one refusal, with nothing in
+the logs to distinguish them.
 
-The default is kept because removing it is a breaking change for every deployment that currently
-relies on it, which belongs with a major version rather than a documentation pass. Making it refuse
-outright, the way `LEDGER_DSN` does, is the fix; it is not this document's to make.
+Worse, the default made the refusal unreachable. The startup check is "set, and a directory" - it
+is not "is this the corpus you meant" - so it cannot catch `../../concepts` happening to resolve
+onto *something*: a stale corpus, a half-synced clone, another deployment's tree. An arbitrary
+markdown file two levels up was reproducibly served as a concept card by a server whose operator
+had set nothing at all. That answers confidently and wrongly, which is the one failure mode this
+system exists to avoid, and it is worse than the refusal an empty setting gives you.
 
-The same reasoning applies to `CLIENTS_DIR`'s `../../clients`, with one difference: `CLIENTS_DIR`
-is legitimately optional, so an empty value means *off* rather than *the working directory*, and it
-is never a startup refusal. A wrong-but-existing relative path is the same trap there, and it
-silently serves another deployment's client memory.
+`CLIENTS_DIR` loses its default for the same reason, but its empty value means something different:
+client memory is legitimately optional, so empty is *off* rather than *the working directory*, and
+it is never a startup refusal. `CLIENTS_DIR=` is what `.env.example` ships and what a deployment
+with no client memory should send.
 
 ## hive-gen
 
@@ -194,13 +199,13 @@ No environment configuration, and no `config.py` or `.env.example`. Everything i
 ## Settings that have no default on purpose
 
 `CONNECTOR_BASE`, `FORGE_API`, `FORGE_REPO`, `FORGE_KIND`, `LEDGER_DSN`, `EVAL_DIR`,
-`CARD_CORPUS_ROOT`, `R2_ENDPOINT`,
+`CARD_CORPUS_ROOT`, `CONCEPTS_DIR`, `CLIENTS_DIR`, `R2_ENDPOINT`,
 `R2_BUCKET`, `R2_PREFIX`, hive-zendesk's `DISTILL_MODEL` and the gateway addresses are empty by
 default and validated at startup or at the point of use.
 
-`CONCEPTS_DIR` and `CLIENTS_DIR` are the two that did not join that list, and they are the
-weakest link in it: both carry a **relative** default that a working directory can make real. See
-[the warning above](#concepts_dirs-default-is-relative-and-that-is-a-trap).
+`CONCEPTS_DIR` and `CLIENTS_DIR` joined that list in 0.7.0, and were its weakest link until then:
+both carried a **relative** default that a working directory could make real. See
+[`CONCEPTS_DIR` has no default](#concepts_dir-has-no-default).
 
 A default that points somewhere plausible does not save you configuration. It moves the failure from
 startup, where it is obvious, to first use, where it appears as a connection error against a host
@@ -244,8 +249,8 @@ an empty answer is never allowed to become a wrong one.
 supported deployment. It is never a startup refusal. Empty is coerced to "off" once, in
 `hiveserve/resolver.py`, so every door agrees; `run_eval` refuses only when the eval set it was
 handed actually has rows that exercise client memory, and otherwise reports a dead path rather than
-degrading quietly - but only when some source actually set `CLIENTS_DIR`, since naming a default
-nobody chose would warn on every run of a deployment that has no client memory. See
+degrading quietly - whenever `CLIENTS_DIR` names a path at all. Empty or unset has no path to name,
+so it is client memory off and is never reported. See
 [hive-serve](hive-serve.md#the-evaluation-harness) for what the eval does with it.
 
 An emptiness check counts what the consumer counts. `run_eval` asks `load_index` rather than

@@ -198,8 +198,9 @@ The gate-3 mechanism, and it refuses more than it accepts:
 | any `related:` id does not resolve | a dangling edge is a broken graph |
 | required frontmatter missing | the card cannot be indexed |
 
-It returns `(promoted, invalid)` rather than raising, so one bad draft does not block a batch and
-every rejection is reported with its reason.
+It returns `(promoted, invalid)` rather than raising, so one bad draft does not block a batch. The
+last three land in `invalid` with their reason; a draft that is not `approved` is passed over
+silently, named in neither list.
 
 ### `llm.py`
 

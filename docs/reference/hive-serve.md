@@ -14,8 +14,9 @@ hiveserve serve --http      # REST and MCP over streamable HTTP
 hiveserve serve --stdio     # MCP over stdio, for any client that speaks it
 ```
 
-Both transports require `LEDGER_DSN` and refuse to start without it. See
-[the ledger](#the-ledger).
+Both transports refuse to start without `LEDGER_DSN` or `CONCEPTS_DIR`, naming the setting that is
+missing and exiting 1 without a traceback. Neither has a default: see [the ledger](#the-ledger) and
+[`CONCEPTS_DIR` has no default](configuration.md#concepts_dir-has-no-default).
 
 ## REST
 
@@ -47,7 +48,8 @@ Fifteen, in three groups.
 
 **Personal memory:** `remember`, `recall`, `forget`, `promote`
 
-`promote` does not write to the corpus. It proposes, through `hive-author`.
+`promote` does not write to the corpus. It prepares a submission the agent files through
+`hive-author`.
 
 ## Modules
 
@@ -69,6 +71,41 @@ Fifteen, in three groups.
 
 Both doors call the transport-agnostic wrappers in `tools.py`. REST supplies only the concepts tree;
 MCP also supplies the clients tree and, for scoped operations, the caller-selected client.
+
+One agent question, from the MCP tool call to the card bundle that comes back. Nothing here is
+cached and nothing calls a model:
+
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant M as mcp_app.py
+    participant T as tools.py
+    participant R as resolver.py
+    participant K as ranking.py
+    participant F as concepts/ · clients/
+
+    A->>M: find_concepts(query, product?, client?)
+    M->>T: find_concepts(...)
+    T->>R: load_index(concepts_dir, clients_dir)
+    R->>F: read the frontmatter of every card
+    F-->>R: one row per card
+    R-->>T: the index, db/** excluded
+    T->>K: rank(query, candidates, limit)
+    K-->>T: scored ids
+    T-->>M: id · title · product · description
+    M-->>A: a small ranked set
+
+    A->>M: resolve(ids, depth=1, client?)
+    M->>T: resolve_cards(...)
+    T->>R: resolve(...)
+    R->>F: read each seed card, follow related one level
+    F-->>R: card texts
+    Note over R: drops cross-regime and cross-client neighbours,<br/>caps at max_cards and max_chars
+    R->>R: corrections_by_target - attach status approved only
+    R-->>T: card_ids · bundle · card_texts · dropped · corrections
+    T-->>M: the four transport keys
+    M-->>A: the card bundle
+```
 
 ## The resolver
 
@@ -177,9 +214,9 @@ Both are checked before any model is called. An absent or empty corpus scores ze
 and reports an aggregate as though it had measured something, so `run_eval` refuses instead, naming
 the setting. "Empty" is `load_index`'s definition, not "holds no `.md`", since `index.md`, `log.md`
 and the `<product>/db/` tier are not cards. `CLIENTS_DIR` stays optional: `run_eval` refuses only
-when the set it was handed has rows expecting client cards, and otherwise - when the setting was
-actually configured, rather than left at its default - prints that a dead path disabled client
-memory rather than degrading quietly. When it is set, existing is not
+when the set it was handed has rows expecting client cards, and otherwise - when the setting names
+a path at all, rather than being empty or unset - prints that a dead path disabled client
+memory rather than degrading quietly. When it names one, existing is not
 enough either - `run_eval` asks `load_index` which clients it can serve and refuses naming the ones
 it cannot. What counts as "needed" is which clients a row expects **cards** for - an `expects_memory`
 id, or a `clients/<client>/...` entry in `expected_card_ids` - never the `client` field alone. A
