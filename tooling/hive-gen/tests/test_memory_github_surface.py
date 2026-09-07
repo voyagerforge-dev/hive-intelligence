@@ -5,10 +5,11 @@ approved-label workflow, and the CODEOWNERS rules that guard the card
 directories. That surface governs where memory and correction cards live, so it
 belongs to whichever repository hosts the corpus, not to the tooling.
 
-The scripts these workflows invoke (``memory_from_issue.py`` and friends) are
-machinery and ship with the tooling. The workflows themselves follow the content
-they act on. When the corpus is split into its own repository, this surface goes
-with it and these tests skip rather than fail.
+A workflow reaches the card parser as the installed
+``hivegen-memory-from-issue`` command, which ships with the tooling. The
+workflows themselves follow the content they act on. When the corpus is split
+into its own repository, this surface goes with it and these tests skip rather
+than fail.
 """
 
 from pathlib import Path
@@ -40,7 +41,10 @@ def test_memory_issue_form_wellformed():
 def test_memory_action_fires_on_approved_label():
     text = MEMORY_WORKFLOW.read_text()
     assert "hive-memory-approved" in text
-    assert "memory_from_issue.py" in text
+    # Both spellings pass on purpose: a corpus repository switches its workflow from the
+    # in-tree script path to the installed command when it bumps its hive-gen pin, and this
+    # must go red neither on a corpus that has migrated nor on one that has not yet.
+    assert "hivegen-memory-from-issue" in text or "memory_from_issue.py" in text
 
 
 @needs_github_surface

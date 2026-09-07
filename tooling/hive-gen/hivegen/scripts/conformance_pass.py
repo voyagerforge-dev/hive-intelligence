@@ -5,14 +5,16 @@ For every concept card:
     `related` frontmatter) and a `# Citations` section (from the `sources` frontmatter),
     so relationships and citations are expressed in OKF-idiomatic body markdown, not only
     in custom frontmatter. Existing frontmatter keys are preserved.
-Usage: python scripts/conformance_pass.py <concepts_dir>
+Usage: hivegen-conformance-pass <concepts_dir>
 """
+import argparse
 import glob
 import os
 import re
-import sys
 
 import yaml
+
+from hivegen.corpus import require_dir
 
 # The base a card id resolves under. A PATH by default, deliberately.
 #
@@ -108,5 +110,17 @@ def process(concepts_dir):
     print(f"processed {n} cards | Related sections {rel} | Citations sections {cit}")
 
 
-if __name__ == "__main__":
-    process(sys.argv[1])
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        prog="hivegen-conformance-pass",
+        description="Normalise concept-card frontmatter and regenerate the generated body "
+                    "sections, in place and idempotently.")
+    ap.add_argument("concepts_dir", help="the corpus concepts/ tree, rewritten in place")
+    args = ap.parse_args(argv)
+    process(require_dir(args.concepts_dir, setting="concepts_dir",
+                        what="the concept cards to rewrite"))
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

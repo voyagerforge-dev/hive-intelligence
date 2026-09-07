@@ -1,0 +1,181 @@
+"""Orchestration core for the memory-conflict PR gate. Composes the tested memory_lint +
+memory_conflict_score over a checked-out PR tree and turns the verdict into a GitHub
+commit-status payload. The three functions are pure/testable: the LLM and all I/O are
+injected by the caller, which is how the corpus repository's own gate uses them.
+
+`main` is the same composition made runnable for a caller that has no glue of its own; it
+builds the LLM from the environment and prints the payload as JSON. Its `--changed-file`
+values and its `clients_dir` must share a base: run it from the directory the changed paths
+are relative to, which for `git diff --name-only` output is the repository root.
+Usage: hivegen-pr-conflict-gate --changed-file PATH ... <clients_dir> <concepts_dir>"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+
+from hivegen.corpus import require_dir
+from hivegen.scripts import memory_conflict_score, memory_lint
+from hivegen.scripts._gateway import gateway_llm
+
+_CONTEXT = "okf/memory-conflict"
+
+
+def pr_touches_memory(changed_files, memory_prefix=memory_lint.CLIENTS_PREFIX) -> bool:
+    """Whether a PR changes a client memory card, and therefore needs scoring.
+
+    The default prefix comes from `memory_lint`, the module that builds card ids from it:
+    import the fact, do not restate it. Restating it as a literal here is what broke this
+    gate before: it hardcoded `knowledge/okf/clients/`, a stale monorepo-era prefix that
+    never matches the `clients/` corpora this tooling runs against, so the gate matched
+    nothing and posted `okf/memory-conflict` success on every memory PR without ever
+    scoring one.
+
+    `memory_prefix` overrides it for a corpus that does not sit at the repository root, and
+    is a DIFFERENT fact from `memory_lint.CLIENTS_PREFIX`: that one stamps card ids, which
+    stay `clients/...` whatever the tree is called on disk, while this one only decides
+    whether a changed path is a memory card. Do not collapse the two back together. The
+    default is the case where they coincide, which is the corpus-at-the-root layout the
+    corpus repository calls this with.
+    """
+    return bool(changed_memory_cards(changed_files, memory_prefix))
+
+
+def changed_memory_cards(changed_files, memory_prefix=memory_lint.CLIENTS_PREFIX) -> list[str]:
+    """Which of the supplied changed paths name a client memory card.
+
+    The same rule `pr_touches_memory` answers yes or no about, expressed once: `main` needs
+    the paths themselves to tell a deletion (every one of them gone from the head tree)
+    from a `clients_dir` that does not hold them.
+    """
+    return [
+        f for f in changed_files
+        if f.startswith(memory_prefix) and "/memory/" in f and f.endswith(".md")
+    ]
+
+
+def changed_path_prefix(clients_dir) -> str:
+    """The prefix `clients_dir`'s memory cards carry in `--changed-file` values.
+
+    Changed paths come from `git diff --name-only`, so they are relative to the repository
+    root, and the gate is run from there. A `clients_dir` outside that base cannot be
+    compared with them at all, and a `clients_dir` that IS that base carries no prefix to
+    match on, leaving `/memory/` anywhere in the tree looking like a client memory card.
+    Both are refused rather than answered: the gate silently matching nothing is how it
+    posts an authoritative green over a memory change no one scored.
+    """
+    rel = os.path.relpath(os.path.abspath(clients_dir), os.getcwd())
+    if rel == os.pardir or rel.startswith(os.pardir + os.sep):
+        raise SystemExit(
+            f"{clients_dir} is outside the working directory {os.getcwd()}, so no "
+            "--changed-file path can name a card inside it. Run this from the directory "
+            "the changed paths are relative to, which for `git diff --name-only` output "
+            "is the repository root.")
+    if rel == os.curdir:
+        raise SystemExit(
+            f"{clients_dir} is the working directory {os.getcwd()} itself, so no prefix "
+            "distinguishes a client memory card from any other path containing "
+            "/memory/. Pass the clients tree itself, as a path under the directory the "
+            "changed paths are relative to.")
+    return rel.replace(os.sep, "/") + "/"
+
+
+def score_tree(clients_dir, concepts_dir, llm):
+    """(blocking, review) id-pairs for same-client memory conflicts in a checked-out tree."""
+    _errors, candidates = memory_lint.lint(clients_dir, concepts_dir)
+    if not candidates:
+        return [], []
+    memories = memory_lint._memories(str(clients_dir))
+    return memory_conflict_score.gate(candidates, memories, llm)
+
+
+def _pairs(items) -> str:
+    return ", ".join(f"{a} <> {b}" for a, b in items)
+
+
+def verdict_to_status(blocking, review) -> dict:
+    if blocking:
+        desc = f"conflict: {_pairs(blocking)} - resolve (supersede/reconcile/reject)"
+        return {"context": _CONTEXT, "state": "failure", "description": desc[:140]}
+    if review:
+        desc = f"possible conflict (review): {_pairs(review)} - confirm or supersede"
+        return {"context": _CONTEXT, "state": "failure", "description": desc[:140]}
+    return {"context": _CONTEXT, "state": "success",
+            "description": "no same-client memory conflict"}
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        prog="hivegen-pr-conflict-gate",
+        description="Decide whether a pull request's changed files touch client memory, "
+                    "score the tree if they do, and print the commit-status payload.",
+        epilog="A changed memory card that is still in the tree while clients_dir holds "
+               "no memory card at all is refused rather than answered: the two disagree "
+               "about where memory lives, and a verdict would be about nothing. A "
+               "changeset whose memory cards are all gone from the tree is a deletion, "
+               "which succeeds: there is no new claim left to score.")
+    ap.add_argument("clients_dir",
+                    help="the corpus clients/ tree, as a path under the directory this is "
+                         "run from; it must name that tree itself, not the directory this "
+                         "is run from")
+    ap.add_argument("concepts_dir", help="the corpus concepts/ tree the memories relate to")
+    ap.add_argument("--changed-file", action="append", default=[], metavar="PATH",
+                    help="a path the pull request changed, relative to the directory this "
+                         "is run from (`git diff --name-only` output, run from the "
+                         "repository root); repeat it once per path")
+    args = ap.parse_args(argv)
+
+    clients = require_dir(args.clients_dir, setting="clients_dir",
+                          what="the memory cards a verdict would be about")
+    concepts = require_dir(args.concepts_dir, setting="concepts_dir",
+                           what="the concepts the memories relate to")
+
+    if not args.changed_file:
+        raise SystemExit(
+            "No changed files were supplied: pass --changed-file PATH once per path the "
+            "pull request changed. Refusing to report a verdict on a changeset nobody named.")
+
+    changed_cards = changed_memory_cards(args.changed_file, changed_path_prefix(clients))
+    if not changed_cards:
+        print(json.dumps({"context": _CONTEXT, "state": "success",
+                          "description": "no client memory card changed"}))
+        return 0
+
+    # Every changed card is gone from the head tree, so the pull request deletes memory
+    # rather than asserting anything: there is no new claim for an existing card to
+    # contradict. Resolved against the directory the gate runs from, the same base the
+    # changed paths themselves are relative to.
+    if not any(os.path.exists(f) for f in changed_cards):
+        print(json.dumps({"context": _CONTEXT, "state": "success",
+                          "description": "client memory cards deleted, nothing left to score"}))
+        return 0
+
+    # A changed card is still on disk and the tree holds no memory card at all. Those
+    # cannot both be true of the same corpus, so the gate has caught itself being pointed
+    # at the wrong tree - a clients_dir one level too high reads as a corpus with nothing
+    # in it, and every such tree scores zero conflicts. Refuse on the contradiction rather
+    # than on a guess about what a corpus looks like.
+    if not memory_lint._memories(str(clients)):
+        raise SystemExit(
+            f"clients_dir={args.clients_dir} holds no client memory card, but the "
+            f"changeset names one that is still in the tree ({changed_cards[0]}), so "
+            "nothing a verdict could be about was found. clients_dir does not name the "
+            "tree the changed cards live in: pass that tree, not a directory above or "
+            "beside it.")
+
+    # Refuse rather than fall back to an unconfigured gateway. The scorer fails SAFE - an
+    # unparseable reply scores 1.0 and blocks - so scoring without a gateway would block the
+    # pull request with a verdict nothing measured, which reads exactly like a real conflict.
+    llm = gateway_llm()
+    if llm is None:
+        raise SystemExit(
+            "BIFROST_BASE and BIFROST_API_KEY must be set to score a memory change. "
+            "Refusing to report a verdict without having scored anything.")
+
+    status = verdict_to_status(*score_tree(clients, concepts, llm))
+    print(json.dumps(status))
+    return 0 if status["state"] == "success" else 1
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

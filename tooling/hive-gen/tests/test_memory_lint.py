@@ -1,10 +1,5 @@
-import importlib.util
-from pathlib import Path
+from hivegen.scripts import memory_lint as mod
 
-_spec = importlib.util.spec_from_file_location(
-    "memory_lint", Path(__file__).resolve().parents[1] / "scripts" / "memory_lint.py")
-mod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(mod)
 lint = mod.lint
 
 

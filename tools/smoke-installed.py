@@ -259,6 +259,26 @@ def step3_gen(work: Path) -> None:
     check(p.returncode != 0, f"hivegen refused an unset CARD_CORPUS_ROOT (exit {p.returncode})")
     check("CARD_CORPUS_ROOT" in (p.stdout + p.stderr), "the refusal names the setting")
 
+    # The card wrappers, as COMMANDS. Everything above this proves the library; until 0.7.0
+    # that was all the wheel carried, so a consumer who pinned the distribution still read
+    # the command line off a tree somebody had seeded on a host by hand. The names come from
+    # the installed metadata rather than a list written here, so a console script added to
+    # pyproject.toml and never installed fails this rather than going unnoticed.
+    commands = sorted(ep.name for ep in md.distribution("vf-hive-gen").entry_points
+                      if ep.group == "console_scripts")
+    check(len(commands) >= 8, f"vf-hive-gen installed {len(commands)} console script(s)")
+    for name in commands:
+        check((Path(sys.executable).parent / name).is_file(), f"{name} is on the path")
+
+    # And one of them doing real work, because "the command exists" is a weaker claim than
+    # the corpus workflows need from it.
+    concepts = work / "concepts" / "widget"
+    concepts.mkdir(parents=True)
+    (concepts / "calibration-routine.md").write_text(card)
+    p = run_cli(["hivegen-index-generate", str(work / "concepts")])
+    check(p.returncode == 0, f"hivegen-index-generate exited {p.returncode}")
+    check((work / "concepts" / "index.md").is_file(), "it wrote the root index.md")
+
 
 def step4_serve(corpus: Path) -> None:
     step("4. hive-serve: no-RAG retrieval over a real corpus (index, then cross-link traversal)",

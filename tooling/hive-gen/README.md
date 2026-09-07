@@ -19,6 +19,9 @@ pip install vf-hive-gen
 python -m hivegen.run
 ```
 
+Installing also puts the eight `hivegen-*` card commands (conformance, index, issue parsing, memory
+and correction lint, conflict scoring and the PR gate) on the path; the reference doc lists them.
+
 ## From source
 
 ```bash

@@ -1,11 +1,13 @@
 """Lint OKF correction cards. Errors (exit 1): dangling corrects target, bad supersedes,
 status inconsistency. Warning: >1 active correction on one concept (potential conflict).
-Usage: python scripts/corrections_lint.py <concepts_dir>"""
+Usage: hivegen-corrections-lint <concepts_dir>"""
+import argparse
 import glob
 import os
-import sys
 
 import yaml
+
+from hivegen.corpus import require_dir
 
 
 def _fm(p):
@@ -51,11 +53,21 @@ def lint(concepts_dir):
     return errors, warnings
 
 
-if __name__ == "__main__":
-    errs, warns = lint(sys.argv[1])
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        prog="hivegen-corrections-lint",
+        description="Lint correction cards for dangling targets, bad supersedes and conflicts.")
+    ap.add_argument("concepts_dir", help="the corpus concepts/ tree")
+    args = ap.parse_args(argv)
+    errs, warns = lint(require_dir(args.concepts_dir, setting="concepts_dir",
+                                   what="the correction cards to lint"))
     for w in warns:
         print(f"WARN  {w}")
     for e in errs:
         print(f"ERROR {e}")
     print(f"corrections_lint: {len(errs)} errors, {len(warns)} warnings")
-    sys.exit(1 if errs else 0)
+    return 1 if errs else 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

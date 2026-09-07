@@ -1,12 +1,9 @@
 import importlib.util
-from pathlib import Path
 
 import pytest
 
-_spec = importlib.util.spec_from_file_location(
-    "memory_from_issue", Path(__file__).resolve().parents[1] / "scripts" / "memory_from_issue.py")
-mod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(mod)
+from hivegen.scripts import memory_from_issue as mod
+
 parse_issue = mod.parse_issue
 validate_record = mod.validate_record
 _slug = mod._slug
@@ -84,9 +81,12 @@ def test_slug():
 
 def _reload():
     """The base URL is read at import, as in conformance_pass, so the environment has to be
-    set before the module is executed."""
-    fresh = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(fresh)
+    set before the module is executed. A SEPARATE module object, not importlib.reload: the
+    imported one is shared with every other test in this file and must keep its own value.
+    """
+    spec = importlib.util.spec_from_file_location("memory_from_issue_fresh", mod.__file__)
+    fresh = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fresh)
     return fresh
 
 

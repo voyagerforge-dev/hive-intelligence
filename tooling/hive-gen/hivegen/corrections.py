@@ -2,7 +2,7 @@
 A `record` is a surface-agnostic dict; a `correction card` is conformant markdown at
 concepts/<product>/corrections/<slug>.md. The CLI (new_correction.py) and the GitHub
 Issue-Form Action both author cards through record_to_correction. `resource` and the
-`# Citations` body section are added later by scripts/conformance_pass.py, not here."""
+`# Citations` body section are added later by hivegen.scripts.conformance_pass, not here."""
 from __future__ import annotations
 
 import re

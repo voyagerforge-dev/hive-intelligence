@@ -4,14 +4,15 @@
   - <product>/index.md: no frontmatter, a section per product listing its concepts as
     bundle-relative markdown links with descriptions.
 Reserved-file rule: index.md is skipped by the card loader at any level.
-Usage: python scripts/index_generate.py <concepts_dir>
+Usage: hivegen-index-generate <concepts_dir>
 """
+import argparse
 import glob
 import os
-import sys
 
 import yaml
 
+from hivegen.corpus import require_dir
 from hivegen.profile import load_profile
 
 # Display titles for product facets. Corpus vocabulary, so it comes from the profile; a
@@ -63,5 +64,17 @@ def generate(concepts_dir):
     print(f"wrote root index + {len(by_product)} product indexes ({total} concepts)")
 
 
-if __name__ == "__main__":
-    generate(sys.argv[1])
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        prog="hivegen-index-generate",
+        description="Regenerate the root and per-product index.md progressive-disclosure "
+                    "listings for a concepts bundle.")
+    ap.add_argument("concepts_dir", help="the corpus concepts/ tree, rewritten in place")
+    args = ap.parse_args(argv)
+    generate(require_dir(args.concepts_dir, setting="concepts_dir",
+                         what="the concept cards to index"))
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

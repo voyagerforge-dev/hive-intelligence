@@ -1,13 +1,14 @@
 """Lint OKF client-memory cards. Structural errors (exit 1): bad client/product, dangling
 related target, bad supersedes, status inconsistency. Also emits conflict CANDIDATES (same
 client + shared related/tag) for the LLM conflict scorer to judge, candidates do NOT fail.
-Usage: python scripts/memory_lint.py <clients_dir> <concepts_dir>"""
+Usage: hivegen-memory-lint <clients_dir> <concepts_dir>"""
+import argparse
 import glob
 import os
-import sys
 
 import yaml
 
+from hivegen.corpus import require_dir
 from hivegen.profile import load_profile
 
 # Valid `product:` facet values, from the corpus profile. An empty set means the profile
@@ -103,11 +104,25 @@ def lint(clients_dir, concepts_dir):
     return errors, candidates
 
 
-if __name__ == "__main__":  # pragma: no cover
-    errs, cands = lint(sys.argv[1], sys.argv[2])
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        prog="hivegen-memory-lint",
+        description="Lint client-memory cards and list same-client conflict candidates.")
+    ap.add_argument("clients_dir", help="the corpus clients/ tree")
+    ap.add_argument("concepts_dir", help="the corpus concepts/ tree the memories relate to")
+    args = ap.parse_args(argv)
+    clients = require_dir(args.clients_dir, setting="clients_dir",
+                          what="the memory cards to lint")
+    concepts = require_dir(args.concepts_dir, setting="concepts_dir",
+                           what="the concepts the memories relate to")
+    errs, cands = lint(clients, concepts)
     for a, b in cands:
         print(f"CANDIDATE {a} <> {b} (same client, shared subject), score for conflict")
     for e in errs:
         print(f"ERROR {e}")
     print(f"memory_lint: {len(errs)} errors, {len(cands)} conflict candidates")
-    sys.exit(1 if errs else 0)
+    return 1 if errs else 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

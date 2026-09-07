@@ -1,11 +1,12 @@
 """Parse a Correction Issue Form body into a record and write a correction card.
-Called by .github/workflows/correction-from-issue.yml.
-Usage: python scripts/correction_from_issue.py <issue_body_file> <concepts_dir>  -> prints card path"""
+Called by the corpus repository's correction-from-issue workflow.
+Usage: hivegen-correction-from-issue <issue_body_file> <concepts_dir>  -> prints card path"""
+import argparse
 import re
-import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from hivegen.corpus import require_dir
 from hivegen.corrections import record_to_correction
 from hivegen.profile import load_profile
 
@@ -54,16 +55,28 @@ def validate_record(rec: dict) -> None:
         raise ValueError(f"unsafe Target concept id '{corrects}'")
 
 
-if __name__ == "__main__":  # pragma: no cover
-    body = Path(sys.argv[1]).read_text()
-    concepts = sys.argv[2]
-    rec = parse_issue(body)
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        prog="hivegen-correction-from-issue",
+        description="Parse a Correction issue-form body into a correction card and write it, "
+                    "printing the path written.")
+    ap.add_argument("issue_body_file", help="a file holding the issue body")
+    ap.add_argument("concepts_dir", help="the corpus concepts/ tree to write into")
+    args = ap.parse_args(argv)
+    concepts = require_dir(args.concepts_dir, setting="concepts_dir",
+                           what="the corpus tree to write the card into")
+    rec = parse_issue(Path(args.issue_body_file).read_text())
     try:
         validate_record(rec)
     except ValueError as e:
-        raise SystemExit(str(e))
-    d = Path(concepts) / rec["product"] / "corrections"
+        raise SystemExit(str(e)) from e
+    d = concepts / rec["product"] / "corrections"
     d.mkdir(parents=True, exist_ok=True)
     out = d / f"{_slug(rec['title'])}.md"
     out.write_text(record_to_correction(rec))
     print(out)
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

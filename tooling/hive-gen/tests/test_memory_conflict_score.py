@@ -1,11 +1,5 @@
-import importlib.util
-from pathlib import Path
+from hivegen.scripts import memory_conflict_score as mod
 
-_spec = importlib.util.spec_from_file_location(
-    "memory_conflict_score",
-    Path(__file__).resolve().parents[1] / "scripts" / "memory_conflict_score.py")
-mod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(mod)
 gate = mod.gate
 score_pair = mod.score_pair
 

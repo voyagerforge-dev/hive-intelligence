@@ -1,12 +1,13 @@
 """Parse a Memory Issue Form body into a record and write a client-memory card.
-Called by .github/workflows/memory-from-issue.yml.
-Usage: python scripts/memory_from_issue.py <issue_body_file> <clients_dir>  -> prints card path"""
+Called by the corpus repository's memory-from-issue workflow.
+Usage: hivegen-memory-from-issue <issue_body_file> <clients_dir>  -> prints card path"""
+import argparse
 import os
 import re
-import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from hivegen.corpus import require_dir
 from hivegen.memory import record_to_memory
 from hivegen.profile import load_profile
 
@@ -66,19 +67,31 @@ def validate_record(rec: dict) -> None:
         raise ValueError(f"unsafe client '{client}': must match [a-z0-9-]+")
 
 
-if __name__ == "__main__":  # pragma: no cover
-    body = Path(sys.argv[1]).read_text()
-    clients = sys.argv[2]
-    rec = parse_issue(body)
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        prog="hivegen-memory-from-issue",
+        description="Parse a Memory issue-form body into a client-memory card and write it, "
+                    "printing the path written.")
+    ap.add_argument("issue_body_file", help="a file holding the issue body")
+    ap.add_argument("clients_dir", help="the corpus clients/ tree to write into")
+    args = ap.parse_args(argv)
+    clients = require_dir(args.clients_dir, setting="clients_dir",
+                          what="the corpus tree to write the card into")
+    rec = parse_issue(Path(args.issue_body_file).read_text())
     try:
         validate_record(rec)
     except ValueError as e:
-        raise SystemExit(str(e))
+        raise SystemExit(str(e)) from e
     slug = _slug(rec["title"])
     rec["submitted_by"] = os.environ.get("ISSUE_AUTHOR", "")
     rec["resource"] = resource_for(rec["client"], slug)
-    d = Path(clients) / rec["client"] / "memory"
+    d = clients / rec["client"] / "memory"
     d.mkdir(parents=True, exist_ok=True)
     out = d / f"{slug}.md"
     out.write_text(record_to_memory(rec))
     print(out)
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

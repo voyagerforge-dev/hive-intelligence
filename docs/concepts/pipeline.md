@@ -259,21 +259,21 @@ to any OKF consumer, not only to `hive-serve`.
 
 ### Post-promote: facets, conformance, index
 
-Promotion lands cards in `concepts/<product>/`, but they are not *servable-ready* until three
-deterministic, **idempotent, LLM-free** scripts run over the whole directory. Run this after every
+Promotion lands cards in `concepts/<product>/`, but they are not *servable-ready* until five
+deterministic, **idempotent, LLM-free** passes run over the whole directory. Run this after every
 distillation:
 
-| Step | Script | What it does |
+| Step | Runs | What it does |
 |---|---|---|
-| **Facet stamp** | `product_facet_apply.py` | stamps `product`, `platform`, `version` onto the product's cards |
-| **Version facet** | `version_apply.py` | derives `version` from source-reference years. No model, no gate |
-| **Regime facet** | `regime_apply.py` | stamps a within-product either-or facet from a human-reviewed classification; drives the cross-regime expansion guard |
-| **Conformance** | `conformance_pass.py` | sets `resource`, adds `timestamp`, regenerates `## Related` and `# Citations` |
-| **Index** | `index_generate.py` | writes the root and per-product `index.md` progressive-disclosure listings |
+| **Facet stamp** | `scripts/product_facet_apply.py` | stamps `product`, `platform`, `version` onto the product's cards |
+| **Version facet** | `scripts/version_apply.py` | derives `version` from source-reference years. No model, no gate |
+| **Regime facet** | `scripts/regime_apply.py` | stamps a within-product either-or facet from a human-reviewed classification; drives the cross-regime expansion guard |
+| **Conformance** | `hivegen-conformance-pass` | sets `resource`, adds `timestamp`, regenerates `## Related` and `# Citations` |
+| **Index** | `hivegen-index-generate` | writes the root and per-product `index.md` progressive-disclosure listings |
 
 This takes the corpus from *formally* conformant (parseable frontmatter) to *idiomatically*
 conformant: path-id identity, a graph expressed as inline links, citations, and a spec-shaped
-index. The scripts are idempotent, so re-running leaves conformant cards untouched.
+index. Every pass is idempotent, so re-running leaves conformant cards untouched.
 
 **The isolation eval is the deploy gate.** Before deploy, the eval harness over a product's
 question set must show **zero cross-product bleed**, plus no regime or version regression. No

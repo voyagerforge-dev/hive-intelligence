@@ -111,10 +111,11 @@ with no client memory should send.
 | `TAXONOMY_MODEL` | `minimax/minimax-m3` | gate 2, the concept list |
 | `ASSIGN_MODEL` | `deepseek/deepseek-v4-flash` | document to concept assignment |
 | `DISTILL_MODEL` | `minimax/minimax-m3` | gate 3, the card bodies |
+| `CONFLICT_MODEL` | `minimax/minimax-m3` | the memory-conflict judge behind `hivegen-memory-conflict-score` and `hivegen-pr-conflict-gate`. **A value the gateway does not serve blocks every candidate pair**: scoring fails safe, so an unanswered request scores 1.0 and the gate posts `state: failure` on a verdict nothing measured. Read from the environment by those commands, not through `config.py`, so it is absent from `.env.example` |
 | `MAX_CHARS` | `24000` | source characters per distillation call |
 | `BIFROST_TIMEOUT_S` | `300` | |
 | `CORPUS_PROFILE` | empty | path to the corpus profile, the domain vocabulary that ships with a corpus. Empty means look for `corpus-profile.yaml` in the working directory, then beside `ATOMIC_DIR` |
-| `CARD_BASE_URL` | `/card` | the base a card id resolves under, in the `resource` field. Read by both card-writing scripts, `conformance_pass` (concept cards) and `memory_from_issue` (client memory cards). **A path, not a host, and deliberately so** - see below. Read from the environment by the scripts, not through `config.py` |
+| `CARD_BASE_URL` | `/card` | the base a card id resolves under, in the `resource` field. Read by both card-writing commands, `hivegen-conformance-pass` (concept cards) and `hivegen-memory-from-issue` (client memory cards). **A path, not a host, and deliberately so** - see below. Read from the environment by the scripts, not through `config.py` |
 
 **`CARD_BASE_URL` defaults to a path because a card outlives a hostname.** One corpus wrote 991
 cards with an absolute URI and had to rewrite every one of them when its deployment moved domains.

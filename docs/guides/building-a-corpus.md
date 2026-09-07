@@ -149,17 +149,17 @@ Approved drafts move into `concepts/<product>/`. Ids are derived from the result
 
 ### Post-promote
 
-Three scripts, in order:
+Three passes, in order - one in-tree script, then two installed commands:
 
 ```bash
 uv run python scripts/product_facet_apply.py concepts/
-uv run python scripts/conformance_pass.py concepts/
-uv run python scripts/index_generate.py concepts/
+uv run hivegen-conformance-pass concepts/
+uv run hivegen-index-generate concepts/
 ```
 
-`product_facet_apply` stamps the product facet. `conformance_pass` normalises frontmatter and
-writes the `resource` URL, reading its base from `CARD_BASE_URL`. `index_generate` regenerates
-`index.md` at the root and per product.
+`product_facet_apply` stamps the product facet. `hivegen-conformance-pass` normalises frontmatter
+and writes the `resource` URL, reading its base from `CARD_BASE_URL`. `hivegen-index-generate`
+regenerates `index.md` at the root and per product.
 
 Then check isolation before you serve anything:
 

@@ -1,9 +1,16 @@
-"""LLM conflict-probability gate over memory_lint's candidate pairs (CI/authoring-side only, never the serving connector). For each same-client candidate pair, ask an injected ChatLLM
+"""LLM conflict-probability gate over memory_lint's candidate pairs (CI/authoring-side only,
+never the serving connector). For each same-client candidate pair, ask an injected ChatLLM
 whether the two memories make mutually incompatible claims; a high probability blocks the PR.
-Fail-safe: any LLM error/unparseable reply scores 1.0 (block, human review)."""
+Fail-safe: any LLM error/unparseable reply scores 1.0 (block, human review).
+Usage: hivegen-memory-conflict-score <clients_dir> <concepts_dir>"""
 from __future__ import annotations
 
+import argparse
+
+from hivegen.corpus import require_dir
 from hivegen.llm import extract_json
+from hivegen.scripts import memory_lint
+from hivegen.scripts._gateway import gateway_llm
 
 _SYS = (
     "You judge whether two client-memory notes about the SAME client CONFLICT, i.e. make "
@@ -46,33 +53,37 @@ def gate(candidates, memories, llm, *, block_threshold=0.6, warn_threshold=0.3,
     return blocking, review
 
 
-if __name__ == "__main__":  # pragma: no cover
-    import importlib.util
-    import os
-    import sys
-    from pathlib import Path
-
-    clients_dir, concepts_dir = sys.argv[1], sys.argv[2]
-    _ml = importlib.util.spec_from_file_location("memory_lint", Path(__file__).with_name("memory_lint.py"))
-    ml = importlib.util.module_from_spec(_ml)
-    _ml.loader.exec_module(ml)
-    _errors, candidates = ml.lint(clients_dir, concepts_dir)
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        prog="hivegen-memory-conflict-score",
+        description="Score memory_lint's same-client candidate pairs for contradiction. "
+                    "With no gateway configured it prints the candidate pairs for a human "
+                    "to read and does not fail the step.")
+    ap.add_argument("clients_dir", help="the corpus clients/ tree")
+    ap.add_argument("concepts_dir", help="the corpus concepts/ tree the memories relate to")
+    args = ap.parse_args(argv)
+    clients = require_dir(args.clients_dir, setting="clients_dir",
+                          what="the memory cards to score")
+    concepts = require_dir(args.concepts_dir, setting="concepts_dir",
+                           what="the concepts the memories relate to")
+    _errors, candidates = memory_lint.lint(clients, concepts)
     if not candidates:
         print("memory_conflict_score: 0 candidates")
-        sys.exit(0)
-    mems = ml._memories(clients_dir)
-    key = os.environ.get("BIFROST_API_KEY")
-    base = os.environ.get("BIFROST_BASE")
-    if not key or not base:
+        return 0
+    mems = memory_lint._memories(clients)
+    llm = gateway_llm()
+    if llm is None:
         print(f"memory_conflict_score: {len(candidates)} candidate(s), no LLM key set, ADVISORY only:")
         for a, b in candidates:
             print(f"  CANDIDATE {a} <> {b}")
-        sys.exit(0)
-    from hivegen.llm import BifrostChat
-    llm = BifrostChat(base, key, os.environ.get("CONFLICT_MODEL", "minimax/minimax-m3"))
+        return 0
     blocking, review = gate(candidates, mems, llm)
     for a, b in review:
         print(f"REVIEW {a} <> {b}, human check")
     for a, b in blocking:
         print(f"CONFLICT {a} <> {b}, resolve (supersede/reconcile/reject) before merge")
-    sys.exit(1 if blocking else 0)
+    return 1 if blocking else 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

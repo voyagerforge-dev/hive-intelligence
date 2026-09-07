@@ -29,8 +29,29 @@ Source = "https://github.com/voyagerforge-dev/hive-intelligence"
 Issues = "https://github.com/voyagerforge-dev/hive-intelligence/issues"
 "Release notes" = "https://github.com/voyagerforge-dev/hive-intelligence/releases"
 
+# The command line over the library, so a consumer that pins this distribution gets both.
+# Until 0.7.0 these lived in `scripts/` beside the package and no artifact carried them, so
+# the corpus repository read the wrappers off a hand-seeded checkout on a host while
+# importing the pinned `hivegen` underneath. Names are `hivegen-` prefixed because a console
+# script lands on a shared PATH and `index-generate` is not a name this project may claim.
+# `tests/test_console_scripts.py` builds the wheel and fails on one declared here that does
+# not resolve, or a PUBLIC module under `hivegen/scripts/` with no name here; a module whose
+# name starts with an underscore is a private helper and is expected to have no command.
+[project.scripts]
+hivegen-conformance-pass = "hivegen.scripts.conformance_pass:main"
+hivegen-correction-from-issue = "hivegen.scripts.correction_from_issue:main"
+hivegen-corrections-lint = "hivegen.scripts.corrections_lint:main"
+hivegen-index-generate = "hivegen.scripts.index_generate:main"
+hivegen-memory-conflict-score = "hivegen.scripts.memory_conflict_score:main"
+hivegen-memory-from-issue = "hivegen.scripts.memory_from_issue:main"
+hivegen-memory-lint = "hivegen.scripts.memory_lint:main"
+hivegen-pr-conflict-gate = "hivegen.scripts.pr_conflict_gate:main"
+
 [project.optional-dependencies]
-dev = ["pytest>=8.3", "respx>=0.21", "ruff>=0.7"]
+# hatchling is a TEST dependency, not only the build backend: test_console_scripts.py calls
+# its PEP 517 hook in-process to build a real wheel, which keeps that test offline and out
+# of build isolation. CI installs this extra with plain pip and has no uv to build with.
+dev = ["pytest>=8.3", "respx>=0.21", "ruff>=0.7", "hatchling>=1.25"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

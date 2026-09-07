@@ -1,7 +1,8 @@
 # hive-gen
 
-Atomic markdown to concept cards. Package `hivegen`, distribution `vf-hive-gen`. No console script:
-run it as `python -m hivegen.run`.
+Atomic markdown to concept cards. Package `hivegen`, distribution `vf-hive-gen`. The pipeline runner
+has no console script: run it as `python -m hivegen.run`. The distribution does ship the eight
+`hivegen-*` card commands - see [Scripts](#scripts).
 
 Also hosts the card model, corrections and memory serialisation, and the post-promote scripts.
 
@@ -64,6 +65,7 @@ tolerant** (a failure on one concept is reported and skipped rather than killing
 | `config.py` | typed settings |
 | `profile.py` | the corpus profile: a corpus's domain vocabulary as data rather than as code |
 | `corpus.py` | `require_dir`: refuse a configured corpus path that is unset or not a directory, naming the setting. Shared with `hive-serve` |
+| `scripts/` | the installed `hivegen-*` commands, each a thin `main()` over the modules above - see [Scripts](#scripts) |
 
 ## Slicing
 
@@ -100,21 +102,22 @@ link graph cannot invent targets.
 
 ## Post-promote scripts
 
-In order, from `scripts/`:
+In order:
 
-| Script | Does |
+| Step | Does |
 |---|---|
-| `product_facet_apply.py` | stamp the product facet |
-| `conformance_pass.py` | normalise frontmatter, write `resource`, add `## Related` and `# Citations` |
-| `index_generate.py` | regenerate the root and per-product `index.md` |
+| `scripts/product_facet_apply.py` | stamp the product facet |
+| `hivegen-conformance-pass` | normalise frontmatter, write `resource`, add `## Related` and `# Citations` |
+| `hivegen-index-generate` | regenerate the root and per-product `index.md` |
 
-Optionally `regime_classify.py` with `regime_apply.py`, and `version_apply.py`.
+Optionally `scripts/regime_classify.py` with `scripts/regime_apply.py`, and
+`scripts/version_apply.py`.
 
-`conformance_pass` reads its URL base from `CARD_BASE_URL`. Cards are portable; the URL they resolve
-under is not.
+`hivegen-conformance-pass` reads its URL base from `CARD_BASE_URL`. Cards are portable; the URL they
+resolve under is not.
 
-`index_generate` writes `okf_version` into the root index. That is **the only place** format version
-metadata belongs: a corpus has a format version, not each card.
+`hivegen-index-generate` writes `okf_version` into the root index. That is **the only place** format
+version metadata belongs: a corpus has a format version, not each card.
 
 ## Authoring seams
 
@@ -122,9 +125,29 @@ metadata belongs: a corpus has a format version, not each card.
 I/O and no network. The CLI paths and the issue-form automation share them, so a card authored
 either way is byte-identical.
 
-`scripts/memory_conflict_score.py` and `scripts/pr_conflict_gate.py` score a submission against
+`hivegen-memory-conflict-score` and `hivegen-pr-conflict-gate` score a submission against
 existing cards and publish a commit status. Hive ships the check; the scheduler that runs it is
-deployment-side.
+deployment-side. `hivegen.scripts.pr_conflict_gate` is also importable, and a caller with glue of
+its own composes `pr_touches_memory`, `score_tree` and `verdict_to_status` directly rather than
+shelling out.
+
+`hivegen-pr-conflict-gate` decides what to score by matching `--changed-file` values against
+`clients_dir`, so the two must share a base: **run it from the directory the changed paths are
+relative to** - the repository root, for `git diff --name-only` output - and give `clients_dir` as a
+path under it. `clients_dir` must name the clients tree itself, not the directory the gate runs from.
+A corpus below the root is matched at its own prefix rather than at `clients/`, while a `clients_dir`
+outside the working directory, or equal to it, is refused rather than answered, because a gate that
+matches nothing posts green over a memory change nothing scored. Beneath those three the same
+refusal catches a `clients_dir` that is simply the wrong tree: **a changed memory card that is
+still in the tree, while `clients_dir` holds no memory card at all, is refused**, since the two
+disagree about where memory lives and no verdict could be about anything. That is the
+contradiction rather than a heuristic. A changeset whose memory cards are all *gone* from the tree
+is a deletion instead, and succeeds: there is no new claim left for anything to contradict. Cards
+that exist but share no subject are the ordinary healthy outcome and also print `state: success`.
+A run with no `--changed-file` at all, and a run with no gateway configured, are refused for the
+same reason. `hivegen-memory-conflict-score` is the advisory sibling: with no gateway it prints
+the candidate pairs and does not fail the step, and with one it exits non-zero only on a blocking
+conflict.
 
 ## The model client
 
@@ -206,24 +229,43 @@ the drift would show up as cards that lint differently depending on how they wer
 
 ## Scripts
 
-`scripts/` holds the post-promote and authoring tools. All the post-promote ones are **idempotent
-and LLM-free**, so re-running over a whole corpus is safe and leaves conformant cards untouched.
+The post-promote and authoring tools. All the post-promote ones are **idempotent and LLM-free**, so
+re-running over a whole corpus is safe and leaves conformant cards untouched.
+
+**Installed commands.** These ship in the wheel as `[project.scripts]` console scripts, so a
+consumer that pins `vf-hive-gen` gets them without reading a file off a host. They live in
+`hivegen/scripts/` and each is a thin `main()` over the library. Every one of them puts its corpus
+argument through `corpus.require_dir` first, so an unset, empty or absent directory is refused
+naming that argument rather than globbed over from the working directory - `hivegen-conformance-pass`
+rewrites cards in place, so it refuses before it writes anything.
+
+| Command | Job |
+|---|---|
+| `hivegen-conformance-pass` | set `resource`, add `timestamp`, regenerate `## Related` and `# Citations` |
+| `hivegen-index-generate` | write the root and per-product `index.md` |
+| `hivegen-correction-from-issue` / `hivegen-memory-from-issue` | parse an issue-form body into a card |
+| `hivegen-corrections-lint` / `hivegen-memory-lint` | structural lint, plus same-client conflict candidates |
+| `hivegen-memory-conflict-score` | the model conflict judge, **fail-safe: any error scores as a conflict** |
+| `hivegen-pr-conflict-gate` | turn the conflict verdict into a commit-status payload |
+
+They arrived at 0.7.0. Before that the wheel carried `packages = ["hivegen"]` and nothing else, so
+they were installable at no version and a consumer read them from a checkout somebody had seeded by
+hand. From 0.7.0 these commands are the only supported entry point: the old
+`tooling/hive-gen/scripts/` paths for them are gone, and a caller still reading one switches to the
+command.
+
+**Still in-tree only**, under `tooling/hive-gen/scripts/`, because they are corpus-build tools a
+maintainer runs from a checkout rather than a consumer's command line:
 
 | Script | Job |
 |---|---|
 | `product_facet_apply.py` | stamp `product`, `platform`, `version` for one product |
 | `version_apply.py` | derive `version` from source-reference years |
 | `regime_classify.py` / `regime_apply.py` | propose (model) then apply (deterministic) the regime facet |
-| `conformance_pass.py` | set `resource`, add `timestamp`, regenerate `## Related` and `# Citations` |
-| `index_generate.py` | write the root and per-product `index.md` |
 | `new_correction.py` / `new_memory.py` | scaffold a draft card from the CLI |
-| `correction_from_issue.py` / `memory_from_issue.py` | parse an issue-form body into a card |
-| `corrections_lint.py` / `memory_lint.py` | structural lint, plus same-client conflict candidates |
-| `memory_conflict_score.py` | the model conflict judge, **fail-safe: any error scores as a conflict** |
-| `pr_conflict_gate.py` | post the conflict verdict as a commit status |
 | `run_pipeline.sh` | detached distillation run, logging to `.pipeline/` |
 
-The issue-parsing scripts are **path-traversal guarded**: the product is checked against an
+The issue-parsing commands are **path-traversal guarded**: the product is checked against an
 allowlist and a client id must match `\A[a-z0-9-]+\Z`. They parse attacker-influenceable text
 (an issue body) into a filesystem path, so this is load-bearing rather than defensive decoration.
 
