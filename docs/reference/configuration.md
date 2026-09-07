@@ -106,7 +106,7 @@ silently serves another deployment's client memory.
 | `TAXONOMY_MODEL` | `minimax/minimax-m3` | gate 2, the concept list |
 | `ASSIGN_MODEL` | `deepseek/deepseek-v4-flash` | document to concept assignment |
 | `DISTILL_MODEL` | `minimax/minimax-m3` | gate 3, the card bodies |
-| `CONFLICT_MODEL` | `minimax/minimax-m3` | the memory-conflict judge behind `hivegen-memory-conflict-score` and `hivegen-pr-conflict-gate`. **A value the gateway does not serve blocks every candidate pair**: scoring fails safe, so an unanswered request scores 1.0 and the gate posts `state: failure` on a verdict nothing measured |
+| `CONFLICT_MODEL` | `minimax/minimax-m3` | the memory-conflict judge behind `hivegen-memory-conflict-score` and `hivegen-pr-conflict-gate`. **A value the gateway does not serve blocks every candidate pair**: scoring fails safe, so an unanswered request scores 1.0 and the gate posts `state: failure` on a verdict nothing measured. Read from the environment by those commands, not through `config.py`, so it is absent from `.env.example` |
 | `MAX_CHARS` | `24000` | source characters per distillation call |
 | `BIFROST_TIMEOUT_S` | `300` | |
 | `CORPUS_PROFILE` | empty | path to the corpus profile, the domain vocabulary that ships with a corpus. Empty means look for `corpus-profile.yaml` in the working directory, then beside `ATOMIC_DIR` |
