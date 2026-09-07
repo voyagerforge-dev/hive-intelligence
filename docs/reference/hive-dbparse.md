@@ -30,8 +30,7 @@ flowchart TD
 ```
 
 Oracle and DB2 are parsed independently, then unioned into one dialect-tagged model per object.
-The gate is evaluated after generated files are written, so a failed run exits nonzero but can
-leave output behind. Do not consume that output unless the command succeeds.
+For failure handling, see [the verification gate](#the-verification-gate).
 
 Handles `CREATE TABLE`, `COMMENT ON`, `ALTER`, `CREATE INDEX`, `CREATE SEQUENCE`, and
 `CREATE [OR REPLACE]` routine units.
@@ -48,8 +47,9 @@ wrong, and a schema card that is subtly wrong is worse than no card, because it 
 ## The verification gate
 
 **No unparsed construct may be silently dropped.** If the parser meets something it does not
-understand, the run fails. Writing currently precedes the gate, so discard a failed run's output
-before trying again.
+understand, the run fails. The gate is evaluated after generated files are written, so a failed
+run exits nonzero but leaves those files in place. Consume output only after a successful exit;
+discard a failed run's output before trying again.
 
 This is inconvenient by design. A partial schema corpus answers "does this table have a status
 column" with a confident "no" when the truth is that the parser choked on that file. A missing

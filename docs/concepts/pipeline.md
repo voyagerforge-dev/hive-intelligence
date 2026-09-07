@@ -380,11 +380,8 @@ flowchart TD
 - **`reconcile`** matches definitions of the same object across dialects, records per-column and
   per-body deltas, and merges a package spec with its body.
 
-**The hard verification gate is the point.** Card count must equal parsed-object count, and **any
-unparsed construct fails the run**. That is what surfaces real-corpus DDL quirks instead of silently
-dropping objects. Generated files are currently written before the gate is evaluated, so a failed
-run can leave output behind; consume it only after a successful exit. Same-name collisions are
-deduped when structurally identical and otherwise **logged, never silently overwritten**.
+For gate requirements, failed-output handling and duplicate rules, see the
+[hive-dbparse reference](../reference/hive-dbparse.md#the-verification-gate).
 
 **Served on demand, kept out of the concept index.** This tier can be many times the size of the
 concept corpus and is schema-level rather than narrative, so putting it in `list_concepts` would
