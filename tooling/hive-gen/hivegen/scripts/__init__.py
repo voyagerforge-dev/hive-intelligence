@@ -14,9 +14,11 @@ only one of them was a version anything asserted. From 0.7.0 the commands are th
 supported entry point; the old `tooling/hive-gen/scripts/` paths for these eight are gone.
 
 Adding a module here puts it in the wheel automatically; it does NOT become a command until
-`[project.scripts]` names it, and `tests/test_console_scripts.py` fails on a name declared
-in one place and not the other. Shared glue therefore lives HERE rather than in a module of
-its own, which that test would demand a command over.
+`[project.scripts]` names it. `tests/test_console_scripts.py` holds the two halves of that
+together: every PUBLIC module here must be declared, and every declared command must
+resolve out of the built wheel. A module whose name starts with an underscore is a private
+helper and is expected to have no command, so shared glue may live in one of those or, as
+`gateway_llm` does, here.
 """
 from __future__ import annotations
 

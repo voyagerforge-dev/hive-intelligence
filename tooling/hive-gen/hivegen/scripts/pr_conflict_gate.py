@@ -37,10 +37,20 @@ def pr_touches_memory(changed_files, memory_prefix=memory_lint.CLIENTS_PREFIX) -
     default is the case where they coincide, which is the corpus-at-the-root layout the
     corpus repository calls this with.
     """
-    return any(
-        f.startswith(memory_prefix) and "/memory/" in f and f.endswith(".md")
-        for f in changed_files
-    )
+    return bool(changed_memory_cards(changed_files, memory_prefix))
+
+
+def changed_memory_cards(changed_files, memory_prefix=memory_lint.CLIENTS_PREFIX) -> list[str]:
+    """Which of the supplied changed paths name a client memory card.
+
+    The same rule `pr_touches_memory` answers yes or no about, expressed once: `main` needs
+    the paths themselves to tell a deletion (every one of them gone from the head tree)
+    from a `clients_dir` that does not hold them.
+    """
+    return [
+        f for f in changed_files
+        if f.startswith(memory_prefix) and "/memory/" in f and f.endswith(".md")
+    ]
 
 
 def changed_path_prefix(clients_dir) -> str:
@@ -98,11 +108,11 @@ def main(argv: list[str] | None = None) -> int:
         prog="hivegen-pr-conflict-gate",
         description="Decide whether a pull request's changed files touch client memory, "
                     "score the tree if they do, and print the commit-status payload.",
-        epilog="A changeset that names a memory card while clients_dir holds none is "
-               "refused rather than answered: the two disagree about where memory lives, "
-               "and a verdict would be about nothing. A pull request whose only memory "
-               "change deletes the corpus's last memory card lands there too, and is "
-               "refused for the same reason; re-run once the deletion has landed.")
+        epilog="A changed memory card that is still in the tree while clients_dir holds "
+               "no memory card at all is refused rather than answered: the two disagree "
+               "about where memory lives, and a verdict would be about nothing. A "
+               "changeset whose memory cards are all gone from the tree is a deletion, "
+               "which succeeds: there is no new claim left to score.")
     ap.add_argument("clients_dir",
                     help="the corpus clients/ tree, as a path under the directory this is "
                          "run from; it must name that tree itself, not the directory this "
@@ -124,23 +134,33 @@ def main(argv: list[str] | None = None) -> int:
             "No changed files were supplied: pass --changed-file PATH once per path the "
             "pull request changed. Refusing to report a verdict on a changeset nobody named.")
 
-    if not pr_touches_memory(args.changed_file, changed_path_prefix(clients)):
+    changed_cards = changed_memory_cards(args.changed_file, changed_path_prefix(clients))
+    if not changed_cards:
         print(json.dumps({"context": _CONTEXT, "state": "success",
                           "description": "no client memory card changed"}))
         return 0
 
-    # The changeset says a memory card changed and the tree holds no memory card at all.
-    # Those cannot both be true of the same corpus, so the gate has caught itself being
-    # pointed at the wrong tree - a clients_dir one level too high reads as a corpus with
-    # nothing in it, and every such tree scores zero conflicts. Refuse on the contradiction
-    # rather than on a guess about what a corpus looks like.
+    # Every changed card is gone from the head tree, so the pull request deletes memory
+    # rather than asserting anything: there is no new claim for an existing card to
+    # contradict. Resolved against the directory the gate runs from, the same base the
+    # changed paths themselves are relative to.
+    if not any(os.path.exists(f) for f in changed_cards):
+        print(json.dumps({"context": _CONTEXT, "state": "success",
+                          "description": "client memory cards deleted, nothing left to score"}))
+        return 0
+
+    # A changed card is still on disk and the tree holds no memory card at all. Those
+    # cannot both be true of the same corpus, so the gate has caught itself being pointed
+    # at the wrong tree - a clients_dir one level too high reads as a corpus with nothing
+    # in it, and every such tree scores zero conflicts. Refuse on the contradiction rather
+    # than on a guess about what a corpus looks like.
     if not memory_lint._memories(str(clients)):
         raise SystemExit(
             f"clients_dir={args.clients_dir} holds no client memory card, but the "
-            "changeset names one, so nothing a verdict could be about was found. Pass "
-            "the clients tree the changed paths name, not a directory above or beside "
-            "it. A pull request that deletes the corpus's last memory card is refused "
-            "here too; re-run once the deletion has landed.")
+            f"changeset names one that is still in the tree ({changed_cards[0]}), so "
+            "nothing a verdict could be about was found. clients_dir does not name the "
+            "tree the changed cards live in: pass that tree, not a directory above or "
+            "beside it.")
 
     # Refuse rather than fall back to an unconfigured gateway. The scorer fails SAFE - an
     # unparseable reply scores 1.0 and blocks - so scoring without a gateway would block the

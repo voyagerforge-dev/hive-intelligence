@@ -19,6 +19,7 @@ import configparser
 import os
 import subprocess
 import sys
+import tomllib
 import zipfile
 from pathlib import Path
 
@@ -86,7 +87,24 @@ def unpacked(wheel: Path, tmp_path_factory) -> Path:
 
 
 def _modules() -> list[str]:
-    return sorted(p.stem for p in SCRIPTS_DIR.glob("*.py") if p.stem != "__init__")
+    """The PUBLIC modules under `hivegen/scripts/`, each of which must be a command.
+
+    A module whose name starts with an underscore is deliberately excluded: that is the
+    convention for a private helper, which is expected to ship in the wheel with no command
+    over it. `__init__.py` is excluded by the same rule rather than by a special case.
+    """
+    return sorted(p.stem for p in SCRIPTS_DIR.glob("*.py") if not p.stem.startswith("_"))
+
+
+def _declared_in_pyproject() -> dict[str, str]:
+    """`[project.scripts]`, read at collection time so each command is its own test case.
+
+    The wheel is what every assertion below runs against; this is only the list of names to
+    make cases from, and `test_the_declared_entry_point_resolves_and_prints_help` checks
+    each one against the wheel's own table before resolving it.
+    """
+    with (PACKAGE_ROOT / "pyproject.toml").open("rb") as fh:
+        return tomllib.load(fh)["project"]["scripts"]
 
 
 def test_there_are_wrapper_modules_to_check():
@@ -112,13 +130,20 @@ def test_the_wheel_declares_a_console_script_for_the_module(module: str, declare
     assert declared[name] == f"hivegen.scripts.{module}:main"
 
 
-def test_no_console_script_points_at_a_module_that_is_gone(declared: dict[str, str]):
-    """The other direction: a [project.scripts] line left behind by a rename installs a
-    command that fails on first use, and nothing about the build says so."""
-    expected = {_console_script_name(m) for m in _modules()}
-    assert set(declared) == expected, (
-        f"[project.scripts] and hivegen/scripts/ disagree: only in the wheel "
-        f"{sorted(set(declared) - expected)}, only on disk {sorted(expected - set(declared))}")
+def test_every_public_module_is_declared(declared: dict[str, str]):
+    """One direction only: a public wrapper with no command over it ships unreachable.
+
+    The reverse is NOT asserted here. Demanding that the wheel declare nothing beyond these
+    modules would forbid a private helper module in `hivegen/scripts/`, which is a rule
+    about package layout that this file has no business imposing. A declared command whose
+    target is gone is caught instead by resolving each declared entry point below, where it
+    fails as itself rather than as a set difference.
+    """
+    missing = sorted(m for m in _modules() if _console_script_name(m) not in declared)
+    assert not missing, (
+        f"public modules in hivegen/scripts/ with no command over them: {missing}. "
+        "Declare each in [project.scripts], or rename it with a leading underscore if it "
+        "is a private helper rather than a command.")
 
 
 @pytest.fixture(scope="module")
@@ -134,13 +159,20 @@ def elsewhere(tmp_path_factory) -> Path:
     return tmp_path_factory.mktemp("elsewhere")
 
 
-@pytest.mark.parametrize("module", _modules())
-def test_the_declared_entry_point_resolves_and_prints_help(module: str, declared: dict[str, str],
+@pytest.mark.parametrize("command", sorted(_declared_in_pyproject()))
+def test_the_declared_entry_point_resolves_and_prints_help(command: str, declared: dict[str, str],
                                                            unpacked: Path, elsewhere: Path):
     """Import the target from the WHEEL's copy and run it, the way an installed console
     script does. The assertion on __file__ holds it to that: nothing here may resolve out of
-    the checkout."""
-    target, attr = declared[_console_script_name(module)].split(":")
+    the checkout.
+
+    Parametrized over what is DECLARED rather than over what is on disk, so a command left
+    behind by a rename fails here, named, as an entry point that installs and then cannot
+    import - which is exactly how a consumer would meet it.
+    """
+    assert command in declared, (
+        f"{command} is in [project.scripts] but not in the built wheel's entry points")
+    target, attr = declared[command].split(":")
     program = (f"import sys, {target} as m; print(m.__file__, file=sys.stderr); "
                f"sys.exit(m.{attr}(['--help']))")
     proc = subprocess.run(
@@ -151,5 +183,5 @@ def test_the_declared_entry_point_resolves_and_prints_help(module: str, declared
     assert proc.returncode == 0, f"{target}:{attr} --help failed:\n{proc.stderr}"
     assert str(unpacked) in proc.stderr, (
         f"{target} resolved outside the wheel; this test proved nothing:\n{proc.stderr}")
-    assert proc.stdout.startswith(f"usage: {_console_script_name(module)}"), (
+    assert proc.stdout.startswith(f"usage: {command}"), (
         f"{target}:{attr} printed no usage for its own command name:\n{proc.stdout}")

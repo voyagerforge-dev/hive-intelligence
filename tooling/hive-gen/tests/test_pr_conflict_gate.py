@@ -174,6 +174,26 @@ def test_main_still_clears_a_non_memory_change_in_a_corpus_below_the_root(tmp_pa
     assert json.loads(r.stdout)["state"] == "success"
 
 
+def test_main_clears_a_changeset_whose_memory_cards_are_gone_from_the_tree(tmp_path):
+    """Deleting memory is not a conflict, and was refused as one.
+
+    The gate runs over the pull request's head tree, where a deleted card is simply absent,
+    so every changed memory path names nothing on disk. A tree holding no memory card
+    afterwards is that deletion, not a clients_dir pointing somewhere else, and refusing it
+    told the pull request to re-run once a merge its own missing status was blocking had
+    landed. No gateway is configured, because a deletion leaves no new claim to score.
+    """
+    _concepts, clients = _tree(tmp_path)
+    for card in clients.glob("alpha/memory/*.md"):
+        card.unlink()
+    r = _run_gate("clients", "concepts",
+                  "--changed-file", "clients/alpha/memory/m1.md", cwd=tmp_path)
+    assert r.returncode == 0, f"the gate refused a deletion: {r.stderr}"
+    status = json.loads(r.stdout)
+    assert status["state"] == "success"
+    assert "deleted" in status["description"]
+
+
 def test_main_refuses_a_clients_dir_that_is_not_the_tree_the_changed_card_lives_in(tmp_path):
     """One level too high is a tree holding no memory card, and that scores zero conflicts.
 

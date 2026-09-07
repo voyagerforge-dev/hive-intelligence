@@ -137,13 +137,13 @@ path under it. `clients_dir` must name the clients tree itself, not the director
 A corpus below the root is matched at its own prefix rather than at `clients/`, while a `clients_dir`
 outside the working directory, or equal to it, is refused rather than answered, because a gate that
 matches nothing posts green over a memory change nothing scored. Beneath those three the same
-refusal catches a `clients_dir` that is simply the wrong tree: **a changeset that names a memory
-card while `clients_dir` holds no memory card at all is refused**, since the two disagree about
-where memory lives and no verdict could be about anything. That is the contradiction rather than a
-heuristic, so it also refuses the one legitimate case that reaches it - a pull request whose only
-memory change deletes the corpus's last memory card - and the answer there is to re-run once the
-deletion has landed. Cards that exist but share no subject are the ordinary healthy outcome and
-still print `state: success`. With no gateway configured it refuses too;
+refusal catches a `clients_dir` that is simply the wrong tree: **a changed memory card that is
+still in the tree, while `clients_dir` holds no memory card at all, is refused**, since the two
+disagree about where memory lives and no verdict could be about anything. That is the
+contradiction rather than a heuristic. A changeset whose memory cards are all *gone* from the tree
+is a deletion instead, and succeeds: there is no new claim left for anything to contradict. Cards
+that exist but share no subject are the ordinary healthy outcome and also print `state: success`.
+With no gateway configured it refuses too;
 `hivegen-memory-conflict-score` is the advisory sibling that prints the candidate pairs and does not
 fail the step.
 
