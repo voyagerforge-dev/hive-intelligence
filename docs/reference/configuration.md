@@ -183,7 +183,7 @@ point of it being a separate service from `hive-serve`.
 | `DISTILL_MAX_TOKENS` | `4000` | must cover reasoning **and** the answer for a reasoning model. At 2000 it spends the budget thinking and returns nothing |
 | `BIFROST_TIMEOUT_S` | `300` | |
 | `CONNECTOR_PAGE_CAP` | `3000` | the source's own ceiling |
-| `CAP_WARN_RATIO` | `0.95` | warn near the cap: a truncated pull looks like a complete one |
+| `CAP_WARN_RATIO` | `0.95` | cap fraction for [truncation refusal](hive-zendesk.md#known-limits) |
 | `RESHAPE_WORKERS` | `6` | `rebuild` concurrency |
 | `RESHAPE_BATCH_SIZE` | `5` | cards per model call in `rebuild` |
 | `R2_ENDPOINT` | empty | **required by `rebuild`**, refused at startup. No default, and an empty one is not usable: botocore raises `ValueError: Invalid endpoint:` as the client is built, several frames down, naming no setting |

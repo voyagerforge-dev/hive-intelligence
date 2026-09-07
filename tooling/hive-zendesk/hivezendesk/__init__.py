@@ -7,3 +7,4 @@
 from importlib.metadata import version
 
 __version__ = version("vf-hive-zendesk")
+USER_AGENT = f"hivezendesk/{__version__}"
