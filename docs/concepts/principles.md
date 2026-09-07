@@ -102,10 +102,29 @@ product-less entry at gate 1 and lists the products your corpus profile declares
 `transform` and `stamp` each refuse a plan that reaches them with one anyway, naming the entry and
 pointing back at `validate-plan`. Related: the functional-area map and guide-topic vocabulary above.
 
+**The OPS/traditional either-or is baked into the engine, not just the corpus.** `hive-gen`'s
+regime classifier hardcodes `_LABELS = {"traditional", "ops", "none"}` and a system prompt defining
+OPS (Order Planning Strategy / DC Order Planning) against standalone replenishment, tasking and
+wave/fulfilment, in `hivegen/classify_regime.py`, and the scripts paired with it,
+`scripts/regime_classify.py` and `scripts/regime_apply.py`, hardcode the same literals again, the
+latter gating whether the facet is stamped at all; `hive-serve` restates the same either-or in the
+eval harness's card-selection prompt in `hiveserve/agent.py`, telling the model the two are
+mutually exclusive by site configuration. The facet itself is neutral: the resolver, the index and
+the metrics only ever compare one card's `regime` against another's, never against a known label.
+It is the hardcoded `ops` and `traditional` literals that are domain-bound, so a deployment in
+another domain cannot use the optional classify/apply pair to produce its own either-or without
+editing engine source; stamping its own `regime` values by another route works unchanged on
+the serving path. Editing only the classifier and the prompts fails silently: that pair writes
+every card back with no `regime` facet and still reports
+`stamped N cards. cross-regime related edges remaining: 0`. Grep the tree for those literals
+rather than trust the list above. Making all of it corpus configuration rather than code is open
+work. Related: the `hive-prep` product fallback above.
+
 **The skills carry the same vocabulary, and are the first thing an outside reader meets.** The
-`description:` lines in `skills/` name one vendor's products, and `contribute/` enumerates one
-corpus's facet values as if they were the product's. The procedures are general; the nouns are not.
-This is the largest single-vendor surface left, and generalising it is open work. See
+`description:` lines in four of the five skills name one vendor's products, and `contribute/` names
+them in its body and enumerates one corpus's facet values as if they were the product's. The
+procedures are general; the nouns are not. This is the largest single-vendor surface left, and
+generalising it is open work. See
 [skills/README.md](../../skills/README.md).
 
 **Client isolation is enforced at serving, not at rest.** Memory and issue cards for every client
