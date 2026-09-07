@@ -102,7 +102,7 @@ Please get CI green before asking for a look.
 - **A commit message and description that say why**, not what. The diff already says what. This
   codebase comments the reason a thing is the way it is, and the history is expected to do the
   same.
-- **No version bumps.** The five released distributions ship as one engine at one version, and
+- **No version bumps.** The released distributions ship as one engine at one version, and
   `tools/set-release-version.sh` writes it everywhere it is recorded. Changing a version by hand
   desynchronises the lockfiles and the build refuses it. Releases are a maintainer action, made
   from a pushed `v*` tag; see
@@ -125,8 +125,9 @@ is our fault rather than a verdict - a nudge on the thread is welcome.
 
 ## Releases
 
-You do not cut one, but it is worth knowing what a version means here: the five published
-distributions ship as one engine at one version.
+You do not cut one, but it is worth knowing what a version means here: the published
+distributions ship as one engine at one version, and
+[tools/released-packages.sh](tools/released-packages.sh) is the one place that set is stated.
 
 **Do not add a changelog entry to a pull request, and do not add a changelog file.** There is no
 changelog in this repository on purpose - a hand-maintained one rots, and nothing here generates

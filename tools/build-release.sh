@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the five released distributions, and refuse to produce a release that is not coherent.
+# Build the released distributions, and refuse to produce a release that is not coherent.
 #
 # This script BUILDS AND VERIFIES. It does not publish. Where the artefacts go is a separate,
 # deliberate step, and keeping it separate is what lets this run on any machine, in CI, on a
@@ -13,9 +13,10 @@
 # What it refuses on, and why each one has already gone wrong or would go silently wrong:
 #   - an output directory you named that already holds something (see above: yours is not
 #     ours to empty, and a mistyped path is not recoverable)
-#   - the five packages disagreeing on the version     (they did: 0.1.0 vs shipped tag v0.4.0)
+#   - the released packages disagreeing on the version (they did: 0.1.0 vs shipped tag v0.4.0)
 #   - a uv.lock still recording the previous version   (the bump stopped at pyproject.toml)
-#   - vf-hive-serve not pinning vf-hive-gen exactly    (it did not: a mixed engine, one number)
+#   - a package naming vf-hive-gen without pinning it  (hive-serve did not: a mixed engine,
+#     one number - and hive-author's `dev` extra is published metadata for the same reason)
 #   - HEAD sitting on a tag that contradicts the built version
 #   - a built artefact whose recorded metadata is not the version we asked for
 #   - anything in the output directory that is not one of those wheels: this directory is
@@ -45,18 +46,23 @@ for pkg in "${RELEASED_PACKAGES[@]}"; do
   if [ -z "$version" ]; then version="$v"
   elif [ "$v" != "$version" ]; then
     echo "error: $pkg is $v but the engine is $version." >&2
-    echo "       The five packages release as one engine. Use tools/set-release-version.sh." >&2
+    echo "       The released packages ship as one engine. Use tools/set-release-version.sh." >&2
     exit 1
   fi
   echo "  $pkg $v"
 done
 
-pin="$(grep -oE '"vf-hive-gen==[^"]*"' "$root/tooling/hive-serve/pyproject.toml" | tr -d '"' || true)"
-[ "$pin" = "vf-hive-gen==$version" ] || {
-  echo "error: hive-serve requires '$pin', expected 'vf-hive-gen==$version'." >&2
-  echo "       An unpinned engine dependency resolves any hive-gen behind one version number." >&2
-  exit 1; }
-echo "  hive-serve requires $pin"
+# Both packages that name vf-hive-gen, not just the one that names it at runtime: hive-author
+# names it in its `dev` extra, which is metadata a published wheel carries and a consumer can
+# ask for, so an unpinned specifier there ships the same mixed engine by a quieter route.
+for pkg in hive-serve hive-author; do
+  pin="$(grep -oE '"vf-hive-gen==[^"]*"' "$root/tooling/$pkg/pyproject.toml" | tr -d '"' || true)"
+  [ "$pin" = "vf-hive-gen==$version" ] || {
+    echo "error: $pkg requires '$pin', expected 'vf-hive-gen==$version'." >&2
+    echo "       An unpinned engine dependency resolves any hive-gen behind one version number." >&2
+    exit 1; }
+  echo "  $pkg requires $pin"
+done
 
 echo "==> lockfiles"
 # No wheel reads uv.lock, so a stale one breaks nothing a consumer sees - which is exactly how
@@ -153,9 +159,13 @@ for pkg in packages:
     for lic in ("LICENSE", "NOTICE"):
         if f"{stem}-{version}.dist-info/licenses/{lic}" not in names:
             failures.append(f"{wheel.name}: no {lic}")
-    if dist == "vf-hive-serve":
+    # Read from the wheel's own recorded metadata, not from the pyproject the check above
+    # read: uv.lock carries a path override INSTEAD of the `==` specifier, so the built
+    # artefact is the only place the pin a consumer will actually see is stated. hive-author
+    # carries it under `extra == "dev"`, hence the prefix match rather than an exact one.
+    if dist in ("vf-hive-serve", "vf-hive-author"):
         reqs = meta.get_all("Requires-Dist") or []
-        if f"vf-hive-gen=={version}" not in reqs:
+        if not any(r.split(";")[0].strip() == f"vf-hive-gen=={version}" for r in reqs):
             failures.append(f"{wheel.name}: Requires-Dist lacks vf-hive-gen=={version}: {reqs}")
     print(f"  {wheel.name}  {wheel.stat().st_size // 1024} KB")
 

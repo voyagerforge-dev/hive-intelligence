@@ -2,7 +2,7 @@
 """Report whether each released distribution is resolvable on PyPI right now.
 
 Informational on purpose. A name answers 404 until its distribution has published and 200
-afterwards, and the five need not get there together - a release can legitimately be partial - so
+afterwards, and they need not get there together - a release can legitimately be partial - so
 asserting either way would give a check that starts failing on the day the work succeeds. What the
 run actually proves is in tools/provenance.py, which reads where pip downloaded each distribution
 from.

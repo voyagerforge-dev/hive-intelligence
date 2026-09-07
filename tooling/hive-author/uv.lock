@@ -883,7 +883,7 @@ wheels = [
 
 [[package]]
 name = "vf-hive-author"
-version = "0.1.0"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },

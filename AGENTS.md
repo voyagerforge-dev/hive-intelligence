@@ -73,10 +73,13 @@ rather than skip when they cannot. `hiveserve serve` itself also refuses to star
 
 ## Releasing it
 
-Five distributions (`hive-author` is not one of them) ship as **one engine at one version**:
-`tools/set-release-version.sh` writes that version everywhere it is recorded - the five
-pyprojects, hive-serve's pin on hive-gen, and every `uv.lock` under `tooling/`, hive-author's
-included because it pins hive-gen. `tools/build-release.sh` refuses a set that disagrees with
+Six distributions ship as **one engine at one version** - `hive-author` joined the set at 0.7.0,
+and is released because a deployment installs and runs it, not because anything imports it.
+`tools/released-packages.sh` is the ONE place that set is stated; everything on the release path
+derives it from there. `tools/set-release-version.sh` writes the version everywhere it is
+recorded - the six pyprojects, both pins on `vf-hive-gen` (hive-serve's runtime dependency and
+hive-author's `dev` extra, which is published metadata too), and every `uv.lock` under `tooling/`.
+`tools/build-release.sh` refuses a set that disagrees with
 itself, a lockfile still on the previous version, or a wheel whose own metadata is wrong, and
 `tools/verify-clean-install.sh` installs and runs the built artefacts in a container holding no
 credential of ours. Run all three before believing a release works; a build nobody installed
@@ -89,6 +92,13 @@ no consumer at any version. hive-gen's eight card wrappers were outside them unt
 belongs in the package, exposed through `[project.scripts]`;
 `tooling/hive-gen/tests/test_console_scripts.py` is how to prove it, and why it asserts against a
 built wheel rather than the checkout.
+
+Adding a distribution to the released set takes **two** edits and the second is the one that
+matters: `tools/released-packages.sh` gets it built, installed and version-checked everywhere,
+but a step in `tools/smoke-installed.py` has to EXERCISE it or that run ends `SMOKE INCOMPLETE`
+and the install job the publish depends on fails. A publish job and a
+`trusted-publisher-check` entry in `release.yml` are not derived either, and a name PyPI has no
+publisher for earns a 403 on a tag whose version is already spent.
 
 Publication is **PyPI, wheels only, Trusted Publishing, no token anywhere**, and it happens ONLY
 from a pushed `v*` tag. It is irreversible - PyPI refuses a re-upload and a yank does not un-copy

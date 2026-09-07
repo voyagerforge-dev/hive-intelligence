@@ -5,7 +5,20 @@ set -euo pipefail
 
 say() { printf '\n\033[1m--- %s\033[0m\n' "$*"; }
 
-say "1. this environment holds no credential for the private engine repository"
+# THIS STEP ASSERTS, it does not only narrate. Until 2026-09-05 it proved the container could
+# not READ the engine repository, by fetching it and failing on any success. That assertion
+# died the day the repository was made public: it now answers HTTP 200 to anybody, so the step
+# failed while everything it was guarding was fine - a check that goes red when nothing is
+# wrong, which is worse than no check.
+#
+# What was actually wrong is unchanged, and so is the claim worth making. The consumer resolved
+# `ssh://.../hive-intelligence.git` with one person's key against one host, so it built on one
+# workstation. Nothing in this container can speak that protocol AT ALL - no ssh client, no
+# git, no credential of ours anywhere - and that holds whatever the repository's visibility.
+# An anonymous read of a public repository is not a credential, so it is not asserted on in
+# either direction. Where the distributions really came from is settled in step 3, from pip's
+# own resolution report, which is the fact that matters and reads the same either way.
+say "1. this environment holds no credential of ours, and cannot resolve the retired pin"
 echo "\$ id && python -V"
 id; python -V
 echo
@@ -20,24 +33,20 @@ ls -a ~/.ssh 2>&1 | head -3 || true
 echo
 echo "\$ ls ~/.netrc ~/.git-credentials ~/.config/gh 2>&1"
 ls ~/.netrc ~/.git-credentials ~/.config/gh 2>&1 || true
+for cred in ~/.ssh ~/.netrc ~/.git-credentials ~/.config/gh ~/.pypirc; do
+  [ ! -e "$cred" ] || {
+    echo "error: $cred exists in this container, so it is not the clean environment this" >&2
+    echo "       proof requires and nothing below it means anything" >&2
+    exit 1; }
+done
 echo
-echo "\$ command -v ssh git gh    # nothing here can even speak the old protocol"
-command -v ssh git gh || echo "(none installed)"
-echo
-echo "\$ python - <<'PY'   # can this environment read the private repository at all?"
-python - <<'PY'
-import urllib.request, urllib.error
-for url in ("https://github.com/voyagerforge-dev/hive-intelligence",
-            "https://api.github.com/repos/voyagerforge-dev/hive-intelligence"):
-    try:
-        with urllib.request.urlopen(url, timeout=20) as r:
-            print(f"  {url} -> HTTP {r.status}  (READABLE - this would invalidate the proof)")
-            raise SystemExit(1)
-    except urllib.error.HTTPError as e:
-        print(f"  {url} -> HTTP {e.code} {e.reason}")
-    except Exception as e:                      # noqa: BLE001 - report and continue
-        print(f"  {url} -> {type(e).__name__}: {e}")
-PY
+echo "\$ command -v ssh git gh    # nothing here can even speak the protocol the old pin used"
+if command -v ssh git gh; then
+  echo "error: this container carries a client the retired git+SSH pin could have used, so" >&2
+  echo "       'it could only have come from the artefacts' is no longer proven here" >&2
+  exit 1
+fi
+echo "(none installed)"
 
 say "2. where each distribution can be resolved from, right now"
 # Informational, and deliberately not an assertion either way - tools/index_probe.py says why.
@@ -47,7 +56,7 @@ python /proof/index_probe.py
 
 # The released set is handed in rather than restated here: tools/verify-clean-install.sh
 # sources tools/released-packages.sh, which is the one place it is stated, so this container
-# cannot end up installing five while six were built.
+# cannot end up installing one set while another was built.
 [ -n "${RELEASED_PACKAGES:-}" ] || {
   echo "error: RELEASED_PACKAGES is not set; the harness must pass the released set in" >&2
   exit 1; }
@@ -85,7 +94,7 @@ fi
 pip list 2>/dev/null | grep -E '^vf-hive'
 
 # Provenance, read from pip's own resolution report rather than from what we intended. This is
-# what makes the run mean something: it names the URL each of the five actually came from, and
+# what makes the run mean something: it names the URL each of them actually came from, and
 # it reads the same before and after the distributions exist on an index.
 echo
 echo "  where pip actually got them:"

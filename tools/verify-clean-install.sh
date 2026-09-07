@@ -8,14 +8,15 @@
 # key cannot reach, so this is deliberately not a venv on the developer's machine:
 #
 #   - a fresh `python:3.12-slim` container, so no host site-packages and no host PATH
-#   - no SSH agent, no ~/.ssh, no git credentials, no GH_TOKEN, no PyPI token: podman does
-#     not pass the host environment through, and the run below prints its whole environment
-#     and its failure to read this private repository so you can see that for yourself
+#   - no SSH agent, no ~/.ssh, no git credentials, no GH_TOKEN, no PyPI token, and no ssh,
+#     git or gh client to use one with: podman does not pass the host environment through,
+#     and the run below prints its whole environment and refuses if any of that is present,
+#     so you can see it rather than take it on trust
 #   - read-only mounts and nothing else: the artefacts, the proof scripts, and an OKF card
 #     corpus, which is data a consumer supplies
 #   - a real Postgres container for the ledger, because hive-serve has no file fallback
 #
-# Third-party dependencies come from public PyPI, which needs no credential. Where the five
+# Third-party dependencies come from public PyPI, which needs no credential. Where the
 # vf-* distributions themselves came from is not taken on trust: pip's own `--report` records
 # the URL each one resolved from, and tools/provenance.py asserts it - `file://` for the
 # mounted artefacts, `https://` for --from-pypi - which reads the same before and after the
@@ -26,10 +27,12 @@
 #   tools/verify-clean-install.sh              install the wheels just built, from a mount
 #   tools/verify-clean-install.sh --from-pypi  install them from PyPI, as a consumer does
 #
-# The second only works after a version is published, and it is the claim that actually matters
-# to a consumer: nothing local, nothing mounted, just `pip install vf-hive-serve==X`. Either way
-# the run reads pip's own install report and prints the URL each of the five came from, so the
-# proof does not rest on what the script meant to do.
+# The second only works after a version has published the WHOLE current set, and it is the claim
+# that actually matters to a consumer: nothing local, nothing mounted, just
+# `pip install vf-hive-serve==X`. A version cut before a distribution joined the set does not
+# satisfy it - `vf-hive-author` was added for 0.7.0, so 0.6.0 and earlier cannot be checked this
+# way. Either way the run reads pip's own install report and prints the URL each distribution
+# came from, so the proof does not rest on what the script meant to do.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -78,7 +81,7 @@ done
 $runtime exec "$db" pg_isready -U hive -d hive_ledger
 
 echo "==> the clean container"
-# In --from-pypi mode dist/ is NOT mounted, so there is no local copy of the five to fall back
+# In --from-pypi mode dist/ is NOT mounted, so there is no local copy of them to fall back
 # on: the install can only have come off the index.
 mounts=(-v "$root/tools/smoke-installed.py:/proof/smoke-installed.py:ro"
         -v "$root/tools/provenance.py:/proof/provenance.py:ro"

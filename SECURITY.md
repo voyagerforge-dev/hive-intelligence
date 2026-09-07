@@ -37,7 +37,7 @@ We ask that you hold the details until that release is out.
 
 ## Which versions get fixes
 
-The five released distributions ship as **one engine at one version**, so a security release moves
+The released distributions ship as **one engine at one version**, so a security release moves
 all of them together. Fixes go into the current minor series on PyPI (at the time of writing,
 `0.6.x`) as a new patch release. Older minors receive nothing; upgrading to the current minor is
 the supported path. See
