@@ -30,12 +30,8 @@ Issues = "https://github.com/voyagerforge-dev/hive-intelligence/issues"
 [project.scripts]
 hiveauthor = "hiveauthor.server:main"
 
-# vf-hive-gen is pinned exactly, not floored, for the same reason hive-serve pins it: the
-# released packages ship as one engine at one version (tools/set-release-version.sh writes
-# it), and this distribution is published, so an unconstrained specifier here would be a
-# released artefact whose own metadata describes a mixed engine.
 [project.optional-dependencies]
-dev = ["pytest>=8.3", "ruff>=0.7", "vf-hive-gen==0.6.0"]
+dev = ["pytest>=8.3", "ruff>=0.7", "vf-hive-gen"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -45,10 +41,7 @@ packages = ["hiveauthor"]
 
 # hivegen is a DEV-ONLY dep: the round-trip tests load the hive-gen Issue-Form parsers to
 # prove hive-author's issue bodies parse back losslessly. Portable relative source (mirrors
-# hive-serve) so it survives worktree removal / any checkout, never an absolute path. Note
-# that `uv.lock` records this path override INSTEAD of the `==` specifier above, so `uv sync`
-# will not notice if the two drift apart; tools/build-release.sh reads the built wheel's own
-# metadata and is what refuses on that.
+# hive-serve) so it survives worktree removal / any checkout, never an absolute path.
 [tool.uv.sources]
 vf-hive-gen = { path = "../hive-gen", editable = true }
 

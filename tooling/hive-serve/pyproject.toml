@@ -18,7 +18,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
     "Topic :: Software Development :: Documentation",
 ]
-# vf-hive-gen is pinned exactly, not floored: the five packages are released as one
+# vf-hive-gen is pinned exactly, not floored: the released packages ship as one
 # engine at one version (tools/set-release-version.sh writes it), and an unconstrained
 # dependency would let a consumer pinning this version resolve a different hive-gen
 # behind it.

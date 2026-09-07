@@ -77,8 +77,8 @@ Six distributions ship as **one engine at one version** - `hive-author` joined t
 and is released because a deployment installs and runs it, not because anything imports it.
 `tools/released-packages.sh` is the ONE place that set is stated; everything on the release path
 derives it from there. `tools/set-release-version.sh` writes the version everywhere it is
-recorded - the six pyprojects, both pins on `vf-hive-gen` (hive-serve's runtime dependency and
-hive-author's `dev` extra, which is published metadata too), and every `uv.lock` under `tooling/`.
+recorded - the six pyprojects, hive-serve's pin on `vf-hive-gen`, and every `uv.lock` under
+`tooling/`.
 `tools/build-release.sh` refuses a set that disagrees with
 itself, a lockfile still on the previous version, or a wheel whose own metadata is wrong, and
 `tools/verify-clean-install.sh` installs and runs the built artefacts in a container holding no

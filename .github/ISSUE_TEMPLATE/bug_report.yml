@@ -23,7 +23,7 @@ body:
         - vf-hive-serve
         - vf-hive-dbparse
         - vf-hive-zendesk
-        - hive-author (not published to PyPI)
+        - vf-hive-author
         - the documentation
         - not sure
     validations:

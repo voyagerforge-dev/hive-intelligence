@@ -19,8 +19,9 @@ pip install vf-hive-author
 ```
 
 It is a **service**, not a library: nothing imports it. A deployment installs it at the same
-version as the rest of the engine and runs the `hiveauthor` console script it puts on the path -
-directly, or from the container image built by `tooling/hive-author/deploy/Dockerfile`. See
+version as the rest of the engine and runs the `hiveauthor` console script it puts on the path.
+The container image built by `tooling/hive-author/deploy/Dockerfile` still installs from a
+checkout instead, and stays that way until the deployment switches to the pin. See
 [distributing the engine](https://github.com/voyagerforge-dev/hive-intelligence/blob/main/docs/architecture/engine-distribution.md).
 
 ## From source

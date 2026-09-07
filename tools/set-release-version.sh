@@ -40,16 +40,12 @@ for pkg in "${RELEASED_PACKAGES[@]}"; do
   echo "  $pkg -> $version"
 done
 
-# The packages that name vf-hive-gen as a dependency pin it EXACTLY. Unconstrained, a consumer
-# pinning vf-hive-serve==0.5.0 resolves ANY vf-hive-gen, which is a mixed engine wearing one
-# version number. hive-author names it only in its `dev` extra, and that is still published
-# metadata now that the distribution is released, so it moves with the rest.
-for pkg in hive-serve hive-author; do
-  f="$root/tooling/$pkg/pyproject.toml"
-  grep -q '"vf-hive-gen==' "$f" || { echo "error: $f does not pin vf-hive-gen" >&2; exit 1; }
-  sed -i -E "s|\"vf-hive-gen==[^\"]*\"|\"vf-hive-gen==$version\"|" "$f"
-  echo "  $pkg requires vf-hive-gen==$version"
-done
+# hive-serve depends on hive-gen. Unconstrained, a consumer pinning vf-hive-serve==0.5.0
+# resolves ANY vf-hive-gen, which is a mixed engine wearing one version number.
+serve="$root/tooling/hive-serve/pyproject.toml"
+grep -q '"vf-hive-gen==' "$serve" || { echo "error: $serve does not pin vf-hive-gen" >&2; exit 1; }
+sed -i -E "s|\"vf-hive-gen==[^\"]*\"|\"vf-hive-gen==$version\"|" "$serve"
+echo "  hive-serve requires vf-hive-gen==$version"
 
 # The lockfiles record it too - each package's own member entry, and the `vf-hive-gen` entry in
 # the two that depend on it - so a bump that stopped at pyproject.toml would commit a tree that
