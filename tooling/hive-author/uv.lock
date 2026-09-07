@@ -883,7 +883,7 @@ wheels = [
 
 [[package]]
 name = "vf-hive-author"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
@@ -919,7 +919,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "vf-hive-gen"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "../hive-gen" }
 dependencies = [
     { name = "boto3" },

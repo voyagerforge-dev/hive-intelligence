@@ -1,6 +1,6 @@
 [project]
 name = "vf-hive-prep"
-version = "0.6.0"
+version = "0.7.0"
 description = "OKF doc-prep: atomic markdown generation from diverse corpus formats"
 requires-python = ">=3.12"
 license = "Apache-2.0"
