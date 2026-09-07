@@ -231,7 +231,7 @@ does not invalidate a publisher. Renaming the repository, moving it to another o
 ## Cutting a version
 
 ```
-tools/set-release-version.sh 0.7.0     # one version: pyprojects, the pins, every uv.lock
+tools/set-release-version.sh 0.7.0     # one version: pyprojects, the pin, every uv.lock
 tools/build-release.sh                 # sync licences, verify, build wheels into dist/
 tools/verify-clean-install.sh          # install and run them where no credential of ours exists
 git commit -am "release: 0.7.0"
@@ -247,7 +247,7 @@ not decoration: `workflow_dispatch` accepts a tag as its ref, so a ref-only test
 
 Each publish job uploads **one** wheel, staged into a directory of its own from the artefact the
 `build` job made; an identity that may claim one name uploading the whole of `dist/` would collect
-four rejections after the first wheel had already gone out and could not be recalled. The jobs are
+five rejections after the first wheel had already gone out and could not be recalled. The jobs are
 independent (`fail-fast: false`), so one refused upload neither cancels nor invalidates another,
 and what each one did is a separate green or red job on the run.
 
@@ -255,8 +255,8 @@ The `report` job is the one that must not be ignored. It compares `tools/release
 the one place the released set is stated - against what this run recorded uploading, writes the
 whole set as a table on the run summary, and **fails the run** whenever any distribution is
 missing, whether because no publisher is registered for it yet or because its upload failed. A
-partial release is therefore a red run naming the gap, never a green one that quietly shipped four
-of five. It cannot be completed afterwards: register what was missing and cut a new version.
+partial release is therefore a red run naming the gap, never a green one that quietly shipped
+part of the set. It cannot be completed afterwards: register what was missing and cut a new version.
 
 `tools/build-release.sh` refuses rather than producing a release that is quietly wrong:
 

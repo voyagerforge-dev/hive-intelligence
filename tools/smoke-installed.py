@@ -394,7 +394,10 @@ def step6_zendesk_relink(work: Path, corpus: Path) -> None:
 def step7_author(work: Path) -> None:
     step("7. hive-author: the write door - issue bodies hive-gen reads back, and the service",
          "vf-hive-author", "vf-hive-gen")
-    from hiveauthor.submissions import build_correction_submission, build_memory_submission
+    from hiveauthor.submissions import (
+        build_correction_submission,
+        build_memory_submission,
+    )
 
     # The cross-package contract, checked across two separately built distributions, the same
     # way step 3 checks hive-gen against hive-serve. hive-author writes `### <label>` sections
