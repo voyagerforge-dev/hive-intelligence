@@ -149,7 +149,7 @@ Approved drafts move into `concepts/<product>/`. Ids are derived from the result
 
 ### Post-promote
 
-Three scripts, in order:
+Three passes, in order - one in-tree script, then two installed commands:
 
 ```bash
 uv run python scripts/product_facet_apply.py concepts/

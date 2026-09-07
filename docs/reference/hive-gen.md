@@ -65,6 +65,7 @@ tolerant** (a failure on one concept is reported and skipped rather than killing
 | `config.py` | typed settings |
 | `profile.py` | the corpus profile: a corpus's domain vocabulary as data rather than as code |
 | `corpus.py` | `require_dir`: refuse a configured corpus path that is unset or not a directory, naming the setting. Shared with `hive-serve` |
+| `scripts/` | the installed `hivegen-*` commands, each a thin `main()` over the modules above - see [Scripts](#scripts) |
 
 ## Slicing
 
@@ -143,9 +144,10 @@ disagree about where memory lives and no verdict could be about anything. That i
 contradiction rather than a heuristic. A changeset whose memory cards are all *gone* from the tree
 is a deletion instead, and succeeds: there is no new claim left for anything to contradict. Cards
 that exist but share no subject are the ordinary healthy outcome and also print `state: success`.
-With no gateway configured it refuses too;
-`hivegen-memory-conflict-score` is the advisory sibling that prints the candidate pairs and does not
-fail the step.
+A run with no `--changed-file` at all, and a run with no gateway configured, are refused for the
+same reason. `hivegen-memory-conflict-score` is the advisory sibling: with no gateway it prints
+the candidate pairs and does not fail the step, and with one it exits non-zero only on a blocking
+conflict.
 
 ## The model client
 
@@ -231,7 +233,10 @@ re-running over a whole corpus is safe and leaves conformant cards untouched.
 
 **Installed commands.** These ship in the wheel as `[project.scripts]` console scripts, so a
 consumer that pins `vf-hive-gen` gets them without reading a file off a host. They live in
-`hivegen/scripts/` and each is a thin `main()` over the library.
+`hivegen/scripts/` and each is a thin `main()` over the library. Every one of them puts its corpus
+argument through `corpus.require_dir` first, so an unset, empty or absent directory is refused
+naming that argument rather than globbed over from the working directory - `hivegen-conformance-pass`
+rewrites cards in place, so it refuses before it writes anything.
 
 | Command | Job |
 |---|---|
