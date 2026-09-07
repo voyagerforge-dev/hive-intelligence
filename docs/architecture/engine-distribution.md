@@ -29,7 +29,7 @@ A released artefact fixes the shape: a consumer pins a version, not a repository
 
 ## What is released
 
-Five distributions, from `tooling/`, as **one engine at one version**:
+Six distributions, from `tooling/`, as **one engine at one version**:
 
 | package | distribution |
 |---|---|
@@ -38,14 +38,28 @@ Five distributions, from `tooling/`, as **one engine at one version**:
 | `hive-serve` | `vf-hive-serve` |
 | `hive-dbparse` | `vf-hive-dbparse` |
 | `hive-zendesk` | `vf-hive-zendesk` |
+| `hive-author` | `vf-hive-author` |
 
-One version across all five, because that is how they are consumed: a corpus is validated
-against a specific distiller *and* a specific serving behaviour, so `v0.6.0` has to mean the same
-five distributions every time. `tools/set-release-version.sh` writes it in one place and
+One version across all of them, because that is how they are consumed: a corpus is validated
+against a specific distiller *and* a specific serving behaviour, so `v0.7.0` has to mean the same
+six distributions every time. `tools/set-release-version.sh` writes it in one place and
 `tools/build-release.sh` refuses to build a set that disagrees with itself.
 
-`hive-author` is **not** released. It is a service that runs in a deployment, not a tool a
-consumer installs, and nothing pins it.
+`hive-author` **joined the set at 0.7.0**, and it is the one whose place needs explaining,
+because it is still a *service* rather than a library. Nobody imports `hiveauthor`. What
+changed is not what it is but where a deployment gets it from: a deployment installs
+`vf-hive-author==<version>` and runs the `hiveauthor` console script it puts on the path,
+exactly as it installs `vf-hive-serve` and runs `hiveserve`. Before that it was the one
+component with no pin at all - built from a checkout of this repository, at whatever revision
+that checkout happened to be on - which is the *same* defect as the git-tag pin described
+above, surviving in the one place the fix had not reached. Being a service is a reason to run
+it differently, not a reason to obtain it differently.
+
+Being released does not make it something a consumer of the cards installs. It holds the only
+credential in the system and files issues with it; a corpus pipeline has no use for it. What
+installs it is a deployment - see [hive-author](../reference/hive-author.md) for what that
+deployment has to configure, and [corrections and memory](../guides/corrections-and-memory.md)
+for why the write door is a separate service at all.
 
 Releasing a further distribution takes **two** edits, and the second is the one that matters.
 `tools/released-packages.sh` is the only place the set is stated: the build, the clean-container
@@ -85,13 +99,15 @@ requires the fine-grained token permission *Contents (read)*, which is the same 
 permits cloning the source. There is no download-only release permission. That option moves the
 credential rather than removing it.
 
-Shape 1 was chosen. What that publishes is the five packages' own modules and nothing else: a
+Shape 1 was chosen. What that publishes is the packages' own modules and nothing else: a
 wheel carries the package directory plus `LICENSE` and `NOTICE`. The git history, `docs/`,
-`skills/`, the CI, every test suite, every `.env.example` and the whole of `hive-author` are not in
-any wheel. That was framed at the time as keeping them private; with the repository open it is
-simply the difference between what a consumer *installs* and what a reader can *browse*, and the
-narrower artefact is still the right one. Sdists are deliberately not built: they would add tests,
-lockfiles and a deployment example that buy a consumer nothing, and every file in a published
+`skills/`, the CI, every test suite, every `.env.example` and every deployment example are not in
+any wheel - `hive-author` was outside them entirely until it joined the released set at 0.7.0, and
+what it ships now is `hiveauthor/` and nothing beside it - not its `deploy/` example, not its
+`.env.example`. That was framed at the time as keeping them private; with the repository open it
+is simply the difference between what a consumer *installs* and what a reader can *browse*, and
+the narrower artefact is still the right one. Sdists are deliberately not built: they would add
+tests, lockfiles and a deployment example that buy a consumer nothing, and every file in a published
 artefact is a file someone has to have audited.
 
 Trusted Publishing means **no PyPI token exists anywhere**. PyPI verifies a short-lived OIDC
@@ -104,7 +120,7 @@ undo the reason this design was chosen.
 Trusted Publishing has to be told which workflow may claim each name, and for a project that does
 not exist yet that is a **pending publisher**, registered once per distribution at
 <https://pypi.org/manage/account/publishing/>. Owner `voyagerforge-dev`, repository
-`hive-intelligence`, workflow `release.yml` for all five - and **one environment each**:
+`hive-intelligence`, workflow `release.yml` for all of them - and **one environment each**:
 
 | PyPI project name | GitHub environment |
 |---|---|
@@ -113,6 +129,7 @@ not exist yet that is a **pending publisher**, registered once per distribution 
 | `vf-hive-serve` | `pypi-vf-hive-serve` |
 | `vf-hive-dbparse` | `pypi-vf-hive-dbparse` |
 | `vf-hive-zendesk` | `pypi-vf-hive-zendesk` |
+| `vf-hive-author` | `pypi-vf-hive-author` |
 
 These are exact strings, not a naming convention to re-derive. PyPI matches all four fields, and a
 field that does not match is not an error message - it is a refused upload.
@@ -120,7 +137,7 @@ field that does not match is not an error message - it is a refused upload.
 **One environment each is forced, not chosen.** PyPI treats owner + repository + workflow +
 environment as one identity, so registering a second project against an identical configuration is
 refused: *"A pending trusted publisher matching this configuration has already been registered for
-a different project name."* Five names therefore need five environments, five GitHub environments
+a different project name."* Six names therefore need six environments, six GitHub environments
 to match, and one publish job each in `release.yml`.
 
 **And they cannot all be registered at once.** PyPI allows at most three publishers to be *pending*
@@ -135,7 +152,12 @@ was deliberately a partial one, and the last two could only be registered once i
    did not;
 3. those three publishers were then real rather than pending, so `vf-hive-dbparse` and
    `vf-hive-zendesk` were registered and their jobs added to `release.yml`. `0.6.0` is the
-   version cut to carry all five.
+   version cut to carry those five;
+4. `vf-hive-author` is the sixth, and repeats the same order at `0.7.0`: **its pending publisher
+   and its `pypi-vf-hive-author` environment have to exist before the tag is pushed.** Its
+   publish job is already in `release.yml` and `report` already expects it, so a tag pushed
+   without them is a red run naming `vf-hive-author` - and a version that went out short of the
+   set can never be completed.
 
 The two missing distributions could not be added to the version that skipped them - PyPI never
 allows a version to be re-uploaded - so step 3 is a new version number, not a re-run of the tag.
@@ -143,8 +165,8 @@ allows a version to be re-uploaded - so step 3 is a new version number, not a re
 changes that. Of the three published at `0.5.0`, `vf-hive-gen` and `vf-hive-prep` are rebuilt at
 `0.6.0` with nothing changed at all, while `vf-hive-serve`'s wheel differs from its `0.5.0` one in
 recorded dependency metadata: its exact pin moved to `vf-hive-gen==0.6.0`, which is precisely why
-the set has to move together. A sixth distribution repeats the same order: register its publisher
-and create its environment first, then add its job, then cut a new version.
+the set has to move together. A further distribution repeats the same order: register its
+publisher and create its environment first, then add its job, then cut a new version.
 
 A pushed `v*` tag is the only thing that uploads anything. `report` does not gate that and cannot:
 it runs after the publish jobs and has no way to undo an upload. So a red `report` does **not**
@@ -167,7 +189,7 @@ immediately before tagging, not on yesterday's reading (a name this project has 
 answers 200, and that is the answer you want for it):
 
 ```
-for n in vf-hive-gen vf-hive-prep vf-hive-serve vf-hive-dbparse vf-hive-zendesk; do
+for n in vf-hive-gen vf-hive-prep vf-hive-serve vf-hive-dbparse vf-hive-zendesk vf-hive-author; do
   printf '%-18s ' "$n"; curl -s -o /dev/null -w '%{http_code}\n' "https://pypi.org/simple/$n/"
 done      # 404 means the name is still free; 200 on one already published here is expected
 ```
@@ -181,10 +203,12 @@ not after.
 Neither side's settings page can answer whether PyPI will accept this repository: PyPI matches four
 fields *and* the owner's numeric id against claims in a token that only a real run can mint. So
 `release.yml` carries a dispatch-only `trusted-publisher-check` job that does the first half of
-what `pypa/gh-action-pypi-publish` does - mints the OIDC token in each of the five environments and
+what `pypa/gh-action-pypi-publish` does - mints the OIDC token in each environment and
 exchanges it at `https://pypi.org/_/oidc/mint-token` - and then stops and reports the HTTP status.
-It downloads no artefact, checks nothing out, and never runs the publish action. `200` from all
-five is the proof; a refusal prints the exact fields to re-register.
+It downloads no artefact, checks nothing out, and never runs the publish action. `200` from every
+one of them is the proof; a refusal prints the exact fields to re-register. Run it after
+registering a new name, and before the tag that first publishes it: a pending publisher that does
+not match is indistinguishable from one that does until something asks PyPI.
 
 ```
 gh workflow run release.yml --ref <branch> -f trusted_publisher_check=true
@@ -199,19 +223,19 @@ Run it after anything that could have moved a matched field, and before a releas
 the answer. **Re-creating this repository is such a change**, and the first real use of the check:
 `voyagerforge-dev/hive-intelligence` was deleted and re-created under the same name on 2026-09-05
 to clear pre-rewrite pull-request refs, which changed the repository's numeric id while leaving all
-four matched fields and the five environment names as they were. PyPI accepted all five afterwards
-- it pins the **owner** id, not the repository id - so a same-named re-creation does not invalidate
-a publisher. Renaming the repository, moving it to another owner, renaming `release.yml` or
-renaming an environment each would.
+four matched fields and the environment names as they were. PyPI accepted all five of the names
+that existed then - it pins the **owner** id, not the repository id - so a same-named re-creation
+does not invalidate a publisher. Renaming the repository, moving it to another owner, renaming
+`release.yml` or renaming an environment each would.
 
 ## Cutting a version
 
 ```
-tools/set-release-version.sh 0.6.0     # one version: pyprojects, the pin, every uv.lock
+tools/set-release-version.sh 0.7.0     # one version: pyprojects, the pin, every uv.lock
 tools/build-release.sh                 # sync licences, verify, build wheels into dist/
 tools/verify-clean-install.sh          # install and run them where no credential of ours exists
-git commit -am "release: 0.6.0"
-git tag -a v0.6.0 -m "0.6.0" && git push origin v0.6.0
+git commit -am "release: 0.7.0"
+git tag -a v0.7.0 -m "0.7.0" && git push origin v0.7.0
 ```
 
 Pushing the tag is what publishes, and it is the only thing that does.
@@ -223,7 +247,7 @@ not decoration: `workflow_dispatch` accepts a tag as its ref, so a ref-only test
 
 Each publish job uploads **one** wheel, staged into a directory of its own from the artefact the
 `build` job made; an identity that may claim one name uploading the whole of `dist/` would collect
-four rejections after the first wheel had already gone out and could not be recalled. The jobs are
+five rejections after the first wheel had already gone out and could not be recalled. The jobs are
 independent (`fail-fast: false`), so one refused upload neither cancels nor invalidates another,
 and what each one did is a separate green or red job on the run.
 
@@ -231,12 +255,12 @@ The `report` job is the one that must not be ignored. It compares `tools/release
 the one place the released set is stated - against what this run recorded uploading, writes the
 whole set as a table on the run summary, and **fails the run** whenever any distribution is
 missing, whether because no publisher is registered for it yet or because its upload failed. A
-partial release is therefore a red run naming the gap, never a green one that quietly shipped four
-of five. It cannot be completed afterwards: register what was missing and cut a new version.
+partial release is therefore a red run naming the gap, never a green one that quietly shipped
+part of the set. It cannot be completed afterwards: register what was missing and cut a new version.
 
 `tools/build-release.sh` refuses rather than producing a release that is quietly wrong:
 
-- the five packages disagreeing on the version;
+- the released packages disagreeing on the version;
 - a `uv.lock` still recording the previous one, which no wheel reads and nothing else
   would notice;
 - `vf-hive-serve` not requiring `vf-hive-gen==<that version>`, which would let a consumer pinning
@@ -246,29 +270,34 @@ of five. It cannot be completed afterwards: register what was missing and cut a 
 
 `tools/verify-clean-install.sh` is the part that matters most, because the failure being fixed is
 a thing everyone believed worked. It builds a container with no SSH key, no git credentials, no
-token and no checkout, shows that the container cannot read this repository at all, installs the
-five from the built artefacts, and reads pip's own `--report` to name the URL each of them actually
+token, no checkout and no `ssh`, `git` or `gh` client to use one with. Then it installs the whole
+set from the built artefacts and reads pip's own `--report` to name the URL each of them actually
 resolved from - a check that reads the same before and after the names exist on PyPI. Then it runs
 each one for real - DDL parsed into cards, atomic markdown validated, a card bundle resolved across
-cross-links, and `hive-serve` answering over HTTP against a real Postgres ledger.
+cross-links, `hive-author` building a submission that `hive-gen`'s own parsers read back, and
+`hive-serve` answering over HTTP against a real Postgres ledger.
 `.github/workflows/release.yml` runs the same smoke script on a GitHub runner, so a release that
 only works on the machine that built it fails before it is tagged.
 
 ## What a consumer does
 
-The `[tool.uv.sources]` git table goes away, and the five packages become ordinary pinned
+The `[tool.uv.sources]` git table goes away, and the packages become ordinary pinned
 dependencies resolved from PyPI. Nothing else: no credential, no index configuration, no CI
 secret.
 
 ```toml
 dependencies = [
-  "vf-hive-gen==0.6.0",
-  "vf-hive-prep==0.6.0",
-  "vf-hive-serve==0.6.0",
-  "vf-hive-dbparse==0.6.0",
-  "vf-hive-zendesk==0.6.0",
+  "vf-hive-gen==0.7.0",
+  "vf-hive-prep==0.7.0",
+  "vf-hive-serve==0.7.0",
+  "vf-hive-dbparse==0.7.0",
+  "vf-hive-zendesk==0.7.0",
 ]
 ```
+
+A corpus repository pins the pipeline packages. A **deployment** pins what it runs, which is
+`vf-hive-serve` and, where it offers the write door, `vf-hive-author` at the same version - and
+then runs the `hiveauthor` console script rather than a checkout it placed itself.
 
 Pin a version whose release run went green: a run goes green only when every distribution
 recorded a successful upload, so that is the signal the whole set went out, and a version that

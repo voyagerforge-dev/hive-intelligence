@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 # Set the engine version on every RELEASED package, in one place.
 #
-# The five packages are released as ONE engine: one version means these five distributions and
-# no others, which is how the corpus repository consumes them (one pin, five packages). So
-# they carry one version, written here, and `tools/build-release.sh` refuses to build if any
-# of them disagrees.
+# The released packages ship as ONE engine: one version means exactly the set named in
+# tools/released-packages.sh and no others, which is how the corpus repository consumes them
+# (one pin, one engine). So they carry one version, written here, and
+# `tools/build-release.sh` refuses to build if any of them disagrees.
 #
 # This exists because the versions had already drifted: every pyproject said 0.1.0 while the
 # repository shipped tag v0.4.0, so the version a consumer pinned was the git tag and the
 # package version was fiction. Editing six places by hand is how that happened.
 #
-# hive-author is deliberately absent. It is a service that runs in a deployment, not a tool a
-# consumer installs, and nothing pins it. Add it here on the day it is released, not before.
+# The set is not restated here. It is read from tools/released-packages.sh, so a distribution
+# added there is stamped by this script on the same edit - which is what happened to
+# hive-author for 0.7.0, and what stops the next addition from being stamped by hand.
 set -euo pipefail
 
 usage() { echo "usage: $0 <version>   e.g. $0 <MAJOR.MINOR.PATCH>" >&2; exit 2; }
@@ -49,7 +50,7 @@ echo "  hive-serve requires vf-hive-gen==$version"
 # The lockfiles record it too - each package's own member entry, and the `vf-hive-gen` entry in
 # the two that depend on it - so a bump that stopped at pyproject.toml would commit a tree that
 # disagrees with itself, which is the drift this script exists to end. Every package under
-# tooling/ is re-locked, hive-author included: it is not released, but its lock pins hive-gen.
+# tooling/ is re-locked, which is now the whole released set.
 # Offline first, because a version bump changes no dependency and nothing else here needs an
 # index; the network is reached only if the cache cannot answer.
 echo

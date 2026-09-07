@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the five released Hive distributions as an INSTALLED consumer sees them.
+"""Exercise the released Hive distributions as an INSTALLED consumer sees them.
 
 This script is the answer to "does the release actually work somewhere other than the
 machine that built it". It deliberately imports nothing from this repository: every step
@@ -19,7 +19,8 @@ corpus, which a consumer supplies and this repository does not contain. The synt
 fixture corpus under tooling/hive-serve/tests/fixtures/corpus stands in for one.
 
 Every step is a real operation with a real result: DDL parsed into cards, atomic markdown
-validated, a card bundle resolved across cross-links, journal entries linked. A step the
+validated, a card bundle resolved across cross-links, journal entries linked, a submission
+written by the write door and read back by the parsers that receive it. A step the
 supplied corpus cannot exercise is skipped by name, and the verdict printed at the end is
 derived from the steps that ran rather than written in advance, so it cannot claim more than
 the run did. A released distribution that no step exercised makes that verdict INCOMPLETE and
@@ -28,7 +29,8 @@ the exit code non-zero, so the gate above this one cannot pass on it either.
 Nothing calls a model or a network service. The single stand-in is step 6's reranker, which
 answers in the model's own JSON shape from the candidates the installed package shortlisted:
 the lexical shortlist and the rewrite it drives are the real ones, so the links that step
-asserts were derived here and not inherited from the fixture.
+asserts were derived here and not inherited from the fixture. Step 7 reaches no forge either:
+it builds submissions and starts the server, and files nothing.
 """
 from __future__ import annotations
 
@@ -389,6 +391,84 @@ def step6_zendesk_relink(work: Path, corpus: Path) -> None:
         print(f"    | {name} -> {ids}", flush=True)
 
 
+def step7_author(work: Path) -> None:
+    step("7. hive-author: the write door - issue bodies hive-gen reads back, and the service",
+         "vf-hive-author", "vf-hive-gen")
+    from hiveauthor.submissions import (
+        build_correction_submission,
+        build_memory_submission,
+    )
+
+    # The cross-package contract, checked across two separately built distributions, the same
+    # way step 3 checks hive-gen against hive-serve. hive-author writes `### <label>` sections
+    # that mirror the corpus repository's Issue Forms, and hive-gen's parsers are what read
+    # them - whether the issue came from this service or from a person filling in the form. A
+    # drift between the two is silent: the issue files, the workflow parses it into a card with
+    # empty fields, and nobody sees the gap until the card is reviewed.
+    from hivegen.scripts.correction_from_issue import parse_issue as parse_correction
+    from hivegen.scripts.memory_from_issue import parse_issue as parse_memory
+
+    memory = build_memory_submission(
+        owner="operator@example.invalid", client="alpha", product="widget",
+        title="Second scan", lesson="Alpha scans a second time before despatch.",
+        context="Alpha only.", related=["widget/calibration-routine"],
+        citations=["alpha-runbook.md"])
+    check(memory["labels"] == ["hive-memory"], f"memory submission labelled {memory['labels']}")
+    rec = parse_memory(memory["body"])
+    check(rec["client"] == "alpha" and rec["product"] == "widget",
+          f"hive-gen parsed it back as client={rec['client']!r} product={rec['product']!r}")
+    check(rec["memory"] == "Alpha scans a second time before despatch.", "the lesson survived")
+    check(rec["related"] == ["widget/calibration-routine"], f"related: {rec['related']}")
+    check(rec["citations"] == ["alpha-runbook.md"], f"citations: {rec['citations']}")
+
+    correction = build_correction_submission(
+        owner="operator@example.invalid", target_concept_id="widget/calibration-routine",
+        corrected_fact="Calibration is per shift, not per pick.",
+        rationale="The bench guide says so.", citations=["bench-guide.md"])
+    check(correction["labels"] == ["hive-correction"],
+          f"correction submission labelled {correction['labels']}")
+    rec = parse_correction(correction["body"])
+    check(rec["corrects"] == "widget/calibration-routine", f"corrects: {rec['corrects']!r}")
+    check(rec["correction"] == "Calibration is per shift, not per pick.", "the fact survived")
+
+    # A memory promotion with no client is refused, not guessed at: a memory card with no
+    # client is either a concept card or a mistake, and both deserve a rejection.
+    try:
+        build_memory_submission(owner="operator@example.invalid", client="", product="widget",
+                                title="t", lesson="l")
+        check(False, "a client-less memory promotion was accepted")
+    except ValueError as e:
+        check(True, f"a client-less memory promotion is refused ({e})")
+
+    # The service, as a deployment runs it: the installed console script, and the ASGI app it
+    # serves. `hiveauthor` unconfigured must refuse at startup rather than serve a client that
+    # builds `/repos//issues` and 404s every submission while reporting success.
+    env = {**os.environ, "FORGE_API": "", "FORGE_REPO": "", "FORGE_KIND": "",
+           "FORGE_TOKEN": "", "FORGE_TOKEN_FILE": ""}
+    p = run_cli(["hiveauthor"], env=env, cwd=str(work), timeout=120)
+    check(p.returncode != 0, f"hiveauthor refused an unconfigured forge (exit {p.returncode})")
+    check("forge_repo" in (p.stdout + p.stderr), "the refusal names the settings")
+
+    # And configured, it answers. The forge is never reached: nothing below files an issue,
+    # and the host does not resolve, so this is the server starting and serving, not a write.
+    from fastapi.testclient import TestClient
+    from hiveauthor.config import Settings
+    from hiveauthor.server import build_http_app
+    app = build_http_app(Settings(forge_api="http://forge.invalid/api/v1",
+                                  forge_repo="example/corpus", forge_token="unused",
+                                  forge_kind="forgejo"))
+    with TestClient(app) as client:
+        health = client.get("/healthz")
+        check(health.status_code == 200 and health.json() == {"ok": True},
+              f"GET /healthz -> {health.status_code} {health.text.strip()}")
+        # Declared before the catch-all MCP mount at "/", or the mount shadows it and this
+        # 404s while the deployment looks correctly configured.
+        scrape = client.get("/metrics")
+        check(scrape.status_code == 200 and "hive_author_submissions_total" in scrape.text,
+              f"GET /metrics -> {scrape.status_code}, the write-door counters are exported")
+        check(client.get("/mcp").status_code != 404, "the MCP door is mounted at /mcp")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -415,6 +495,7 @@ def main() -> int:
         step4_serve(corpus)
         step5_zendesk_refusal(work, corpus)
         step6_zendesk_relink(work, corpus)
+        step7_author(work)
 
     print()
     for s in steps:

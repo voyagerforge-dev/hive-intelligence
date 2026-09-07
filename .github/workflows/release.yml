@@ -1,6 +1,6 @@
 name: Release artefacts
 
-# Build the five released distributions, prove they install and run somewhere that is not the
+# Build the released distributions, prove they install and run somewhere that is not the
 # machine that built them, and publish them to PyPI.
 #
 # PUBLICATION IS IRREVERSIBLE. PyPI does not allow re-uploading a version, and yanking one
@@ -49,7 +49,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  # Never on a release tag. A cancel mid-upload leaves some of the five wheels on PyPI and
+  # Never on a release tag. A cancel mid-upload leaves some of the wheels on PyPI and
   # the rest not, and PyPI refuses the re-upload that would finish the job - so that version
   # is burnt. Splitting publication into one job per distribution does not soften this: the
   # group is the whole run, so a cancellation would take every in-flight upload with it.
@@ -115,7 +115,7 @@ jobs:
       # The set comes from tools/released-packages.sh, the one place it is stated, and is
       # exported for the two steps below, which check the same set rather than a copy of it.
       # A distribution added there is installed and proved here, or the job fails.
-      # The five are named as the WHEEL FILES `build` produced, not as `vf-name==version`
+      # They are named as the WHEEL FILES `build` produced, not as `vf-name==version`
       # requirements. A name and a version are also what the index answers, and pip is free to
       # prefer the published copy: with `--find-links dist` it did exactly that once 0.6.0 was
       # on PyPI, and this job proved PyPI's wheels instead of the ones `build` had just made.
@@ -162,23 +162,23 @@ jobs:
   # ONE JOB PER DISTRIBUTION, because PyPI says so. A trusted publisher is the tuple (owner,
   # repository, workflow, environment), so a second distribution registered against an identical
   # tuple is refused - "A pending trusted publisher matching this configuration has already been
-  # registered for a different project name." Five names therefore need five environments, and
+  # registered for a different project name." Six names therefore need six environments, and
   # each job uploads only its own wheel: an identity that may claim one name uploading all of
-  # dist/ gets four rejections after the first has already gone out and cannot be recalled.
+  # dist/ gets five rejections after the first has already gone out and cannot be recalled.
   #
   # The environment names below are what is registered on PyPI, not a convention to re-derive.
   # A mismatch in any field is not an error message, it is a refused upload. `trusted-publisher-check`
   # at the foot of this file is how that is found out before a tag rather than during one.
   #
-  # All five are here now, and the order they arrived in was PyPI's doing: at most three
-  # publishers may be PENDING at once ("You can't register more than 3 pending trusted
-  # publishers at once"), and one stops being pending only once its project has actually
-  # published. So `vf-hive-gen`, `vf-hive-prep` and `vf-hive-serve` went out at 0.5.0 - a run
-  # `report` failed on purpose, naming the two that could not - and only then could
-  # `vf-hive-dbparse` and `vf-hive-zendesk` be registered. That staging is history; the rule
-  # behind it is not. A SIXTH name needs its publisher registered and its environment created
-  # before its job is added here, or the job earns a 403 and a GitHub environment that
-  # misrepresents itself as configured. 0.5.0 stays a three-of-five release forever: the gap
+  # The order they arrived in was PyPI's doing: at most three publishers may be PENDING at
+  # once ("You can't register more than 3 pending trusted publishers at once"), and one stops
+  # being pending only once its project has actually published. So `vf-hive-gen`,
+  # `vf-hive-prep` and `vf-hive-serve` went out at 0.5.0 - a run `report` failed on purpose,
+  # naming the two that could not - and only then could `vf-hive-dbparse` and
+  # `vf-hive-zendesk` be registered, at 0.6.0. `vf-hive-author` is the sixth and repeats it:
+  # its publisher must be registered and its `pypi-vf-hive-author` environment created BEFORE
+  # the first tag that carries it, or the job earns a 403 and a GitHub environment that
+  # misrepresents itself as configured. 0.5.0 stays a three-of-five release forever: a gap
   # can only be closed by a new version, never by re-running that tag.
   #
   # `fail-fast: false` is load-bearing twice over. One distribution's upload failing must not
@@ -204,6 +204,8 @@ jobs:
             environment: pypi-vf-hive-dbparse
           - package: vf-hive-zendesk
             environment: pypi-vf-hive-zendesk
+          - package: vf-hive-author
+            environment: pypi-vf-hive-author
     # A required reviewer, if one is ever wanted, is configured per environment, so approving
     # one approves one distribution rather than the release.
     environment: ${{ matrix.environment }}
@@ -331,7 +333,7 @@ jobs:
   # still trust us?" has a real answer that reading either side's settings cannot give. The
   # question got sharp on 2026-09-05, when `voyagerforge-dev/hive-intelligence` was deleted and
   # re-created under the same name to clear pre-rewrite pull-request refs: the repository's
-  # numeric id changed, every one of the four matched fields did not, and the five GitHub
+  # numeric id changed, every one of the four matched fields did not, and the GitHub
   # environments were re-created with the same names. That should still match. "Should" is not
   # a thing to learn from a release, because the only cheaper moment to learn it is before one:
   # a refused upload is discovered halfway through an irreversible publish, with some wheels
@@ -345,7 +347,7 @@ jobs:
   # Run it from the Actions tab, or:
   #   gh workflow run release.yml --ref <branch> -f trusted_publisher_check=true
   #
-  # HTTP 200 from every one of the five is the proof. A refusal is a `needs-decision`, not
+  # HTTP 200 from every one of them is the proof. A refusal is a `needs-decision`, not
   # something to fix here: re-registering a publisher happens on PyPI, by a human, and the
   # failing job prints the exact four fields to re-register it with.
   trusted-publisher-check:
@@ -353,13 +355,13 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.trusted_publisher_check }}
     runs-on: ubuntu-latest
     strategy:
-      # One environment refusing must not hide the state of the other four: knowing whether
-      # this is one stale publisher or all five is the whole difference between a small fix
+      # One environment refusing must not hide the state of the others: knowing whether
+      # this is one stale publisher or all of them is the whole difference between a small fix
       # and a blocked release.
       fail-fast: false
       # Kept deliberately identical to `publish`'s matrix, because a check against a set that
-      # has drifted from the set that publishes is a check that proves the wrong thing. A sixth
-      # distribution is added to both or neither.
+      # has drifted from the set that publishes is a check that proves the wrong thing. A
+      # further distribution is added to both or neither.
       matrix:
         include:
           - package: vf-hive-gen
@@ -372,6 +374,8 @@ jobs:
             environment: pypi-vf-hive-dbparse
           - package: vf-hive-zendesk
             environment: pypi-vf-hive-zendesk
+          - package: vf-hive-author
+            environment: pypi-vf-hive-author
     # The environment name is a matched field, so the check has to run in the environment it is
     # asking about - and running here means a required reviewer, if one is ever added, gates
     # this exactly as it gates the publish.

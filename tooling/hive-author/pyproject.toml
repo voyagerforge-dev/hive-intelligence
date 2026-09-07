@@ -1,6 +1,6 @@
 [project]
 name = "vf-hive-author"
-version = "0.1.0"
+version = "0.6.0"
 description = "Write-only MCP server: file OKF memory/correction issues (keeps hive-serve keyless)"
 requires-python = ">=3.12"
 license = "Apache-2.0"

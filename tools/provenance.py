@@ -8,7 +8,7 @@ Run against the install that is about to be believed: by tools/clean-install-ins
 clean container, and by the release workflow's install job. Both name the built wheel FILES
 rather than `vf-name==version`, because a requirement pip can also satisfy from the index
 smoke-tests the published copy once that version exists. Checking pip's record beats checking
-our intent: it is the same question everywhere ("did these five come from the local directory,
+our intent: it is the same question everywhere ("did these come from the local directory,
 or from PyPI?") and it stays true after the names exist on an index, which an "it is on no
 index" assertion would not.
 """

@@ -7,6 +7,26 @@ It cannot push, merge, or open a pull request.
 
 Narrative version: [corrections and memory](../guides/corrections-and-memory.md).
 
+## Running
+
+```bash
+pip install vf-hive-author==<engine version>
+hiveauthor
+```
+
+`vf-hive-author` is published from 0.7.0, so a deployment installs it from the index at the same
+version as the rest of the engine, the way it installs `hive-serve`, and runs the console script.
+Before that a deployment built it from a checkout of this repository, which is the git pin
+[distributing the engine](../architecture/engine-distribution.md) exists to retire, left standing
+in the one place the fix had not reached. The Dockerfile shipped under
+`tooling/hive-author/deploy/` still does an editable install from the checkout, and stays that way
+until the deployment switches to the pin.
+
+It serves on `HOST:PORT` (default `127.0.0.1:8000`), exposes `/healthz` and `/metrics`, and mounts
+the MCP app at `/` - the streamable-HTTP endpoint an MCP client connects to is `/mcp`, and `GET /`
+404s. It **refuses to start** unless the forge settings below are complete, because an unset
+`FORGE_REPO` builds `/repos//issues` and 404s every submission while reporting success.
+
 ## Why it is a separate service
 
 `hive-serve` is the component exposed to the widest audience, so it holds nothing worth stealing

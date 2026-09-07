@@ -81,8 +81,8 @@ that is measurable before you change anything. See
 
 ## What is here
 
-Six Python packages under `tooling/`. Three form the pipeline; three extend it. Five are published
-to PyPI as one engine at one version.
+Six Python packages under `tooling/`. Three form the pipeline; three extend it. All six are
+published to PyPI as one engine at one version.
 
 | Package | Install | Does |
 |---|---|---|
@@ -91,11 +91,11 @@ to PyPI as one engine at one version.
 | `hive-serve` | `pip install vf-hive-serve` | serves cards over REST and MCP, with a per-person work ledger |
 | `hive-dbparse` | `pip install vf-hive-dbparse` | database schema to cards, deterministically, with no model involved |
 | `hive-zendesk` | `pip install vf-hive-zendesk` | closed support tickets to client-scoped issue cards |
-| `hive-author` | from source, `tooling/hive-author` | a write-only door for filing corrections and memory, so `hive-serve` holds no credentials |
+| `hive-author` | `pip install vf-hive-author` | a write-only door for filing corrections and memory, so `hive-serve` holds no credentials |
 
-`hive-author` is **not published to PyPI**. It is versioned separately from the other five and is
-deployed as a service rather than installed as a library; see
-[distributing the engine](docs/architecture/engine-distribution.md).
+`hive-author` is a **service**, not a library: nothing imports it. A deployment installs it at the
+same version as the rest and runs the `hiveauthor` console script, which is the only reason it is
+published at all - see [distributing the engine](docs/architecture/engine-distribution.md).
 
 `vf-hive-serve` pins `vf-hive-gen` exactly, so installing it brings the matching card model.
 
@@ -165,7 +165,7 @@ than skip when they cannot, because a skipped ledger test reports green.
 
 ## Releases
 
-The five published distributions ship as **one engine at one version**. Publication happens only
+The six published distributions ship as **one engine at one version**. Publication happens only
 from a pushed `v*` tag, to PyPI, wheels only, over Trusted Publishing with no token stored anywhere.
 
 There is no changelog file in this repository, deliberately. The release workflow is the record, so
@@ -179,7 +179,8 @@ what changed in a version lives where that version was actually cut:
   [vf-hive-gen](https://pypi.org/project/vf-hive-gen/),
   [vf-hive-serve](https://pypi.org/project/vf-hive-serve/),
   [vf-hive-dbparse](https://pypi.org/project/vf-hive-dbparse/),
-  [vf-hive-zendesk](https://pypi.org/project/vf-hive-zendesk/). All five carry the same version.
+  [vf-hive-zendesk](https://pypi.org/project/vf-hive-zendesk/),
+  [vf-hive-author](https://pypi.org/project/vf-hive-author/). All six carry the same version.
 - **[Distributing the engine](docs/architecture/engine-distribution.md)** is how a version is cut
   and what a consumer pins.
 

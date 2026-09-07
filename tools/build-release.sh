@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the five released distributions, and refuse to produce a release that is not coherent.
+# Build the released distributions, and refuse to produce a release that is not coherent.
 #
 # This script BUILDS AND VERIFIES. It does not publish. Where the artefacts go is a separate,
 # deliberate step, and keeping it separate is what lets this run on any machine, in CI, on a
@@ -13,7 +13,7 @@
 # What it refuses on, and why each one has already gone wrong or would go silently wrong:
 #   - an output directory you named that already holds something (see above: yours is not
 #     ours to empty, and a mistyped path is not recoverable)
-#   - the five packages disagreeing on the version     (they did: 0.1.0 vs shipped tag v0.4.0)
+#   - the released packages disagreeing on the version (they did: 0.1.0 vs shipped tag v0.4.0)
 #   - a uv.lock still recording the previous version   (the bump stopped at pyproject.toml)
 #   - vf-hive-serve not pinning vf-hive-gen exactly    (it did not: a mixed engine, one number)
 #   - HEAD sitting on a tag that contradicts the built version
@@ -45,7 +45,7 @@ for pkg in "${RELEASED_PACKAGES[@]}"; do
   if [ -z "$version" ]; then version="$v"
   elif [ "$v" != "$version" ]; then
     echo "error: $pkg is $v but the engine is $version." >&2
-    echo "       The five packages release as one engine. Use tools/set-release-version.sh." >&2
+    echo "       The released packages ship as one engine. Use tools/set-release-version.sh." >&2
     exit 1
   fi
   echo "  $pkg $v"

@@ -21,7 +21,7 @@ is the usual answer. For a documentation change, say that you ran the commands y
       cause was found rather than a plausible one.
 - [ ] `ruff check .` passes from the package directory, with ruff from the range CI pins
       (`ruff>=0.16,<0.17`), not the much lower floor in the package's dev extra.
-- [ ] **No version bump.** The five released distributions ship as one engine at one version, and
+- [ ] **No version bump.** The released distributions ship as one engine at one version, and
       `tools/set-release-version.sh` writes it everywhere. Changing a version by hand
       desynchronises the lockfiles and the build refuses it.
 - [ ] **No corpus path, host, address or client name** is introduced anywhere, including in a

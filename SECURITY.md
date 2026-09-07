@@ -17,10 +17,9 @@ visible only to you and the maintainers, and it keeps the discussion attached to
 tab offers you no such button, the feature is not on yet - use the email address above.
 
 A report is most useful when it says which package it concerns (`vf-hive-prep`, `vf-hive-gen`,
-`vf-hive-serve`, `vf-hive-dbparse`, `vf-hive-zendesk`, or `hive-author`, which is not published to
-PyPI and is reported against its source in `tooling/hive-author`), which version, what an attacker
-can do with it, and the shortest sequence of steps that shows it. A proof of concept is welcome; a
-working exploit is not required.
+`vf-hive-serve`, `vf-hive-dbparse`, `vf-hive-zendesk`, or `vf-hive-author`), which version, what
+an attacker can do with it, and the shortest sequence of steps that shows it. A proof of concept
+is welcome; a working exploit is not required.
 
 Please do not include real customer data, credentials, or a corpus in a report. If reproducing
 the issue needs one, describe its shape instead and we will work out a synthetic case.
@@ -37,7 +36,7 @@ We ask that you hold the details until that release is out.
 
 ## Which versions get fixes
 
-The five released distributions ship as **one engine at one version**, so a security release moves
+The released distributions ship as **one engine at one version**, so a security release moves
 all of them together. Fixes go into the current minor series on PyPI (at the time of writing,
 `0.6.x`) as a new patch release. Older minors receive nothing; upgrading to the current minor is
 the supported path. See
