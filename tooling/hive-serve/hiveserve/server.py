@@ -26,9 +26,16 @@ def _conn_factory(settings):
     created the file if it was missing, so a deployment pointed at the wrong directory
     came up healthy and served an empty ledger to whoever asked. There is no equivalent
     accident with a DSN: either it is set and reachable, or this refuses to start.
+
+    It refuses with `SystemExit`, which is what `require_dir` raises for `CONCEPTS_DIR`
+    and what prints the message without a traceback. An unset setting is a configuration
+    mistake whose message already says which setting and why; carrying it out as an
+    ordinary exception buried that sentence under fifteen frames of uvicorn and psycopg
+    internals, which add nothing a reader can act on and make a one-setting mistake read
+    as a crash. `getting-started.md` documents the single line.
     """
     if not settings.ledger_dsn:
-        raise RuntimeError(
+        raise SystemExit(
             "LEDGER_DSN is not set. The ledger is Postgres since 2026-08-19; there is no "
             "file fallback, because falling back is how an empty ledger gets served as if "
             "it were the real one."

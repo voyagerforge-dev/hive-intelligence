@@ -37,8 +37,20 @@ class Settings(BaseSettings):
     # MCP client's per-result token cap and spilled to a file, forcing chunked re-reads.
     max_chars: int = 40000
     resolve_depth: int = 1
-    concepts_dir: str = "../../concepts"
-    clients_dir: str = "../../clients"
+    # The corpus concept cards. No default, deliberately, and the reason is the same one
+    # LEDGER_DSN has: the previous default, `../../concepts`, was resolved against the
+    # *working directory* of the process, so two identically configured deployments
+    # started from two different directories served two different corpora, or one corpus
+    # and one refusal, with nothing in the logs to tell them apart. Worse, `require_dir`'s
+    # unset branch was unreachable: a stray `concepts/` two levels up was accepted and its
+    # markdown served as concept cards. Empty reaches that branch and the server refuses.
+    concepts_dir: str = ""
+    # Client-scoped cards. Also no default, for the same reason - but empty here means
+    # *off*, not a refusal: client memory is legitimately optional and `.env.example` and
+    # docs/reference/configuration.md both promise it is never a startup refusal.
+    # `resolver.clients_base` is the single boundary that reads empty as off, so a
+    # deployment with no client memory needs no setting and reads no stray tree.
+    clients_dir: str = ""
     # Labelled eval sets, for the evaluation harness only. No default, deliberately: sets
     # name real card ids, so they ship with a corpus and there is nowhere here they could
     # plausibly be. A bare qa-set name used to resolve inside this package, a directory

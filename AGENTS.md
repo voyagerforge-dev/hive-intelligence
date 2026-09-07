@@ -59,6 +59,14 @@ CI runs `mypy` against the **package directory**, not the package root: `mypy hi
 `mypy .`. Running it the second way reports errors in `tests/` and `scripts/` that CI never sees,
 so a local `mypy .` is not evidence of anything.
 
+Every distribution is named `vf-hive-*` while the package it installs is `hive*`, so anything that
+reads its own installed metadata must be told the **distribution** name. `click.version_option()`
+looks it up under the *module*, and in an editable install nothing maps `hiveprep` back to
+`vf-hive-prep`, so `hiveprep --version` raised `RuntimeError: 'hiveprep' is not installed. Try
+passing 'package_name' instead.` Naming the distribution does not depend on that mapping at all.
+A `CliRunner` test exercises the same lookup; what it cannot vouch for is the installed console
+script, which is what ships, so test `--version` by running it.
+
 `hive-serve`'s ledger tests start a real Postgres container (docker or podman) and deliberately fail
 rather than skip when they cannot. `hiveserve serve` itself also refuses to start without
 `LEDGER_DSN`, on either transport, so any doc or script that runs it needs a database.

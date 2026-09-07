@@ -14,8 +14,9 @@ hiveserve serve --http      # REST and MCP over streamable HTTP
 hiveserve serve --stdio     # MCP over stdio, for any client that speaks it
 ```
 
-Both transports require `LEDGER_DSN` and refuse to start without it. See
-[the ledger](#the-ledger).
+Both transports refuse to start without `LEDGER_DSN` or `CONCEPTS_DIR`, naming the setting that is
+missing and exiting 1 without a traceback. Neither has a default: see [the ledger](#the-ledger) and
+[`CONCEPTS_DIR` has no default](configuration.md#concepts_dir-has-no-default).
 
 ## REST
 
@@ -213,9 +214,9 @@ Both are checked before any model is called. An absent or empty corpus scores ze
 and reports an aggregate as though it had measured something, so `run_eval` refuses instead, naming
 the setting. "Empty" is `load_index`'s definition, not "holds no `.md`", since `index.md`, `log.md`
 and the `<product>/db/` tier are not cards. `CLIENTS_DIR` stays optional: `run_eval` refuses only
-when the set it was handed has rows expecting client cards, and otherwise - when the setting was
-actually configured, rather than left at its default - prints that a dead path disabled client
-memory rather than degrading quietly. When it is set, existing is not
+when the set it was handed has rows expecting client cards, and otherwise - when the setting names
+a path at all, rather than being empty or unset - prints that a dead path disabled client
+memory rather than degrading quietly. When it names one, existing is not
 enough either - `run_eval` asks `load_index` which clients it can serve and refuses naming the ones
 it cannot. What counts as "needed" is which clients a row expects **cards** for - an `expects_memory`
 id, or a `clients/<client>/...` entry in `expected_card_ids` - never the `client` field alone. A

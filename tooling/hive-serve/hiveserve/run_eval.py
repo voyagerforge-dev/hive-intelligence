@@ -162,8 +162,8 @@ def warn_if_cross_client_is_unexercised(qa: list[dict], served: set[str]) -> boo
     return True
 
 
-def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
-                   configured: bool) -> tuple[Path | None, bool]:
+def corpus_clients(clients_dir: str, qa: list[dict], *,
+                   concepts: Path) -> tuple[Path | None, bool]:
     """Client memory for the eval, matching the shape the served path builds.
 
     ``CLIENTS_DIR`` is genuinely optional: omitting it disables client memory, which is a
@@ -176,9 +176,9 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
     actually serve, and :func:`required_clients` reads which clients the rows need cards
     for, so no heuristic is required.
 
-    ``configured`` says whether any source actually supplied ``CLIENTS_DIR``, which is
-    provenance rather than a guess from the value: it decides only whether a dead path is
-    worth reporting, never whether the set is allowed to run.
+    Empty and unset are the same case and are settled before any of this, at
+    ``clients_base``: client memory is off and there is no path to name. A non-empty value
+    that is not a directory is a dead path, and is reported rather than degraded quietly.
 
     Returns the clients tree and whether this run leaves ``cross_client`` unexercised. The
     second is decided here because this is the only place that knows which clients are
@@ -206,10 +206,10 @@ def corpus_clients(clients_dir: str, qa: list[dict], *, concepts: Path,
             f"{', ...' if len(needs) > 5 else ''}). Scored without it every one of them "
             "misses and the aggregate reads as a property of the corpus. Point CLIENTS_DIR "
             "at the corpus's client memory, or use a set that does not need it.")
-    # Only when some source actually supplied it. The class default is a relative guess
-    # that is a directory almost nowhere, so warning on an untouched one would name a dead
-    # path the operator never set, on every run of a deployment with no client memory.
-    if path is not None and configured:
+    # Only a non-empty setting reaches here with a path: an absent or empty CLIENTS_DIR is
+    # a deployment with no client memory and has nothing to name, so warning on it would
+    # fire on every run of such a deployment.
+    if path is not None:
         # "Unaffected" is only true when nothing asks as a client. When something does, its
         # memory columns are affected - satisfied trivially - and the notice below says so.
         consequence = ("The path is dead, and the next set that needs it will refuse."
@@ -258,9 +258,7 @@ def main() -> None:
     concepts = corpus_cards(s.concepts_dir)
     qa_path = qa_set_path(sys.argv[2], s.eval_dir)
     qa = load_qa(qa_path)
-    clients, cross_client_unexercised = corpus_clients(
-        s.clients_dir, qa, concepts=concepts,
-        configured="clients_dir" in s.model_fields_set)
+    clients, cross_client_unexercised = corpus_clients(s.clients_dir, qa, concepts=concepts)
     select_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.select_model,
                              timeout_s=s.bifrost_timeout_s)
     answer_llm = BifrostChat(s.bifrost_base, s.bifrost_api_key, s.answer_model,

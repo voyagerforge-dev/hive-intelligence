@@ -57,9 +57,12 @@ INFO:     Uvicorn running on http://127.0.0.1:8099 (Press CTRL+C to quit)
 Leave `LEDGER_DSN` out and the server refuses to start, by design:
 
 ```
-RuntimeError: LEDGER_DSN is not set. The ledger is Postgres since 2026-08-19; there is no file
-fallback, because falling back is how an empty ledger gets served as if it were the real one.
+LEDGER_DSN is not set. The ledger is Postgres since 2026-08-19; there is no file fallback,
+because falling back is how an empty ledger gets served as if it were the real one.
 ```
+
+One line and exit 1, not a traceback. `CONCEPTS_DIR` refuses the same way, naming the setting: it
+has no default either - see [configuration](../reference/configuration.md#where-the-corpus-is).
 
 ## 4. Query it
 
