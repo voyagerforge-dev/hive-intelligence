@@ -36,7 +36,7 @@ stop it; nothing here is a pattern for a real deployment, which is in
 
 The fixture corpus lives in the test tree. It holds eight cards across two synthetic products
 (`widget`, `gadget`) and two isolated clients (`alpha`, `beta`), and carries no real-world domain
-vocabulary on purpose: it is a fair test that the machinery is domain-neutral.
+vocabulary on purpose: it is a fair test that the card model is domain-neutral.
 
 ```bash
 CONCEPTS_DIR=tests/fixtures/corpus/concepts \

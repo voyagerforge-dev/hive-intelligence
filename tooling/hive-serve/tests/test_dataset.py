@@ -55,7 +55,7 @@ def _rows(path: Path) -> list[dict]:
 
 
 def test_fixture_corpus_covers_every_card_type():
-    """The fixture exists to prove the machinery is domain-neutral. If it stops
+    """The fixture exists to prove the card model is domain-neutral. If it stops
     covering a card type, it stops proving that."""
     idx = load_index(FIXTURE_CONCEPTS, FIXTURE_CLIENTS)
     types = {c.get("type") for c in idx}
