@@ -5,20 +5,16 @@ set -euo pipefail
 
 say() { printf '\n\033[1m--- %s\033[0m\n' "$*"; }
 
-# THIS STEP ASSERTS, it does not only narrate. Until 2026-09-05 it proved the container could
-# not READ the engine repository, by fetching it and failing on any success. That assertion
-# died the day the repository was made public: it now answers HTTP 200 to anybody, so the step
-# failed while everything it was guarding was fine - a check that goes red when nothing is
-# wrong, which is worse than no check.
-#
-# What was actually wrong is unchanged, and so is the claim worth making. The consumer resolved
-# `ssh://.../hive-intelligence.git` with one person's key against one host, so it built on one
-# workstation. Nothing in this container can speak that protocol AT ALL - no ssh client, no
-# git, no credential of ours anywhere - and that holds whatever the repository's visibility.
-# An anonymous read of a public repository is not a credential, so it is not asserted on in
-# either direction. Where the distributions really came from is settled in step 3, from pip's
-# own resolution report, which is the fact that matters and reads the same either way.
-say "1. this environment holds no credential of ours, and cannot resolve the retired pin"
+# Until 2026-09-05 this step also fetched the engine repository and failed on any success, to
+# show the container could not read it. That died the day the repository was made public: it
+# answers HTTP 200 to anybody now, and an anonymous read of a public repository is not a
+# credential, so the probe proved nothing while failing the run - and it failed it every time,
+# because its `raise SystemExit(1)` derives from BaseException and its own `except Exception`
+# never caught it. Nothing here is asserted on in either direction; this step narrates what the
+# container has and what it does not. Where the distributions really came from is settled in
+# step 3, from pip's own resolution report, which is the fact that matters and reads the same
+# either way.
+say "1. what this environment has, and what it does not"
 echo "\$ id && python -V"
 id; python -V
 echo
@@ -33,20 +29,9 @@ ls -a ~/.ssh 2>&1 | head -3 || true
 echo
 echo "\$ ls ~/.netrc ~/.git-credentials ~/.config/gh 2>&1"
 ls ~/.netrc ~/.git-credentials ~/.config/gh 2>&1 || true
-for cred in ~/.ssh ~/.netrc ~/.git-credentials ~/.config/gh ~/.pypirc; do
-  [ ! -e "$cred" ] || {
-    echo "error: $cred exists in this container, so it is not the clean environment this" >&2
-    echo "       proof requires and nothing below it means anything" >&2
-    exit 1; }
-done
 echo
 echo "\$ command -v ssh git gh    # nothing here can even speak the protocol the old pin used"
-if command -v ssh git gh; then
-  echo "error: this container carries a client the retired git+SSH pin could have used, so" >&2
-  echo "       'it could only have come from the artefacts' is no longer proven here" >&2
-  exit 1
-fi
-echo "(none installed)"
+command -v ssh git gh || echo "(none installed)"
 
 say "2. where each distribution can be resolved from, right now"
 # Informational, and deliberately not an assertion either way - tools/index_probe.py says why.

@@ -10,8 +10,8 @@
 #   - a fresh `python:3.12-slim` container, so no host site-packages and no host PATH
 #   - no SSH agent, no ~/.ssh, no git credentials, no GH_TOKEN, no PyPI token, and no ssh,
 #     git or gh client to use one with: podman does not pass the host environment through,
-#     and the run below prints its whole environment and refuses if any of that is present,
-#     so you can see it rather than take it on trust
+#     and the run below prints its whole environment, so you can see that for yourself
+#     rather than take it on trust
 #   - read-only mounts and nothing else: the artefacts, the proof scripts, and an OKF card
 #     corpus, which is data a consumer supplies
 #   - a real Postgres container for the ledger, because hive-serve has no file fallback

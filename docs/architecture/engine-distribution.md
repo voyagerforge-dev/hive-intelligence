@@ -264,18 +264,14 @@ of five. It cannot be completed afterwards: register what was missing and cut a 
 - a `uv.lock` still recording the previous one, which no wheel reads and nothing else
   would notice;
 - `vf-hive-serve` not requiring `vf-hive-gen==<that version>`, which would let a consumer pinning
-  one version resolve a different engine behind it - and `vf-hive-author` not pinning it either,
-  which is the same defect one level quieter: it names `vf-hive-gen` only in its `dev` extra, but
-  an extra is published metadata a consumer can ask for;
+  one version resolve a different engine behind it;
 - a clean tree sitting on a tag that contradicts the packages;
 - a built wheel whose recorded metadata, or whose licence files, are not what was asked for.
 
 `tools/verify-clean-install.sh` is the part that matters most, because the failure being fixed is
 a thing everyone believed worked. It builds a container with no SSH key, no git credentials, no
-token, no checkout and no `ssh`, `git` or `gh` client to use one with - and refuses if it finds
-any of them, so the retired git+SSH pin could not have been resolved there whatever this
-repository's visibility. Then it installs the whole set from the built artefacts and reads pip's
-own `--report` to name the URL each of them actually
+token, no checkout and no `ssh`, `git` or `gh` client to use one with. Then it installs the whole
+set from the built artefacts and reads pip's own `--report` to name the URL each of them actually
 resolved from - a check that reads the same before and after the names exist on PyPI. Then it runs
 each one for real - DDL parsed into cards, atomic markdown validated, a card bundle resolved across
 cross-links, `hive-author` building a submission that `hive-gen`'s own parsers read back, and
