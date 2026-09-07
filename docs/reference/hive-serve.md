@@ -14,8 +14,9 @@ hiveserve serve --http      # REST and MCP over streamable HTTP
 hiveserve serve --stdio     # MCP over stdio, for any client that speaks it
 ```
 
-Both transports require `LEDGER_DSN` and refuse to start without it. See
-[the ledger](#the-ledger).
+Both transports refuse to start without `LEDGER_DSN` or `CONCEPTS_DIR`, naming the setting that is
+missing and exiting 1 without a traceback. Neither has a default: see [the ledger](#the-ledger) and
+[`CONCEPTS_DIR` has no default](configuration.md#concepts_dir-has-no-default).
 
 ## REST
 
