@@ -37,4 +37,4 @@ def gateway_llm():
     if not base or not key:
         return None
     from hivegen.llm import BifrostChat
-    return BifrostChat(base, key, os.environ.get("CONFLICT_MODEL", "minimax/minimax-m3"))
+    return BifrostChat(base, key, os.environ.get("CONFLICT_MODEL") or "minimax/minimax-m3")

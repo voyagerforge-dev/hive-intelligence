@@ -95,7 +95,7 @@ def test_score_tree_clears_on_low_prob(tmp_path):
     assert not blocking and not review
 
 
-def _run_gate(*args: str, cwd) -> subprocess.CompletedProcess:
+def _run_gate(*args: str, cwd, gateway: bool = False) -> subprocess.CompletedProcess:
     """The command as a caller actually gets it, with the stdin CI hands a `run:` step.
 
     A GitHub Actions step gets /dev/null on stdin, so this is the shape in which the gate
@@ -103,10 +103,15 @@ def _run_gate(*args: str, cwd) -> subprocess.CompletedProcess:
     about. `cwd` is load-bearing: the gate matches `--changed-file` values against
     `clients_dir` relative to where it runs, so these run from the tree's own root the way
     a workflow runs from the repository root. The gateway credentials are stripped so no
-    test can reach a network.
+    test can reach a network; `gateway=True` puts back the pair of variables the gate
+    checks for, pointed at the loopback discard port, for the cases whose failure lies
+    PAST that check and would otherwise be hidden by it.
     """
     env = {k: v for k, v in os.environ.items()
            if k not in ("BIFROST_BASE", "BIFROST_API_KEY")}
+    if gateway:
+        env["BIFROST_BASE"] = "http://127.0.0.1:9/v1"
+        env["BIFROST_API_KEY"] = "not-a-key"
     return subprocess.run(
         [sys.executable, "-m", "hivegen.scripts.pr_conflict_gate", *args],
         stdin=subprocess.DEVNULL, capture_output=True, text=True, env=env, check=False,
@@ -179,6 +184,36 @@ def test_main_refuses_a_clients_dir_outside_the_directory_it_runs_from(tmp_path)
     assert r.returncode != 0
     assert "success" not in r.stdout
     assert "outside the working directory" in r.stderr
+
+
+def test_main_refuses_a_clients_dir_that_is_the_directory_it_runs_from(tmp_path):
+    """A green over an unscored memory change is what the empty prefix used to produce.
+
+    With `clients_dir` resolving to the working directory there is no prefix left to match
+    on, so every changed path containing `/memory/` looks like a memory card, while
+    `memory_lint` finds no card at all under that root - the ids it builds need a client
+    directory above `memory/`. Zero cards read as zero conflicts, and the gate printed
+    `state: success` over a change nothing had scored. The gateway is configured here so
+    that path is reachable at all: without it the gate stops at the gateway refusal first
+    and the green stays hidden. Nothing is sent, because a refusal comes first now and
+    zero candidates never reach the scorer.
+    """
+    _tree(tmp_path)
+    r = _run_gate(".", "concepts", "--changed-file", "clients/alpha/memory/m1.md",
+                  cwd=tmp_path, gateway=True)
+    assert "success" not in r.stdout, f"the gate answered with no prefix to match on: {r.stdout!r}"
+    assert r.returncode != 0
+    assert "is the working directory" in r.stderr
+
+
+def test_changed_path_prefix_refuses_the_working_directory(tmp_path, monkeypatch):
+    """The tree below the root still answers; the root itself does not."""
+    _tree(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    assert pcg.changed_path_prefix("clients") == "clients/"
+    with pytest.raises(SystemExit) as excinfo:
+        pcg.changed_path_prefix(".")
+    assert "is the working directory" in str(excinfo.value)
 
 
 def test_pr_touches_memory_takes_the_prefix_of_a_corpus_below_the_root():

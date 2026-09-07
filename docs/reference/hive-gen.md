@@ -133,8 +133,9 @@ shelling out.
 `hivegen-pr-conflict-gate` decides what to score by matching `--changed-file` values against
 `clients_dir`, so the two must share a base: **run it from the directory the changed paths are
 relative to** - the repository root, for `git diff --name-only` output - and give `clients_dir` as a
-path under it. A corpus below the root is matched at its own prefix rather than at `clients/`, and a
-`clients_dir` outside the working directory is refused rather than answered, because a gate that
+path under it. `clients_dir` must name the clients tree itself, not the directory the gate runs from.
+A corpus below the root is matched at its own prefix rather than at `clients/`, while a `clients_dir`
+outside the working directory, or equal to it, is refused rather than answered, because a gate that
 matches nothing posts green over a memory change nothing scored. With no gateway configured it
 refuses too; `hivegen-memory-conflict-score` is the advisory sibling that prints the candidate pairs
 and does not fail the step.

@@ -48,9 +48,10 @@ def changed_path_prefix(clients_dir) -> str:
 
     Changed paths come from `git diff --name-only`, so they are relative to the repository
     root, and the gate is run from there. A `clients_dir` outside that base cannot be
-    compared with them at all, so it is refused rather than answered: the gate silently
-    matching nothing is how it posts an authoritative green over a memory change no one
-    scored.
+    compared with them at all, and a `clients_dir` that IS that base carries no prefix to
+    match on, leaving `/memory/` anywhere in the tree looking like a client memory card.
+    Both are refused rather than answered: the gate silently matching nothing is how it
+    posts an authoritative green over a memory change no one scored.
     """
     rel = os.path.relpath(os.path.abspath(clients_dir), os.getcwd())
     if rel == os.pardir or rel.startswith(os.pardir + os.sep):
@@ -59,7 +60,13 @@ def changed_path_prefix(clients_dir) -> str:
             "--changed-file path can name a card inside it. Run this from the directory "
             "the changed paths are relative to, which for `git diff --name-only` output "
             "is the repository root.")
-    return "" if rel == os.curdir else rel.replace(os.sep, "/") + "/"
+    if rel == os.curdir:
+        raise SystemExit(
+            f"{clients_dir} is the working directory {os.getcwd()} itself, so no prefix "
+            "distinguishes a client memory card from any other path containing "
+            "/memory/. Pass the clients tree itself, as a path under the directory the "
+            "changed paths are relative to.")
+    return rel.replace(os.sep, "/") + "/"
 
 
 def score_tree(clients_dir, concepts_dir, llm):
@@ -93,7 +100,8 @@ def main(argv: list[str] | None = None) -> int:
                     "score the tree if they do, and print the commit-status payload.")
     ap.add_argument("clients_dir",
                     help="the corpus clients/ tree, as a path under the directory this is "
-                         "run from")
+                         "run from; it must name that tree itself, not the directory this "
+                         "is run from")
     ap.add_argument("concepts_dir", help="the corpus concepts/ tree the memories relate to")
     ap.add_argument("--changed-file", action="append", default=[], metavar="PATH",
                     help="a path the pull request changed, relative to the directory this "
