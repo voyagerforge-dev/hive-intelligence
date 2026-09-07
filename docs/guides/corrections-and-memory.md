@@ -92,7 +92,9 @@ When something in a personal notebook turns out to matter generally, the MCP `pr
 proposes it as a client memory card.
 
 It does not write the card. It flips the ledger row to `promotion_requested` and hands back a
-submission record, which `hive-author` turns into an issue:
+submission record. `submit_memory_promotion` takes discrete arguments and builds the issue body
+itself, and the record leaves `product` and `title` empty, so it is the agent, not `hive-author`,
+that turns the record into an issue:
 
 ```mermaid
 flowchart TB

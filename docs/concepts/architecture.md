@@ -6,8 +6,8 @@ apart.
 This is the shape of the system in one page. For the long form, with every gate, the layers on top
 and the diagrams, read [the pipeline end to end](pipeline.md).
 
-Three stages, each ending at a gate a person has to pass, and a write path that comes back round
-through review rather than writing to the corpus directly:
+Three stages and three gates a person has to pass, all of them in stages 1 and 2, and a write
+path that comes back round through review rather than writing to the corpus directly:
 
 ```mermaid
 flowchart TB

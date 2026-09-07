@@ -76,7 +76,8 @@ the corpus or the draft set knows, or when a card of that name is already promot
 each reason and leaves the file where it is.
 
 There is no rejected state and no deleted state either. A draft nobody approves simply stays in
-`drafts/`, which is why a promote run reports what it skipped rather than failing.
+`drafts/`: `promote` passes over it, naming it neither among the cards it promoted nor among the
+ones it held back, rather than failing the run.
 
 Two more values are expected elsewhere, and a card carrying either is not malformed.
 `hive-zendesk` stamps every issue card it emits with `status: distilled`, and re-emits that card on
