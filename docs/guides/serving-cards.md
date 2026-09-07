@@ -163,7 +163,7 @@ Fifteen tools in three groups.
 | `forget` | delete one |
 | `promote` | propose a private note become shared knowledge |
 
-`promote` does not write to the corpus. It files a submission for review; see
+`promote` does not write to the corpus. It prepares a submission for the agent to file; see
 [corrections and memory](corrections-and-memory.md).
 
 ## Client context

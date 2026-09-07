@@ -47,7 +47,8 @@ Fifteen, in three groups.
 
 **Personal memory:** `remember`, `recall`, `forget`, `promote`
 
-`promote` does not write to the corpus. It proposes, through `hive-author`.
+`promote` does not write to the corpus. It prepares a submission the agent files through
+`hive-author`.
 
 ## Modules
 
