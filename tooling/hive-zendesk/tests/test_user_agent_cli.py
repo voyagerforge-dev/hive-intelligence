@@ -107,7 +107,7 @@ def test_backfill_sends_installed_version_to_connector_and_bifrost(tmp_path):
         thread.start()
         try:
             result = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True,
-                                    text=True, timeout=30)
+                                    text=True, timeout=30, check=False)
         finally:
             server.shutdown()
             thread.join(timeout=5)
