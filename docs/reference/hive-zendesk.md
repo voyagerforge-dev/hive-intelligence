@@ -66,6 +66,9 @@ and is measured separately.
 | `profile.py` | the corpus profile's `linking` section: default product, and the words that mark an entry |
 | `run.py` | CLI orchestration |
 
+Connector and Bifrost requests send `User-Agent: hivezendesk/<version>`, where `<version>` comes
+from the installed `vf-hive-zendesk` distribution rather than a separately maintained literal.
+
 ## Safety properties
 
 **The ticket system is read-only.** All access is GET through a connector. The tool never writes
@@ -173,9 +176,10 @@ repairable without re-distilling, which is the expensive half.
 
 ## Tests
 
-Fakes only: the connector and both model clients are injected, so the suite runs with no network
-and no models. Use `uv run pytest --collect-only -q` in `tooling/hive-zendesk/` for the current
-inventory rather than a count written down here.
+Tests use injected fakes, mocked HTTP, and a loopback HTTP server for the installed CLI's
+User-Agent regression (`tests/test_user_agent_cli.py`). No external services or live models are
+required. Use `uv run pytest --collect-only -q` in `tooling/hive-zendesk/` for the current inventory
+rather than a count written down here.
 
 ## Configuration
 
@@ -201,7 +205,8 @@ than a missing one helps.
 back further than a month or it will skip tickets.
 
 **Truncation is silent at the source.** A capped API response looks exactly like a complete one.
-`CAP_WARN_RATIO` warns near `CONNECTOR_PAGE_CAP`; treat that warning as "this run is incomplete".
+The connector client raises `RunError` at the threshold set by `CAP_WARN_RATIO` and
+`CONNECTOR_PAGE_CAP`; narrow the `since` window instead of treating those results as complete.
 
 ## Worth doing
 
